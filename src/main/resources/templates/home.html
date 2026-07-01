@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>U-Minimalist | Life-ready essentials</title>
+    <meta name="description" content="U-Minimalist is a minimalist fashion e-commerce experience for everyday essentials.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
+    <link rel="preload" th:href="@{/images/hero-campaign-family@2x.png}" as="image">
+    <link rel="preload" th:href="@{/images/campaign-storefront.png}" as="image">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body>
+<header class="site-header" data-animate="nav">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid page-shell">
+            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products}" aria-label="Search products">Search</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
+                            Cart <span>0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <section class="hero-section" aria-labelledby="hero-title">
+        <img class="hero-image"
+             th:src="@{/images/hero-campaign-family.png}"
+             th:srcset="|@{/images/hero-campaign-family.png} 1672w, @{/images/hero-campaign-family@2x.png} 3344w|"
+             sizes="100vw"
+             alt="Woman, child, and man wearing minimalist everyday outfits">
+        <div class="hero-content page-shell">
+            <p class="hero-kicker" data-animate="hero-copy">Everyday clothing system</p>
+            <h1 id="hero-title" data-animate="hero-copy">Life-ready essentials</h1>
+            <p class="hero-copy" data-animate="hero-copy">Simple clothes for every day, designed around fit, comfort, and easy choices.</p>
+            <div class="hero-actions" data-animate="hero-copy">
+                <a class="btn btn-primary retail-btn" th:href="@{/products}">Shop now</a>
+                <a class="btn btn-outline-dark retail-btn outline" th:href="@{/products(sort='new')}">New arrivals</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="category-section page-shell" aria-labelledby="category-title">
+        <div class="section-heading reveal-block">
+            <h2 id="category-title">Shop by category</h2>
+            <a th:href="@{/products}">View all</a>
+        </div>
+        <div class="category-grid">
+            <a class="category-card reveal-card" th:each="category : ${categories}" th:href="${category.href}">
+                <span class="category-image" th:classappend="${category.cropClass}">
+                    <img th:src="@{/images/product-collage.png}" th:alt="${category.name + ' minimalist apparel'}">
+                </span>
+                <span class="category-copy">
+                    <strong th:text="${category.name}">Men</strong>
+                    <small th:text="${category.description}">Everyday layers.</small>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    <section class="story-section" aria-labelledby="story-title">
+        <div class="page-shell story-grid">
+            <div class="story-copy reveal-block">
+                <h2 id="story-title">Made for fewer decisions</h2>
+                <p>U-Minimalist keeps the shopping path direct: find a piece, pick size and color, check stock, then order with confidence.</p>
+                <a th:href="@{/products}" class="text-link">Browse essentials</a>
+            </div>
+            <div class="story-panel reveal-block" aria-label="Project essentials">
+                <ul>
+                    <li th:each="essential : ${essentials}" th:text="${essential}">Clear inventory</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="editorial-section page-shell" aria-labelledby="editorial-title">
+        <div class="editorial-image reveal-block">
+            <img th:src="@{/images/campaign-storefront.png}" alt="Minimalist retail display with folded everyday apparel">
+        </div>
+        <div class="editorial-copy reveal-block">
+            <p>Core edit</p>
+            <h2 id="editorial-title">Built around the clothes people actually repeat.</h2>
+            <a th:href="@{/products(collection='essentials')}" class="text-link">Shop the edit</a>
+        </div>
+    </section>
+
+    <section class="arrival-section page-shell" aria-labelledby="arrival-title">
+        <div class="section-heading reveal-block">
+            <h2 id="arrival-title">New arrivals</h2>
+            <a th:href="@{/products(sort='new')}">Shop all</a>
+        </div>
+        <div class="product-grid">
+            <article class="product-card reveal-card" th:each="product : ${newArrivals}">
+                <a th:href="@{/products}" class="product-image" th:classappend="${product.cropClass}">
+                    <img th:src="@{/images/product-collage.png}" th:alt="${product.name}">
+                </a>
+                <div class="product-meta">
+                    <p th:text="${product.category}">T-shirt</p>
+                    <h3 th:text="${product.name}">Air Cotton Tee</h3>
+                    <div class="product-line">
+                        <span th:text="${product.price}">$19.90</span>
+                        <span th:text="${product.colors}">Cream</span>
+                    </div>
+                    <small th:text="${product.sizes}">S M L XL</small>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="campaign-section page-shell reveal-block" aria-labelledby="campaign-title">
+        <div>
+            <h2 id="campaign-title">Shop the everyday system</h2>
+            <p>Browse core categories, compare variants, check stock, and keep the shopping path direct from first view to checkout.</p>
+        </div>
+        <a class="btn btn-primary retail-btn" th:href="@{/products}">Shop now</a>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="page-shell">
+        <div class="footer-brand">
+            <strong>U-Minimalist</strong>
+            <p>Minimal fashion e-commerce system for Java Frameworks.</p>
+        </div>
+        <div class="footer-columns">
+            <div>
+                <h2>Shop</h2>
+                <a th:href="@{/products(collection='men')}">Men</a>
+                <a th:href="@{/products(collection='women')}">Women</a>
+                <a th:href="@{/products(collection='kids')}">Kids</a>
+                <a th:href="@{/products(sort='new')}">New arrivals</a>
+            </div>
+            <div>
+                <h2>Support</h2>
+                <a th:href="@{/help}">Contact</a>
+                <a th:href="@{/orders}">Order status</a>
+                <a th:href="@{/shipping}">Shipping</a>
+                <a th:href="@{/returns}">Returns</a>
+            </div>
+            <div>
+                <h2>Account</h2>
+                <a th:href="@{/login}">Sign in</a>
+                <a th:href="@{/register}">Create account</a>
+                <a th:href="@{/cart}">Cart</a>
+                <a th:href="@{/wishlist}">Wishlist</a>
+            </div>
+            <div>
+                <h2>Updates</h2>
+                <p>Seasonal essentials, product drops, and stock updates.</p>
+                <form class="footer-form" th:action="@{/newsletter}" method="post">
+                    <label for="footer-email">Email</label>
+                    <div>
+                        <input id="footer-email" name="email" type="email" placeholder="Email address">
+                        <button type="submit">Join</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/vendor/gsap/gsap.min.js}"></script>
+<script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
+<script th:src="@{/js/landing.js}"></script>
+</body>
+</html>

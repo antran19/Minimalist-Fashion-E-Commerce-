@@ -1,0 +1,13 @@
+target/
+dist/
+.vercel/
+.playwright-mcp/
+.idea/
+.vscode/
+*.log
+*.class
+*.jar
+*.war
+*.ear
+.DS_Store
+Thumbs.db
