@@ -45,6 +45,8 @@ public class LandingPageService {
     public List<ProductView> getNewArrivals() {
         return productViews().stream()
                 .filter(ProductView::isNew)
+                .filter(product -> !"kids".equalsIgnoreCase(product.collection()))
+                .filter(product -> !"Accessories".equalsIgnoreCase(product.category()))
                 .limit(8)
                 .toList();
     }
@@ -162,6 +164,7 @@ public class LandingPageService {
                 currencyFormat.format(price),
                 colors,
                 sizes,
+                imagePath(product.getSlug()),
                 product.getCropClass(),
                 stock,
                 product.isNewArrival(),
@@ -187,5 +190,17 @@ public class LandingPageService {
 
     private String normalize(String value) {
         return value.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private String imagePath(String slug) {
+        return switch (slug) {
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants.png";
+            case "school-day-cardigan" -> "/images/kids-campaign.png";
+            default -> "/images/product-collage.png";
+        };
     }
 }

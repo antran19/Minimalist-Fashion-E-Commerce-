@@ -33,9 +33,10 @@ Run these scripts in DBeaver in order:
 database/01_create_database.sql
 database/02_create_catalog_tables.sql
 database/03_seed_catalog.sql
+database/04_create_user_tables.sql
 ```
 
-Open each `.sql` file and run its contents in DBeaver. Do not type the file path into the SQL editor.
+Open each `.sql` file and run its contents in DBeaver (or via `sqlcmd`). Do not type the file path into the SQL editor.
 
 After that, connect DBeaver to:
 
@@ -54,3 +55,12 @@ DB_PASSWORD
 ```
 
 If they are not provided, it uses local Docker defaults from `application.properties`.
+
+## Demo Accounts
+
+The application seeds these accounts on startup if the `users` table exists and the email is not present:
+
+```text
+Admin: admin@uminimalist.com / admin123
+Customer: customer@uminimalist.com / customer123
+```

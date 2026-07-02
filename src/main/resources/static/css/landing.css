@@ -427,6 +427,32 @@ img {
     background-size: 400% auto;
 }
 
+.product-image-real {
+    display: grid;
+    place-items: center;
+    background: #f8f8f6;
+    background-image: none !important;
+    background-size: auto;
+    background-position: center;
+}
+
+.product-image-real img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    opacity: 1;
+    padding: 6%;
+}
+
+.detail-image.product-image-real img {
+    padding: 8%;
+}
+
+.cart-item-image.product-image-real img {
+    padding: 10%;
+}
+
 .product-tee {
     background-position: 0 100%;
 }
@@ -1270,4 +1296,166 @@ img {
         transform: none !important;
         visibility: visible !important;
     }
+}
+
+.account-page {
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.account-panel,
+.admin-product-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+    padding: 28px;
+}
+
+.account-panel.wide {
+    grid-column: 1 / -1;
+}
+
+.panel-kicker {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 760;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.account-panel h2,
+.admin-product-card h3 {
+    margin: 0 0 18px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.account-list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+}
+
+.account-list div {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    padding-block: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.account-list dt {
+    color: var(--muted);
+    font-weight: 650;
+}
+
+.account-list dd {
+    margin: 0;
+    font-weight: 720;
+}
+
+.account-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.account-notes {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.account-notes li {
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.admin-panel + .admin-panel,
+.admin-panel + .cart-alert,
+.cart-alert + .admin-panel {
+    margin-top: 24px;
+}
+
+.admin-panel-title,
+.admin-product-head,
+.admin-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.admin-panel-title {
+    margin-bottom: 24px;
+}
+
+.admin-panel-title h2,
+.admin-product-head h3 {
+    margin: 0;
+}
+
+.admin-product-list {
+    display: grid;
+    gap: 18px;
+}
+
+.admin-product-head {
+    margin-bottom: 18px;
+}
+
+.admin-product-head p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.table-custom.compact th,
+.table-custom.compact td {
+    padding: 10px 12px;
+    font-size: 0.86rem;
+}
+
+.stock-form {
+    display: flex;
+    gap: 8px;
+}
+
+.stock-form input {
+    width: 82px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 7px 8px;
+    font-weight: 700;
+}
+
+.stock-form button,
+.table-action {
+    border: 1px solid var(--ink);
+    border-radius: var(--radius);
+    background: #ffffff;
+    color: var(--ink);
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    font-weight: 760;
+}
+
+.stock-form button:hover,
+.table-action:hover {
+    background: var(--ink);
+    color: #ffffff;
 }

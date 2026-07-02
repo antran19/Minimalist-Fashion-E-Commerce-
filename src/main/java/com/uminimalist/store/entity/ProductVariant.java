@@ -61,7 +61,15 @@ public class ProductVariant {
         return stockQuantity;
     }
 
+    public void setStockQuantity(int stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
+
     public boolean isActive() {
         return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

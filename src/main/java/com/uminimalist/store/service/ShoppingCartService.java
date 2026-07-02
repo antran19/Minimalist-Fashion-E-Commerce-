@@ -94,6 +94,10 @@ public class ShoppingCartService {
                 .sum();
     }
 
+    public void clearCart(HttpSession session) {
+        session.removeAttribute(CART_SESSION_KEY);
+    }
+
     private CartItemView toCartItemView(ProductVariant variant, int quantity) {
         double unitPrice = variant.getProduct().getBasePrice().doubleValue();
         double lineTotal = unitPrice * quantity;
@@ -105,6 +109,7 @@ public class ShoppingCartService {
                 variant.getProduct().getProductType(),
                 variant.getColor(),
                 variant.getSize(),
+                imagePath(variant.getProduct().getSlug()),
                 variant.getProduct().getCropClass(),
                 quantity,
                 variant.getStockQuantity(),
@@ -127,5 +132,17 @@ public class ShoppingCartService {
         Map<String, Integer> existingCart = new LinkedHashMap<>(readCart(session));
         session.setAttribute(CART_SESSION_KEY, existingCart);
         return existingCart;
+    }
+
+    private String imagePath(String slug) {
+        return switch (slug) {
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants.png";
+            case "school-day-cardigan" -> "/images/kids-campaign.png";
+            default -> "/images/product-collage.png";
+        };
     }
 }

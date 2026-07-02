@@ -9,6 +9,7 @@ public record ProductView(
         String priceLabel,
         java.util.List<String> colors,
         java.util.List<String> sizes,
+        String imagePath,
         String cropClass,
         int stock,
         boolean isNew,

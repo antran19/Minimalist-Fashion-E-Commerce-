@@ -7,6 +7,7 @@ public record CartItemView(
         String category,
         String color,
         String size,
+        String imagePath,
         String cropClass,
         int quantity,
         int stockQuantity,
