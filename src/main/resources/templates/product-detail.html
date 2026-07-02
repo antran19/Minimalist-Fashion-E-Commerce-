@@ -29,7 +29,7 @@
                     <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
                     <li class="nav-item">
                         <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span>0</span>
+                            Cart <span th:text="${cartCount}">0</span>
                         </a>
                     </li>
                 </ul>
@@ -46,6 +46,7 @@
         </div>
         <form class="detail-panel" th:action="@{/cart}" method="post">
             <input type="hidden" name="productSlug" th:value="${product.slug}">
+            <p class="cart-alert error" th:if="${cartError}" th:text="${cartError}">Product variant is not available.</p>
             <p class="detail-category" th:text="${product.category}">T-shirt</p>
             <h1 id="product-title" th:text="${product.name}">Air Cotton Tee</h1>
             <p class="detail-price" th:text="${product.priceLabel}">$19.90</p>

@@ -1,9 +1,16 @@
 package com.uminimalist.store.service;
 
+import com.uminimalist.store.entity.Category;
+import com.uminimalist.store.entity.Product;
+import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.model.CategoryView;
 import com.uminimalist.store.model.ProductView;
+import com.uminimalist.store.repository.CategoryRepository;
+import com.uminimalist.store.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.text.NumberFormat;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -11,40 +18,32 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 @Service
+@Transactional(readOnly = true)
 public class LandingPageService {
-    private static final List<ProductView> PRODUCTS = List.of(
-            new ProductView("air-cotton-tee", "Air Cotton Tee", "men", "T-shirt", 19.90, "$19.90",
-                    List.of("Cream", "White"), List.of("S", "M", "L", "XL"), "product-tee", 48, true, true),
-            new ProductView("light-utility-jacket", "Light Utility Jacket", "men", "Outerwear", 59.90, "$59.90",
-                    List.of("Navy"), List.of("S", "M", "L"), "product-jacket", 18, true, false),
-            new ProductView("oxford-shirt", "Oxford Shirt", "men", "Shirt", 34.90, "$34.90",
-                    List.of("White"), List.of("S", "M", "L", "XL"), "product-shirt", 31, false, true),
-            new ProductView("soft-jersey-tee", "Soft Jersey Tee", "women", "T-shirt", 19.90, "$19.90",
-                    List.of("Sage"), List.of("XS", "S", "M", "L"), "product-sage", 42, true, false),
-            new ProductView("smart-ankle-pants", "Smart Ankle Pants", "women", "Pants", 39.90, "$39.90",
-                    List.of("Black"), List.of("XS", "S", "M", "L", "XL"), "product-pants", 26, false, true),
-            new ProductView("everyday-zip-hoodie", "Everyday Zip Hoodie", "women", "Sweatshirt", 49.90, "$49.90",
-                    List.of("Grey"), List.of("S", "M", "L", "XL"), "product-hoodie", 15, true, false),
-            new ProductView("linen-blend-shirt", "Linen Blend Shirt", "men", "Shirt", 34.90, "$34.90",
-                    List.of("Natural"), List.of("S", "M", "L", "XL"), "product-linen", 22, false, false),
-            new ProductView("utility-tote", "Utility Tote", "women", "Accessories", 14.90, "$14.90",
-                    List.of("Red"), List.of("One size"), "product-tote", 64, true, true),
-            new ProductView("school-day-cardigan", "School Day Cardigan", "kids", "Knitwear", 29.90, "$29.90",
-                    List.of("Blue", "Grey"), List.of("110", "120", "130", "140"), "product-kids-cardigan", 34, true, false),
-            new ProductView("easy-cotton-shorts", "Easy Cotton Shorts", "kids", "Shorts", 16.90, "$16.90",
-                    List.of("Khaki"), List.of("110", "120", "130", "140"), "product-kids-shorts", 28, false, true)
-    );
+
+    private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
+    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
+
+    public LandingPageService(CategoryRepository categoryRepository, ProductRepository productRepository) {
+        this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
+    }
 
     public List<CategoryView> getFeaturedCategories() {
-        return List.of(
-                new CategoryView("Men", "Everyday layers with clean lines.", "/products?collection=men", "crop-men"),
-                new CategoryView("Women", "Soft essentials for simple routines.", "/products?collection=women", "crop-women"),
-                new CategoryView("Kids", "Easy pieces for school and weekends.", "/products?collection=kids", "crop-kids")
-        );
+        return categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc()
+                .stream()
+                .map(category -> new CategoryView(
+                        category.getName(),
+                        category.getDescription(),
+                        "/products?collection=" + category.getSlug(),
+                        "crop-" + category.getSlug()
+                ))
+                .toList();
     }
 
     public List<ProductView> getNewArrivals() {
-        return PRODUCTS.stream()
+        return productViews().stream()
                 .filter(ProductView::isNew)
                 .limit(8)
                 .toList();
@@ -52,7 +51,7 @@ public class LandingPageService {
 
     public List<ProductView> getProducts(String query, String collection, String size, String color,
                                          Double minPrice, Double maxPrice, String sort) {
-        Stream<ProductView> stream = PRODUCTS.stream();
+        Stream<ProductView> stream = productViews().stream();
 
         if (hasText(query)) {
             String normalizedQuery = normalize(query);
@@ -80,42 +79,36 @@ public class LandingPageService {
             stream = stream.filter(product -> product.price() <= maxPrice);
         }
 
-        Comparator<ProductView> comparator = switch (Optional.ofNullable(sort).orElse("")) {
-            case "price-asc" -> Comparator.comparingDouble(ProductView::price);
-            case "price-desc" -> Comparator.comparingDouble(ProductView::price).reversed();
-            case "best" -> Comparator.comparing(ProductView::bestSeller).reversed()
-                    .thenComparing(ProductView::name);
-            case "new" -> Comparator.comparing(ProductView::isNew).reversed()
-                    .thenComparing(ProductView::name);
-            default -> Comparator.comparing(ProductView::name);
-        };
-
-        return stream.sorted(comparator).toList();
+        return stream.sorted(productComparator(sort)).toList();
     }
 
     public Optional<ProductView> getProduct(String slug) {
-        return PRODUCTS.stream()
-                .filter(product -> product.slug().equals(slug))
-                .findFirst();
+        return productRepository.findBySlugAndActiveTrue(slug).map(this::toProductView);
     }
 
     public List<String> getCollections() {
-        return PRODUCTS.stream()
-                .map(ProductView::collection)
-                .distinct()
+        return categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc()
+                .stream()
+                .map(Category::getSlug)
                 .toList();
     }
 
     public List<String> getSizes() {
-        return PRODUCTS.stream()
-                .flatMap(product -> product.sizes().stream())
+        return productRepository.findByActiveTrue()
+                .stream()
+                .flatMap(product -> product.getVariants().stream())
+                .filter(ProductVariant::isActive)
+                .map(ProductVariant::getSize)
                 .distinct()
                 .toList();
     }
 
     public List<String> getColors() {
-        return PRODUCTS.stream()
-                .flatMap(product -> product.colors().stream())
+        return productRepository.findByActiveTrue()
+                .stream()
+                .flatMap(product -> product.getVariants().stream())
+                .filter(ProductVariant::isActive)
+                .map(ProductVariant::getColor)
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
@@ -128,6 +121,64 @@ public class LandingPageService {
                 "Inventory checks before every order",
                 "Responsive pages built for quick browsing"
         );
+    }
+
+    private List<ProductView> productViews() {
+        return productRepository.findByActiveTrue()
+                .stream()
+                .map(this::toProductView)
+                .toList();
+    }
+
+    private ProductView toProductView(Product product) {
+        List<ProductVariant> activeVariants = product.getVariants()
+                .stream()
+                .filter(ProductVariant::isActive)
+                .toList();
+
+        List<String> colors = activeVariants.stream()
+                .map(ProductVariant::getColor)
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+
+        List<String> sizes = activeVariants.stream()
+                .map(ProductVariant::getSize)
+                .distinct()
+                .toList();
+
+        int stock = activeVariants.stream()
+                .mapToInt(ProductVariant::getStockQuantity)
+                .sum();
+
+        double price = product.getBasePrice().doubleValue();
+
+        return new ProductView(
+                product.getSlug(),
+                product.getName(),
+                product.getCategory().getSlug(),
+                product.getProductType(),
+                price,
+                currencyFormat.format(price),
+                colors,
+                sizes,
+                product.getCropClass(),
+                stock,
+                product.isNewArrival(),
+                product.isBestSeller()
+        );
+    }
+
+    private Comparator<ProductView> productComparator(String sort) {
+        return switch (Optional.ofNullable(sort).orElse("")) {
+            case "price-asc" -> Comparator.comparingDouble(ProductView::price);
+            case "price-desc" -> Comparator.comparingDouble(ProductView::price).reversed();
+            case "best" -> Comparator.comparing(ProductView::bestSeller).reversed()
+                    .thenComparing(ProductView::name);
+            case "new" -> Comparator.comparing(ProductView::isNew).reversed()
+                    .thenComparing(ProductView::name);
+            default -> Comparator.comparing(ProductView::name);
+        };
     }
 
     private boolean hasText(String value) {

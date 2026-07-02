@@ -29,7 +29,7 @@
                     <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
                     <li class="nav-item">
                         <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span>0</span>
+                            Cart <span th:text="${cartCount}">0</span>
                         </a>
                     </li>
                 </ul>

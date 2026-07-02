@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cart | U-Minimalist</title>
+    <meta name="description" content="Review U-Minimalist cart items, quantities, and totals before checkout.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body class="catalog-page">
+<header class="site-header catalog-header is-scrolled">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid page-shell">
+            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products}">Search</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link cart-link" th:href="@{/cart}" aria-current="page" aria-label="View cart">
+                            Cart <span th:text="${cartCount}">0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="page-shell cart-page">
+    <section class="cart-heading" aria-labelledby="cart-title">
+        <div>
+            <h1 id="cart-title">Shopping cart</h1>
+            <p>Review selected variants, quantities, stock, and subtotal before checkout.</p>
+        </div>
+        <a class="btn btn-outline-dark retail-btn outline" th:href="@{/products}">Continue shopping</a>
+    </section>
+
+    <p class="cart-alert success" th:if="${cartMessage}" th:text="${cartMessage}">Added to cart.</p>
+
+    <section class="cart-layout" th:if="${!cart.empty}">
+        <div class="cart-items" aria-label="Cart items">
+            <article class="cart-item" th:each="item : ${cart.items}">
+                <a class="cart-item-image product-image" th:href="@{/products/{slug}(slug=${item.productSlug})}" th:classappend="${item.cropClass}">
+                    <img th:src="@{/images/product-collage.png}" th:alt="${item.productName}">
+                </a>
+                <div class="cart-item-copy">
+                    <p th:text="${item.category}">T-shirt</p>
+                    <h2>
+                        <a th:href="@{/products/{slug}(slug=${item.productSlug})}" th:text="${item.productName}">Air Cotton Tee</a>
+                    </h2>
+                    <dl>
+                        <div>
+                            <dt>Color</dt>
+                            <dd th:text="${item.color}">Cream</dd>
+                        </div>
+                        <div>
+                            <dt>Size</dt>
+                            <dd th:text="${item.size}">M</dd>
+                        </div>
+                        <div>
+                            <dt>Stock</dt>
+                            <dd th:text="${item.stockQuantity}">12</dd>
+                        </div>
+                    </dl>
+                </div>
+                <div class="cart-item-actions">
+                    <p th:text="${item.unitPriceLabel}">$19.90</p>
+                    <form th:action="@{/cart/update}" method="post">
+                        <input type="hidden" name="sku" th:value="${item.sku}">
+                        <label th:for="${'quantity-' + item.sku}">Quantity</label>
+                        <input th:id="${'quantity-' + item.sku}" name="quantity" type="number" min="0"
+                               th:max="${item.stockQuantity}" th:value="${item.quantity}">
+                        <button type="submit">Update</button>
+                    </form>
+                    <form th:action="@{/cart/remove}" method="post">
+                        <input type="hidden" name="sku" th:value="${item.sku}">
+                        <button class="remove-button" type="submit">Remove</button>
+                    </form>
+                </div>
+                <strong class="cart-line-total" th:text="${item.lineTotalLabel}">$39.80</strong>
+            </article>
+        </div>
+
+        <aside class="cart-summary" aria-label="Cart summary">
+            <h2>Summary</h2>
+            <div>
+                <span>Items</span>
+                <strong th:text="${cart.itemCount}">2</strong>
+            </div>
+            <div>
+                <span>Subtotal</span>
+                <strong th:text="${cart.subtotalLabel}">$39.80</strong>
+            </div>
+            <p>Checkout, shipping, and payment will be connected after authentication and order flow are implemented.</p>
+            <button class="btn btn-primary retail-btn" type="button" disabled>Checkout</button>
+        </aside>
+    </section>
+
+    <section class="empty-state cart-empty" th:if="${cart.empty}">
+        <h2>Your cart is empty</h2>
+        <p>Add a size and color from any product detail page to start a cart.</p>
+        <a class="btn btn-primary retail-btn" th:href="@{/products}">Browse products</a>
+    </section>
+</main>
+
+<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

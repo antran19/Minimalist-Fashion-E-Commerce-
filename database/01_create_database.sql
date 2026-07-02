@@ -1,0 +1,4 @@
+IF DB_ID(N'UMinimalistDB') IS NULL
+BEGIN
+    CREATE DATABASE UMinimalistDB;
+END;
