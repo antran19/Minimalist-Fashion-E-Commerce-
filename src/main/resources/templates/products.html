@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Products | U-Minimalist</title>
+    <meta name="description" content="Browse U-Minimalist everyday apparel by category, size, color, and price.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body class="catalog-page">
+<header class="site-header catalog-header is-scrolled">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid page-shell">
+            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products}" aria-current="page">Search</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
+                            Cart <span>0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <section class="catalog-hero page-shell" aria-labelledby="catalog-title">
+        <div>
+            <h1 id="catalog-title">Everyday essentials</h1>
+            <p>Find clean, repeatable pieces by category, size, color, and price before moving into the cart flow.</p>
+        </div>
+        <a class="btn btn-primary retail-btn" th:href="@{/products(sort='new')}">Newest first</a>
+    </section>
+
+    <section class="catalog-layout page-shell" aria-label="Product catalog">
+        <aside class="filter-panel" aria-label="Product filters">
+            <form th:action="@{/products}" method="get">
+                <div class="filter-block">
+                    <label for="q">Search</label>
+                    <input id="q" name="q" type="search" th:value="${q}" placeholder="Tee, shirt, pants">
+                </div>
+
+                <div class="filter-block">
+                    <label for="collection">Category</label>
+                    <select id="collection" name="collection">
+                        <option value="">All categories</option>
+                        <option th:each="collection : ${collections}"
+                                th:value="${collection}"
+                                th:text="${#strings.capitalize(collection)}"
+                                th:selected="${collection == selectedCollection}">Men</option>
+                    </select>
+                </div>
+
+                <div class="filter-block">
+                    <label for="size">Size</label>
+                    <select id="size" name="size">
+                        <option value="">All sizes</option>
+                        <option th:each="sizeOption : ${sizes}"
+                                th:value="${sizeOption}"
+                                th:text="${sizeOption}"
+                                th:selected="${sizeOption == selectedSize}">M</option>
+                    </select>
+                </div>
+
+                <div class="filter-block">
+                    <label for="color">Color</label>
+                    <select id="color" name="color">
+                        <option value="">All colors</option>
+                        <option th:each="colorOption : ${colors}"
+                                th:value="${colorOption}"
+                                th:text="${colorOption}"
+                                th:selected="${colorOption == selectedColor}">White</option>
+                    </select>
+                </div>
+
+                <div class="filter-range">
+                    <div class="filter-block">
+                        <label for="minPrice">Min</label>
+                        <input id="minPrice" name="minPrice" type="number" min="0" step="1" th:value="${minPrice}" placeholder="$0">
+                    </div>
+                    <div class="filter-block">
+                        <label for="maxPrice">Max</label>
+                        <input id="maxPrice" name="maxPrice" type="number" min="0" step="1" th:value="${maxPrice}" placeholder="$80">
+                    </div>
+                </div>
+
+                <div class="filter-block">
+                    <label for="sort">Sort</label>
+                    <select id="sort" name="sort">
+                        <option value="new" th:selected="${selectedSort == 'new'}">Newest</option>
+                        <option value="best" th:selected="${selectedSort == 'best'}">Best sellers</option>
+                        <option value="price-asc" th:selected="${selectedSort == 'price-asc'}">Price low to high</option>
+                        <option value="price-desc" th:selected="${selectedSort == 'price-desc'}">Price high to low</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn btn-primary retail-btn" type="submit">Apply</button>
+                    <a th:href="@{/products}" class="clear-link">Reset</a>
+                </div>
+            </form>
+        </aside>
+
+        <div class="catalog-results">
+            <div class="catalog-toolbar">
+                <p><strong th:text="${#lists.size(products)}">10</strong> styles found</p>
+                <span>Inventory visible before checkout</span>
+            </div>
+
+            <div class="product-grid catalog-grid" th:if="${!#lists.isEmpty(products)}">
+                <article class="product-card reveal-card" th:each="product : ${products}">
+                    <a th:href="@{/products/{slug}(slug=${product.slug})}" class="product-image" th:classappend="${product.cropClass}">
+                        <img th:src="@{/images/product-collage.png}" th:alt="${product.name}">
+                    </a>
+                    <div class="product-meta">
+                        <div class="product-status">
+                            <p th:text="${product.category}">T-shirt</p>
+                            <span th:if="${product.bestSeller}">Best</span>
+                            <span th:if="${product.isNew}">New</span>
+                        </div>
+                        <h3 th:text="${product.name}">Air Cotton Tee</h3>
+                        <div class="product-line">
+                            <span th:text="${product.priceLabel}">$19.90</span>
+                            <span th:text="${product.colorLabel()}">Cream</span>
+                        </div>
+                        <small th:text="${product.sizeLabel()}">S M L XL</small>
+                        <small class="stock-line" th:text="${product.stock + ' in stock'}">48 in stock</small>
+                    </div>
+                </article>
+            </div>
+
+            <div class="empty-state" th:if="${#lists.isEmpty(products)}">
+                <h2>No matching styles</h2>
+                <p>Adjust the category, size, color, or price range to see available inventory.</p>
+                <a class="btn btn-primary retail-btn" th:href="@{/products}">View all products</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/vendor/gsap/gsap.min.js}"></script>
+<script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
+<script th:src="@{/js/landing.js}"></script>
+</body>
+</html>

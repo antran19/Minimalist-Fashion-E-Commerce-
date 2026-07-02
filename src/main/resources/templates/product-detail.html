@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${product.name + ' | U-Minimalist'}">Product | U-Minimalist</title>
+    <meta name="description" th:content="${'View size, color, and stock for ' + product.name}">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/landing.css}">
+</head>
+<body class="catalog-page">
+<header class="site-header catalog-header is-scrolled">
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid page-shell">
+            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/products}">Search</a></li>
+                    <li class="nav-item"><a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
+                            Cart <span>0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="page-shell product-detail-page">
+    <a class="back-link" th:href="@{/products}">Back to products</a>
+    <section class="product-detail" aria-labelledby="product-title">
+        <div class="detail-image product-image" th:classappend="${product.cropClass}">
+            <img th:src="@{/images/product-collage.png}" th:alt="${product.name}">
+        </div>
+        <form class="detail-panel" th:action="@{/cart}" method="post">
+            <input type="hidden" name="productSlug" th:value="${product.slug}">
+            <p class="detail-category" th:text="${product.category}">T-shirt</p>
+            <h1 id="product-title" th:text="${product.name}">Air Cotton Tee</h1>
+            <p class="detail-price" th:text="${product.priceLabel}">$19.90</p>
+            <p class="detail-copy">Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.</p>
+
+            <fieldset class="option-group">
+                <legend>Color</legend>
+                <label th:each="colorOption, status : ${product.colors}">
+                    <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first}" required>
+                    <span th:text="${colorOption}">White</span>
+                </label>
+            </fieldset>
+
+            <fieldset class="option-group">
+                <legend>Size</legend>
+                <label th:each="sizeOption, status : ${product.sizes}">
+                    <input type="radio" name="size" th:value="${sizeOption}" th:checked="${status.first}" required>
+                    <span th:text="${sizeOption}">M</span>
+                </label>
+            </fieldset>
+
+            <div class="quantity-row">
+                <label for="quantity">Quantity</label>
+                <input id="quantity" name="quantity" type="number" min="1" th:max="${product.stock}" value="1">
+            </div>
+
+            <p class="stock-note" th:text="${product.stock + ' items available'}">48 items available</p>
+            <button class="btn btn-primary retail-btn" type="submit">Add to cart</button>
+        </form>
+    </section>
+</main>
+
+<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

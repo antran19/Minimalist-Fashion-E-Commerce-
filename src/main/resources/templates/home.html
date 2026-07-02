@@ -109,17 +109,17 @@
         </div>
         <div class="product-grid">
             <article class="product-card reveal-card" th:each="product : ${newArrivals}">
-                <a th:href="@{/products}" class="product-image" th:classappend="${product.cropClass}">
+                <a th:href="@{/products/{slug}(slug=${product.slug})}" class="product-image" th:classappend="${product.cropClass}">
                     <img th:src="@{/images/product-collage.png}" th:alt="${product.name}">
                 </a>
                 <div class="product-meta">
                     <p th:text="${product.category}">T-shirt</p>
                     <h3 th:text="${product.name}">Air Cotton Tee</h3>
                     <div class="product-line">
-                        <span th:text="${product.price}">$19.90</span>
-                        <span th:text="${product.colors}">Cream</span>
+                        <span th:text="${product.priceLabel}">$19.90</span>
+                        <span th:text="${product.colorLabel()}">Cream</span>
                     </div>
-                    <small th:text="${product.sizes}">S M L XL</small>
+                    <small th:text="${product.sizeLabel()}">S M L XL</small>
                 </div>
             </article>
         </div>

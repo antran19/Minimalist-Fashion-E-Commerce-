@@ -1,5 +1,6 @@
 target/
 dist/
+.m2repo/
 .vercel/
 .playwright-mcp/
 .idea/

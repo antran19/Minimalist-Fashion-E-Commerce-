@@ -467,6 +467,18 @@ img {
     background-position: 100% 100%;
 }
 
+.product-kids-cardigan {
+    background-image: url("/images/kids-campaign.png");
+    background-size: cover;
+    background-position: center;
+}
+
+.product-kids-shorts {
+    background-image: url("/images/product-collage-2.png");
+    background-size: 200% 200%;
+    background-position: 100% 100%;
+}
+
 .product-meta {
     padding-top: 14px;
 }
@@ -515,6 +527,285 @@ img {
 .campaign-section p {
     color: var(--muted);
     margin-bottom: 0;
+}
+
+.catalog-page {
+    background: #ffffff;
+}
+
+.catalog-header {
+    position: sticky;
+}
+
+.catalog-hero {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 28px;
+    padding-block: 128px 42px;
+}
+
+.catalog-hero h1 {
+    max-width: 780px;
+    margin: 0;
+    font-size: clamp(2.8rem, 5.4vw, 6.2rem);
+    line-height: 0.94;
+    letter-spacing: -0.065em;
+    font-weight: 800;
+}
+
+.catalog-hero p {
+    max-width: 680px;
+    margin: 22px 0 0;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.2vw, 1.18rem);
+    line-height: 1.6;
+}
+
+.catalog-layout {
+    display: grid;
+    grid-template-columns: minmax(248px, 0.24fr) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 54px);
+    align-items: start;
+    padding-bottom: 96px;
+}
+
+.filter-panel {
+    position: sticky;
+    top: 96px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+    padding: 20px;
+}
+
+.filter-panel form,
+.filter-block {
+    display: grid;
+    gap: 10px;
+}
+
+.filter-panel form {
+    gap: 18px;
+}
+
+.filter-block label,
+.quantity-row label,
+.option-group legend {
+    margin: 0;
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 760;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.filter-block input,
+.filter-block select,
+.quantity-row input {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+    color: var(--ink);
+    padding: 10px 12px;
+    font: 600 0.95rem/1.2 var(--font-main);
+}
+
+.filter-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.clear-link,
+.back-link {
+    font-weight: 760;
+    border-bottom: 1px solid currentColor;
+}
+
+.catalog-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+}
+
+.catalog-toolbar p,
+.catalog-toolbar span {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.94rem;
+}
+
+.catalog-toolbar strong {
+    color: var(--ink);
+}
+
+.catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.product-status span {
+    display: inline-flex;
+    min-height: 22px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 780;
+}
+
+.stock-line {
+    font-weight: 700;
+}
+
+.empty-state {
+    display: grid;
+    place-items: start;
+    gap: 14px;
+    min-height: 360px;
+    align-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: clamp(26px, 5vw, 56px);
+}
+
+.empty-state h2 {
+    margin: 0;
+    font-size: clamp(2rem, 3.5vw, 4rem);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+    font-weight: 800;
+}
+
+.empty-state p {
+    max-width: 520px;
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.product-detail-page {
+    padding-block: 116px 96px;
+}
+
+.back-link {
+    display: inline-flex;
+    margin-bottom: 24px;
+}
+
+.product-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 0.58fr) minmax(360px, 0.42fr);
+    gap: clamp(28px, 5vw, 72px);
+    align-items: start;
+}
+
+.detail-image {
+    aspect-ratio: 0.9 / 1;
+}
+
+.detail-panel {
+    display: grid;
+    gap: 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(24px, 4vw, 44px);
+    background: #ffffff;
+}
+
+.detail-category {
+    margin: 0;
+    color: var(--muted);
+    font-weight: 760;
+}
+
+.detail-panel h1 {
+    margin: 0;
+    font-size: clamp(2.2rem, 4vw, 5rem);
+    line-height: 0.96;
+    letter-spacing: -0.06em;
+    font-weight: 800;
+}
+
+.detail-price {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 780;
+}
+
+.detail-copy,
+.stock-note {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.option-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.option-group legend {
+    flex: 0 0 100%;
+}
+
+.option-group label {
+    cursor: pointer;
+}
+
+.option-group input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.option-group span {
+    display: inline-grid;
+    min-width: 48px;
+    min-height: 42px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-weight: 760;
+}
+
+.option-group input:checked + span {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #ffffff;
+}
+
+.quantity-row {
+    display: grid;
+    max-width: 160px;
+    gap: 10px;
 }
 
 .site-footer {
@@ -650,9 +941,25 @@ img {
     .product-grid,
     .story-grid,
     .editorial-copy,
+    .catalog-layout,
+    .product-detail,
     .site-footer .page-shell,
     .footer-columns {
         grid-template-columns: 1fr;
+    }
+
+    .catalog-hero {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-block: 104px 34px;
+    }
+
+    .filter-panel {
+        position: static;
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .category-image {
@@ -665,6 +972,10 @@ img {
 
     .product-image {
         aspect-ratio: 1.12 / 1;
+    }
+
+    .detail-image {
+        aspect-ratio: 1.05 / 1;
     }
 
     .campaign-section,
@@ -704,6 +1015,20 @@ img {
 
     .category-copy small {
         text-align: left;
+    }
+
+    .catalog-toolbar,
+    .filter-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .catalog-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .product-detail-page {
+        padding-block: 96px 64px;
     }
 }
 
