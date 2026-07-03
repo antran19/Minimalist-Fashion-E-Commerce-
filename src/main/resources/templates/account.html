@@ -88,9 +88,32 @@
         <article class="account-panel wide">
             <p class="panel-kicker">Order activity</p>
             <h2>Order history</h2>
-            <ul class="account-notes">
-                <li th:each="orderNote : ${recentOrders}" th:text="${orderNote}">No paid order history yet.</li>
-            </ul>
+            <div class="order-empty" th:if="${#lists.isEmpty(recentOrders)}">
+                <p>No order history yet. Add a product to cart and place an order to see it here.</p>
+            </div>
+            <div class="order-history" th:if="${!#lists.isEmpty(recentOrders)}">
+                <article class="order-card" th:each="order : ${recentOrders}">
+                    <div class="order-card-head">
+                        <div>
+                            <strong th:text="${order.orderCode}">UM-202607030001</strong>
+                            <span th:text="${order.placedAtLabel()}">03 Jul 2026, 10:30</span>
+                        </div>
+                        <div>
+                            <span class="badge-role badge-customer" th:text="${order.status}">PLACED</span>
+                            <strong th:text="${order.totalLabel}">$69.80</strong>
+                        </div>
+                    </div>
+                    <ul class="order-lines">
+                        <li th:each="item : ${order.items}">
+                            <span>
+                                <strong th:text="${item.productName}">Air Cotton Tee</strong>
+                                <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}">Cream / M / Qty 1</small>
+                            </span>
+                            <span th:text="${item.lineTotalLabel}">$19.90</span>
+                        </li>
+                    </ul>
+                </article>
+            </div>
         </article>
     </section>
 </main>

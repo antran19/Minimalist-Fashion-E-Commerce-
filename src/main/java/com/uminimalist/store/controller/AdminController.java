@@ -3,6 +3,7 @@ package com.uminimalist.store.controller;
 import com.uminimalist.store.entity.Product;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.service.AdminCatalogService;
+import com.uminimalist.store.service.OrderService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,9 +19,11 @@ import java.util.List;
 public class AdminController {
 
     private final AdminCatalogService adminCatalogService;
+    private final OrderService orderService;
 
-    public AdminController(AdminCatalogService adminCatalogService) {
+    public AdminController(AdminCatalogService adminCatalogService, OrderService orderService) {
         this.adminCatalogService = adminCatalogService;
+        this.orderService = orderService;
     }
 
     @GetMapping("/admin/dashboard")
@@ -40,6 +43,9 @@ public class AdminController {
         model.addAttribute("activeProducts", activeProducts);
         model.addAttribute("totalVariants", totalVariants);
         model.addAttribute("lowStockVariants", lowStockVariants);
+        model.addAttribute("orders", orderService.findRecentOrders());
+        model.addAttribute("orderCount", orderService.countOrders());
+        model.addAttribute("totalRevenue", orderService.totalRevenueLabel());
         return "admin/dashboard";
     }
 

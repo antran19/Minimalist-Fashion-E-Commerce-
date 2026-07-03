@@ -79,14 +79,39 @@ img {
 }
 
 .navbar-nav {
-    gap: clamp(14px, 2.35vw, 44px);
+    align-items: center;
+    gap: clamp(10px, 1.8vw, 34px);
     min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.navbar-nav .nav-item {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-nav .nav-item form {
+    display: flex;
+    align-items: center;
+    margin: 0;
 }
 
 .nav-link {
     color: var(--ink);
     font-size: 0.98rem;
     font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 1px 12px rgba(255, 255, 255, 0.9);
+}
+
+.navbar-nav .nav-item form .nav-link {
+    display: flex;
+    align-items: center;
+    height: 72px;
+    padding: 0 !important;
+    color: var(--ink);
+    line-height: 1;
 }
 
 .nav-link:hover,
@@ -97,11 +122,13 @@ img {
 .cart-link {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 9px;
+    min-width: max-content;
 }
 
 .cart-link span {
     display: inline-grid;
+    flex: 0 0 18px;
     min-width: 18px;
     height: 18px;
     place-items: center;
@@ -109,6 +136,8 @@ img {
     background: var(--accent);
     color: #ffffff;
     font-size: 0.72rem;
+    line-height: 1;
+    text-shadow: none;
 }
 
 .hero-section {
@@ -1383,6 +1412,66 @@ img {
     border-top: 1px solid var(--line);
     color: var(--muted);
     font-weight: 600;
+}
+
+.order-empty {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.order-empty p {
+    margin: 0;
+}
+
+.order-history {
+    display: grid;
+    gap: 14px;
+}
+
+.order-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+    padding: 18px;
+}
+
+.order-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.order-card-head div {
+    display: grid;
+    gap: 6px;
+}
+
+.order-card-head span {
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.order-lines {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.order-lines li {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.order-lines small {
+    display: block;
+    color: var(--muted);
+    margin-top: 3px;
 }
 
 .admin-panel + .admin-panel,

@@ -3,6 +3,7 @@ package com.uminimalist.store.controller;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartView;
 import com.uminimalist.store.repository.UserRepository;
+import com.uminimalist.store.service.OrderService;
 import com.uminimalist.store.service.ShoppingCartService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
@@ -12,18 +13,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.LocalDate;
-import java.util.List;
-
 @Controller
 public class CustomerController {
 
     private final UserRepository userRepository;
     private final ShoppingCartService shoppingCartService;
+    private final OrderService orderService;
 
-    public CustomerController(UserRepository userRepository, ShoppingCartService shoppingCartService) {
+    public CustomerController(UserRepository userRepository,
+                              ShoppingCartService shoppingCartService,
+                              OrderService orderService) {
         this.userRepository = userRepository;
         this.shoppingCartService = shoppingCartService;
+        this.orderService = orderService;
     }
 
     @GetMapping("/account")
@@ -32,7 +34,7 @@ public class CustomerController {
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
         model.addAttribute("account", user);
         model.addAttribute("cart", shoppingCartService.getCart(session));
-        model.addAttribute("recentOrders", demoOrders());
+        model.addAttribute("recentOrders", orderService.findOrdersForCustomer(authentication.getName()));
         return "account";
     }
 
@@ -46,17 +48,15 @@ public class CustomerController {
             return "redirect:/cart";
         }
 
-        String orderCode = "UM-" + LocalDate.now().toString().replace("-", "") + "-" + Math.max(1000, cart.itemCount() * 137);
-        shoppingCartService.clearCart(session);
-        redirectAttributes.addFlashAttribute("accountMessage",
-                "Demo order " + orderCode + " placed for " + authentication.getName() + ".");
+        try {
+            var order = orderService.placeOrder(authentication.getName(), cart);
+            shoppingCartService.clearCart(session);
+            redirectAttributes.addFlashAttribute("accountMessage",
+                    "Order " + order.orderCode() + " placed successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+            return "redirect:/cart";
+        }
         return "redirect:/account";
-    }
-
-    private List<String> demoOrders() {
-        return List.of(
-                "No paid order history yet. Cart checkout currently creates a demo confirmation.",
-                "Next phase: persist orders, payment state, shipping address, and order items."
-        );
     }
 }

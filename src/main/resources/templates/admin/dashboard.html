@@ -199,6 +199,14 @@
             <small>Registered Accounts</small>
             <h3 th:text="${users.size()}">2</h3>
         </div>
+        <div class="stat-card">
+            <small>Total Orders</small>
+            <h3 th:text="${orderCount}">0</h3>
+        </div>
+        <div class="stat-card">
+            <small>Revenue</small>
+            <h3 th:text="${totalRevenue}">$0.00</h3>
+        </div>
     </div>
 
     <p class="cart-alert success" th:if="${adminMessage}" th:text="${adminMessage}">Updated.</p>
@@ -314,6 +322,49 @@
                             </form>
                         </td>
                     </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin-panel" id="orders">
+        <div class="admin-panel-title">
+            <div>
+                <p class="panel-kicker">Orders</p>
+                <h2>Recent customer orders</h2>
+            </div>
+        </div>
+        <div class="order-empty" th:if="${#lists.isEmpty(orders)}">
+            <p>No orders have been placed yet.</p>
+        </div>
+        <div class="table-responsive" th:if="${!#lists.isEmpty(orders)}">
+            <table class="table-custom">
+                <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th>Placed</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="order : ${orders}">
+                    <td th:text="${order.orderCode}">UM-202607030001</td>
+                    <td>
+                        <strong th:text="${order.customerName}">John Doe</strong>
+                        <small class="d-block text-muted" th:text="${order.customerEmail}">customer@uminimalist.com</small>
+                    </td>
+                    <td th:text="${order.placedAtLabel()}">03 Jul 2026, 10:30</td>
+                    <td>
+                        <span th:text="${order.itemCount + ' item(s)'}">2 item(s)</span>
+                        <small class="d-block text-muted" th:if="${!#lists.isEmpty(order.items)}"
+                               th:text="${order.items[0].productName}">Air Cotton Tee</small>
+                    </td>
+                    <td th:text="${order.totalLabel}">$69.80</td>
+                    <td><span class="badge-role badge-customer" th:text="${order.status}">PLACED</span></td>
+                </tr>
                 </tbody>
             </table>
         </div>

@@ -1,0 +1,289 @@
+package com.uminimalist.store.service;
+
+import com.uminimalist.store.entity.ProductVariant;
+import com.uminimalist.store.entity.User;
+import com.uminimalist.store.model.CartItemView;
+import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.model.OrderItemView;
+import com.uminimalist.store.model.OrderSummaryView;
+import com.uminimalist.store.repository.ProductVariantRepository;
+import com.uminimalist.store.repository.UserRepository;
+import jakarta.annotation.PostConstruct;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.text.NumberFormat;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+public class OrderService {
+
+    private final JdbcTemplate jdbcTemplate;
+    private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
+    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
+
+    public OrderService(JdbcTemplate jdbcTemplate,
+                        UserRepository userRepository,
+                        ProductVariantRepository productVariantRepository) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
+    }
+
+    @PostConstruct
+    public void ensureOrderTables() {
+        jdbcTemplate.execute("""
+                IF OBJECT_ID(N'dbo.order_items', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.order_items (
+                        id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        order_id BIGINT NOT NULL,
+                        product_variant_id BIGINT NOT NULL,
+                        product_name NVARCHAR(180) NOT NULL,
+                        sku NVARCHAR(80) NOT NULL,
+                        color NVARCHAR(60) NOT NULL,
+                        size NVARCHAR(40) NOT NULL,
+                        quantity INT NOT NULL,
+                        unit_price DECIMAL(10, 2) NOT NULL,
+                        line_total DECIMAL(10, 2) NOT NULL
+                    );
+                END
+                """);
+        jdbcTemplate.execute("""
+                IF OBJECT_ID(N'dbo.orders', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.orders (
+                        id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        order_code NVARCHAR(40) NOT NULL UNIQUE,
+                        user_id BIGINT NOT NULL,
+                        customer_name NVARCHAR(120) NOT NULL,
+                        customer_email NVARCHAR(120) NOT NULL,
+                        status NVARCHAR(30) NOT NULL DEFAULT 'PLACED',
+                        item_count INT NOT NULL,
+                        total_amount DECIMAL(10, 2) NOT NULL,
+                        created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+                    );
+                END
+                """);
+    }
+
+    @Transactional
+    public OrderSummaryView placeOrder(String customerEmail, CartView cart) {
+        if (cart == null || cart.isEmpty()) {
+            throw new IllegalArgumentException("Your cart is empty.");
+        }
+
+        User user = userRepository.findByEmail(customerEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
+        List<CartItemView> cartItems = cart.items();
+        Map<String, ProductVariant> variants = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(
+                        cartItems.stream().map(CartItemView::sku).toList())
+                .stream()
+                .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
+
+        List<OrderLine> lines = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        int itemCount = 0;
+
+        for (CartItemView item : cartItems) {
+            ProductVariant variant = Optional.ofNullable(variants.get(item.sku()))
+                    .orElseThrow(() -> new IllegalArgumentException(item.productName() + " is no longer available."));
+            if (item.quantity() > variant.getStockQuantity()) {
+                throw new IllegalArgumentException(item.productName() + " only has " + variant.getStockQuantity() + " item(s) left.");
+            }
+
+            BigDecimal unitPrice = variant.getProduct().getBasePrice();
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.quantity()));
+            lines.add(new OrderLine(item, variant, unitPrice, lineTotal));
+            total = total.add(lineTotal);
+            itemCount += item.quantity();
+            variant.setStockQuantity(variant.getStockQuantity() - item.quantity());
+        }
+
+        productVariantRepository.saveAll(lines.stream().map(OrderLine::variant).toList());
+
+        String orderCode = nextOrderCode(user.getId());
+        Long orderId = insertOrder(orderCode, user, itemCount, total);
+        insertOrderItems(orderId, lines);
+
+        return findOrder(orderId)
+                .orElseThrow(() -> new IllegalStateException("Order was created but could not be loaded."));
+    }
+
+    public List<OrderSummaryView> findOrdersForCustomer(String customerEmail) {
+        ensureOrderTables();
+        return loadOrders("""
+                SELECT TOP 12 id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                FROM dbo.orders
+                WHERE customer_email = ?
+                ORDER BY created_at DESC, id DESC
+                """, customerEmail);
+    }
+
+    public List<OrderSummaryView> findRecentOrders() {
+        ensureOrderTables();
+        return loadOrders("""
+                SELECT TOP 20 id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                FROM dbo.orders
+                ORDER BY created_at DESC, id DESC
+                """);
+    }
+
+    public int countOrders() {
+        ensureOrderTables();
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dbo.orders", Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    public String totalRevenueLabel() {
+        ensureOrderTables();
+        BigDecimal total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders", BigDecimal.class);
+        return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
+    }
+
+    private Long insertOrder(String orderCode, User user, int itemCount, BigDecimal total) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement("""
+                    INSERT INTO dbo.orders (order_code, user_id, customer_name, customer_email, status, item_count, total_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, orderCode);
+            ps.setLong(2, user.getId());
+            ps.setString(3, user.getFullName());
+            ps.setString(4, user.getEmail());
+            ps.setString(5, "PLACED");
+            ps.setInt(6, itemCount);
+            ps.setBigDecimal(7, total);
+            return ps;
+        }, keyHolder);
+
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Could not create order.");
+        }
+        return key.longValue();
+    }
+
+    private void insertOrderItems(Long orderId, List<OrderLine> lines) {
+        jdbcTemplate.batchUpdate("""
+                INSERT INTO dbo.order_items
+                    (order_id, product_variant_id, product_name, sku, color, size, quantity, unit_price, line_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, lines, 20, (ps, line) -> {
+            CartItemView item = line.item();
+            ProductVariant variant = line.variant();
+            ps.setLong(1, orderId);
+            ps.setLong(2, variant.getId());
+            ps.setString(3, item.productName());
+            ps.setString(4, item.sku());
+            ps.setString(5, item.color());
+            ps.setString(6, item.size());
+            ps.setInt(7, item.quantity());
+            ps.setBigDecimal(8, line.unitPrice());
+            ps.setBigDecimal(9, line.lineTotal());
+        });
+    }
+
+    private Optional<OrderSummaryView> findOrder(Long orderId) {
+        List<OrderSummaryView> orders = loadOrders("""
+                SELECT id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                FROM dbo.orders
+                WHERE id = ?
+                """, orderId);
+        return orders.stream().findFirst();
+    }
+
+    private List<OrderSummaryView> loadOrders(String sql, Object... args) {
+        List<OrderRow> rows = jdbcTemplate.query(sql, (rs, rowNum) -> new OrderRow(
+                rs.getLong("id"),
+                rs.getString("order_code"),
+                rs.getString("customer_name"),
+                rs.getString("customer_email"),
+                rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime(),
+                rs.getString("status"),
+                rs.getInt("item_count"),
+                rs.getBigDecimal("total_amount")
+        ), args);
+
+        Map<Long, List<OrderItemView>> itemsByOrder = loadItems(rows.stream().map(OrderRow::id).toList());
+        return rows.stream()
+                .map(row -> new OrderSummaryView(
+                        row.id(),
+                        row.orderCode(),
+                        row.customerName(),
+                        row.customerEmail(),
+                        row.createdAt(),
+                        row.status(),
+                        row.itemCount(),
+                        currencyFormat.format(row.totalAmount()),
+                        itemsByOrder.getOrDefault(row.id(), List.of())
+                ))
+                .toList();
+    }
+
+    private Map<Long, List<OrderItemView>> loadItems(Collection<Long> orderIds) {
+        if (orderIds.isEmpty()) {
+            return Map.of();
+        }
+
+        String placeholders = orderIds.stream().map(id -> "?").collect(Collectors.joining(","));
+        return jdbcTemplate.query("""
+                        SELECT order_id, product_name, sku, color, size, quantity, unit_price, line_total
+                        FROM dbo.order_items
+                        WHERE order_id IN (%s)
+                        ORDER BY id ASC
+                        """.formatted(placeholders),
+                (rs) -> {
+                    Map<Long, List<OrderItemView>> grouped = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        Long orderId = rs.getLong("order_id");
+                        grouped.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(new OrderItemView(
+                                rs.getString("product_name"),
+                                rs.getString("sku"),
+                                rs.getString("color"),
+                                rs.getString("size"),
+                                rs.getInt("quantity"),
+                                currencyFormat.format(rs.getBigDecimal("unit_price")),
+                                currencyFormat.format(rs.getBigDecimal("line_total"))
+                        ));
+                    }
+                    return grouped;
+                },
+                orderIds.toArray());
+    }
+
+    private String nextOrderCode(Long userId) {
+        return "UM-" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + "-" + userId;
+    }
+
+    private record OrderLine(CartItemView item, ProductVariant variant, BigDecimal unitPrice, BigDecimal lineTotal) {
+    }
+
+    private record OrderRow(Long id,
+                            String orderCode,
+                            String customerName,
+                            String customerEmail,
+                            LocalDateTime createdAt,
+                            String status,
+                            int itemCount,
+                            BigDecimal totalAmount) {
+    }
+}
