@@ -34,9 +34,14 @@ database/01_create_database.sql
 database/02_create_catalog_tables.sql
 database/03_seed_catalog.sql
 database/04_create_user_tables.sql
+database/05_create_order_tables.sql
+database/06_create_customer_addresses.sql
+database/07_create_customer_wishlist.sql
+database/08_create_customer_cart_items.sql
 ```
 
 Open each `.sql` file and run its contents in DBeaver (or via `sqlcmd`). Do not type the file path into the SQL editor.
+Scripts `06`, `07`, and `08` are additive and only create tables/indexes when missing; they do not drop existing customer data.
 
 After that, connect DBeaver to:
 

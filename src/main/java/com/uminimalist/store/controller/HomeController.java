@@ -1,6 +1,8 @@
 package com.uminimalist.store.controller;
 
 import com.uminimalist.store.service.LandingPageService;
+import com.uminimalist.store.service.WishlistService;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +16,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class HomeController {
 
     private final LandingPageService landingPageService;
+    private final WishlistService wishlistService;
 
-    public HomeController(LandingPageService landingPageService) {
+    public HomeController(LandingPageService landingPageService, WishlistService wishlistService) {
         this.landingPageService = landingPageService;
+        this.wishlistService = wishlistService;
     }
 
     @GetMapping("/")
@@ -51,10 +55,14 @@ public class HomeController {
     }
 
     @GetMapping("/products/{slug}")
-    public String productDetail(@PathVariable String slug, Model model) {
+    public String productDetail(@PathVariable String slug, Authentication authentication, Model model) {
         var product = landingPageService.getProduct(slug)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         model.addAttribute("product", product);
+        boolean authenticated = authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("inWishlist", authenticated && wishlistService.contains(authentication.getName(), slug));
         return "product-detail";
     }
 }

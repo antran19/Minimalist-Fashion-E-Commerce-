@@ -56,24 +56,46 @@ Seed/demo users are initialized from `src/main/java/com/uminimalist/store/config
 
 ### Cart
 
-- Session-based cart flow:
+- Guest cart is session-based.
+- Authenticated customer cart is persisted in `customer_cart_items`.
+- Session cart merges into customer DB cart when the customer opens cart/checkout or adds an item after login.
+- Cart flow includes:
   - add variant to cart from product detail
   - view cart
   - update item quantity
   - remove item
   - shared header cart count
-- Cart checkout button posts to `/checkout`.
-- Checkout currently creates a demo confirmation and clears the session cart.
+- Cart checkout goes to `GET /checkout` for review before final placement.
 
 ### Authentication And Customer
 
 - Spring Security login/register is implemented.
 - Customer account page at `/account`.
-- `/account` shows profile status, current cart, and demo order activity.
+- `/account` shows editable profile, current cart, and real order history.
+- Customer can update profile name and phone with `POST /account/profile`.
+- Customer can save a default shipping address with `POST /account/address`.
+- Checkout review page is available at `GET /checkout`.
+- Final order placement uses `POST /checkout/place`.
+- Customer can open order detail pages at `/account/orders/{orderCode}`.
+- Customer can cancel an order from the order detail page while status is still `PLACED`; cancellation restores variant stock.
+- Customer can reorder from an order detail page with `POST /account/orders/{orderCode}/reorder`; available variants are added back to cart.
+- Order detail has a visual status timeline for `PLACED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, and `CANCELLED`.
+- Customer wishlist is implemented:
+  - save/remove from product detail
+  - view/remove saved products on `/account#wishlist`
+- Customer cart persistence is implemented:
+  - guest cart still uses session
+  - authenticated customer cart is stored in `customer_cart_items`
+  - session cart merges into customer DB cart when the customer opens cart/checkout or adds an item
 - Customer checkout route:
   - `POST /checkout`
   - requires a non-empty cart
-  - clears cart and flashes a demo confirmation
+  - requires a complete shipping address
+  - saves/updates the customer's default shipping address from checkout
+  - creates persisted order/order items
+  - stores a shipping address snapshot on the order
+  - subtracts product variant stock
+  - clears cart and flashes confirmation
 - Auth forms include CSRF tokens.
 
 ### Admin
@@ -103,6 +125,15 @@ Seed/demo users are initialized from `src/main/java/com/uminimalist/store/config
   - login/register routes.
 - `src/main/java/com/uminimalist/store/controller/CustomerController.java`
   - `GET /account`
+  - `POST /account/profile`
+  - `POST /account/address`
+  - `GET /checkout`
+  - `POST /checkout/place`
+  - `GET /account/orders/{orderCode}`
+  - `POST /account/orders/{orderCode}/cancel`
+  - `POST /account/orders/{orderCode}/reorder`
+  - `POST /wishlist`
+  - `POST /wishlist/remove`
   - `POST /checkout`
 - `src/main/java/com/uminimalist/store/controller/AdminController.java`
   - admin dashboard and admin POST actions.
@@ -115,7 +146,13 @@ Seed/demo users are initialized from `src/main/java/com/uminimalist/store/config
 - `src/main/java/com/uminimalist/store/service/LandingPageService.java`
   - Database-backed catalog filtering and product image mapping.
 - `src/main/java/com/uminimalist/store/service/ShoppingCartService.java`
-  - Session cart service and cart item image mapping.
+  - Session cart for guests, persisted DB cart for authenticated customers, cart item image mapping.
+- `src/main/java/com/uminimalist/store/service/OrderService.java`
+  - Persistent checkout, order history, order detail lookup, revenue/order stats.
+- `src/main/java/com/uminimalist/store/service/CustomerAddressService.java`
+  - Customer default shipping address table and validation.
+- `src/main/java/com/uminimalist/store/service/WishlistService.java`
+  - Customer wishlist table, save/remove/list operations.
 - `src/main/java/com/uminimalist/store/service/AdminCatalogService.java`
   - Admin product/user/inventory actions.
 - `src/main/java/com/uminimalist/store/service/CustomUserDetailsService.java`
@@ -141,6 +178,8 @@ Seed/demo users are initialized from `src/main/java/com/uminimalist/store/config
 - `src/main/resources/templates/product-detail.html`
 - `src/main/resources/templates/cart.html`
 - `src/main/resources/templates/account.html`
+- `src/main/resources/templates/checkout.html`
+- `src/main/resources/templates/order-detail.html`
 - `src/main/resources/templates/login.html`
 - `src/main/resources/templates/register.html`
 - `src/main/resources/templates/admin/dashboard.html`
@@ -172,6 +211,10 @@ database/01_create_database.sql
 database/02_create_catalog_tables.sql
 database/03_seed_catalog.sql
 database/04_create_user_tables.sql
+database/05_create_order_tables.sql
+database/06_create_customer_addresses.sql
+database/07_create_customer_wishlist.sql
+database/08_create_customer_cart_items.sql
 ```
 
 ## How To Run
@@ -202,15 +245,19 @@ mvn test
 ## Verification Notes
 
 - `mvn test` passed after the latest product image/model updates.
+- `mvn test` passed after customer address book and checkout review page were added.
+- `mvn test` passed after customer cancel order and wishlist were added.
+- `mvn test` passed after persisted customer cart, reorder, and order timeline were added.
 - Customer login was previously verified in browser and `/account` rendered correctly.
 - Admin login was previously verified in browser and `/admin/dashboard` rendered correctly.
 - Latest browser refresh after image polish was interrupted by the user before visual verification finished. If the running Spring Boot process does not have devtools hot reload, restart the app to see Java-side changes such as New arrivals filtering.
 
 ## Current Limitations
 
-- Cart is still session-based and not persisted to database per authenticated customer.
-- Checkout is demo-only and does not create real order/order item records yet.
-- Order history on `/account` is a placeholder/demo activity section.
+- Guest cart is session-based. Authenticated customer cart is persisted in DB.
+- Checkout creates persisted order/order items and stores shipping snapshot, but payment is still demo-only.
+- Order history and order detail are real; shipping carrier tracking is not implemented yet.
+- Customer wishlist and customer cart are persisted, but product image mapping is still slug-based in service code.
 - Admin product management is toggle/stock focused, not full create/edit/delete product CRUD yet.
 - Product image mapping is currently slug-based in services, not stored in the database schema.
 - Mobile was intentionally deprioritized per user request; desktop demo is the priority.
@@ -218,7 +265,7 @@ mvn test
 ## Recommended Next Steps
 
 1. Restart the local Spring Boot app and visually verify `/` and `/products` after image polish.
-2. Add persistent Order and OrderItem entities for real checkout history.
+2. Add admin order status transitions so Customer can see `PROCESSING`, `SHIPPED`, and `DELIVERED`.
 3. Move product `imagePath` into the database schema instead of service switch statements.
 4. Add admin create/edit product forms if more demo depth is needed.
-5. Add customer persisted cart after authentication.
+5. Add payment simulation or receipt export if the customer demo needs more depth.

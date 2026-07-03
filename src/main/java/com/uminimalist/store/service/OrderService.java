@@ -4,6 +4,7 @@ import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartItemView;
 import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.model.CustomerAddressView;
 import com.uminimalist.store.model.OrderItemView;
 import com.uminimalist.store.model.OrderSummaryView;
 import com.uminimalist.store.repository.ProductVariantRepository;
@@ -74,6 +75,11 @@ public class OrderService {
                         user_id BIGINT NOT NULL,
                         customer_name NVARCHAR(120) NOT NULL,
                         customer_email NVARCHAR(120) NOT NULL,
+                        shipping_name NVARCHAR(120) NULL,
+                        shipping_phone NVARCHAR(20) NULL,
+                        shipping_address_line NVARCHAR(255) NULL,
+                        shipping_district NVARCHAR(120) NULL,
+                        shipping_city NVARCHAR(120) NULL,
                         status NVARCHAR(30) NOT NULL DEFAULT 'PLACED',
                         item_count INT NOT NULL,
                         total_amount DECIMAL(10, 2) NOT NULL,
@@ -81,12 +87,20 @@ public class OrderService {
                     );
                 END
                 """);
+        addOrderColumnIfMissing("shipping_name", "NVARCHAR(120) NULL");
+        addOrderColumnIfMissing("shipping_phone", "NVARCHAR(20) NULL");
+        addOrderColumnIfMissing("shipping_address_line", "NVARCHAR(255) NULL");
+        addOrderColumnIfMissing("shipping_district", "NVARCHAR(120) NULL");
+        addOrderColumnIfMissing("shipping_city", "NVARCHAR(120) NULL");
     }
 
     @Transactional
-    public OrderSummaryView placeOrder(String customerEmail, CartView cart) {
+    public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Your cart is empty.");
+        }
+        if (shippingAddress == null || !shippingAddress.isComplete()) {
+            throw new IllegalArgumentException("Please add a complete shipping address before placing the order.");
         }
 
         User user = userRepository.findByEmail(customerEmail)
@@ -119,7 +133,7 @@ public class OrderService {
         productVariantRepository.saveAll(lines.stream().map(OrderLine::variant).toList());
 
         String orderCode = nextOrderCode(user.getId());
-        Long orderId = insertOrder(orderCode, user, itemCount, total);
+        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total);
         insertOrderItems(orderId, lines);
 
         return findOrder(orderId)
@@ -127,19 +141,78 @@ public class OrderService {
     }
 
     public List<OrderSummaryView> findOrdersForCustomer(String customerEmail) {
-        ensureOrderTables();
+                ensureOrderTables();
         return loadOrders("""
-                SELECT TOP 12 id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                SELECT TOP 12 id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    created_at, status, item_count, total_amount
                 FROM dbo.orders
                 WHERE customer_email = ?
                 ORDER BY created_at DESC, id DESC
                 """, customerEmail);
     }
 
+    public Optional<OrderSummaryView> findOrderForCustomer(String customerEmail, String orderCode) {
+        ensureOrderTables();
+        return loadOrders("""
+                SELECT id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    created_at, status, item_count, total_amount
+                FROM dbo.orders
+                WHERE customer_email = ? AND order_code = ?
+                """, customerEmail, orderCode).stream().findFirst();
+    }
+
+    @Transactional
+    public void cancelOrderForCustomer(String customerEmail, String orderCode) {
+        ensureOrderTables();
+        List<OrderStatusRow> rows = jdbcTemplate.query("""
+                        SELECT id, status
+                        FROM dbo.orders
+                        WHERE customer_email = ? AND order_code = ?
+                        """,
+                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status")),
+                customerEmail,
+                orderCode);
+
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("Order not found.");
+        }
+
+        OrderStatusRow order = rows.get(0);
+        if (!"PLACED".equalsIgnoreCase(order.status())) {
+            throw new IllegalArgumentException("Only placed orders can be cancelled.");
+        }
+
+        List<OrderStockRow> stockRows = jdbcTemplate.query("""
+                        SELECT product_variant_id, quantity
+                        FROM dbo.order_items
+                        WHERE order_id = ?
+                        """,
+                (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
+                order.id());
+
+        for (OrderStockRow stockRow : stockRows) {
+            jdbcTemplate.update("""
+                    UPDATE dbo.product_variants
+                    SET stock_quantity = stock_quantity + ?
+                    WHERE id = ?
+                    """, stockRow.quantity(), stockRow.productVariantId());
+        }
+
+        jdbcTemplate.update("""
+                UPDATE dbo.orders
+                SET status = 'CANCELLED'
+                WHERE id = ?
+                """, order.id());
+    }
+
     public List<OrderSummaryView> findRecentOrders() {
         ensureOrderTables();
         return loadOrders("""
-                SELECT TOP 20 id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                SELECT TOP 20 id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    created_at, status, item_count, total_amount
                 FROM dbo.orders
                 ORDER BY created_at DESC, id DESC
                 """);
@@ -157,20 +230,28 @@ public class OrderService {
         return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
     }
 
-    private Long insertOrder(String orderCode, User user, int itemCount, BigDecimal total) {
+    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement("""
-                    INSERT INTO dbo.orders (order_code, user_id, customer_name, customer_email, status, item_count, total_amount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO dbo.orders
+                        (order_code, user_id, customer_name, customer_email,
+                         shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                         status, item_count, total_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, orderCode);
             ps.setLong(2, user.getId());
             ps.setString(3, user.getFullName());
             ps.setString(4, user.getEmail());
-            ps.setString(5, "PLACED");
-            ps.setInt(6, itemCount);
-            ps.setBigDecimal(7, total);
+            ps.setString(5, shippingAddress.recipientName());
+            ps.setString(6, shippingAddress.phone());
+            ps.setString(7, shippingAddress.addressLine());
+            ps.setString(8, shippingAddress.district());
+            ps.setString(9, shippingAddress.city());
+            ps.setString(10, "PLACED");
+            ps.setInt(11, itemCount);
+            ps.setBigDecimal(12, total);
             return ps;
         }, keyHolder);
 
@@ -203,7 +284,9 @@ public class OrderService {
 
     private Optional<OrderSummaryView> findOrder(Long orderId) {
         List<OrderSummaryView> orders = loadOrders("""
-                SELECT id, order_code, customer_name, customer_email, created_at, status, item_count, total_amount
+                SELECT id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    created_at, status, item_count, total_amount
                 FROM dbo.orders
                 WHERE id = ?
                 """, orderId);
@@ -216,6 +299,11 @@ public class OrderService {
                 rs.getString("order_code"),
                 rs.getString("customer_name"),
                 rs.getString("customer_email"),
+                rs.getString("shipping_name"),
+                rs.getString("shipping_phone"),
+                rs.getString("shipping_address_line"),
+                rs.getString("shipping_district"),
+                rs.getString("shipping_city"),
                 rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getString("status"),
                 rs.getInt("item_count"),
@@ -229,6 +317,11 @@ public class OrderService {
                         row.orderCode(),
                         row.customerName(),
                         row.customerEmail(),
+                        row.shippingName(),
+                        row.shippingPhone(),
+                        row.shippingAddressLine(),
+                        row.shippingDistrict(),
+                        row.shippingCity(),
                         row.createdAt(),
                         row.status(),
                         row.itemCount(),
@@ -274,13 +367,33 @@ public class OrderService {
                 + "-" + userId;
     }
 
+    private void addOrderColumnIfMissing(String columnName, String definition) {
+        jdbcTemplate.execute("""
+                IF COL_LENGTH('dbo.orders', '%s') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.orders ADD %s %s;
+                END
+                """.formatted(columnName, columnName, definition));
+    }
+
     private record OrderLine(CartItemView item, ProductVariant variant, BigDecimal unitPrice, BigDecimal lineTotal) {
+    }
+
+    private record OrderStatusRow(Long id, String status) {
+    }
+
+    private record OrderStockRow(Long productVariantId, int quantity) {
     }
 
     private record OrderRow(Long id,
                             String orderCode,
                             String customerName,
                             String customerEmail,
+                            String shippingName,
+                            String shippingPhone,
+                            String shippingAddressLine,
+                            String shippingDistrict,
+                            String shippingCity,
                             LocalDateTime createdAt,
                             String status,
                             int itemCount,

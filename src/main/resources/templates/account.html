@@ -53,23 +53,28 @@
     <p class="cart-alert error" th:if="${accountError}" th:text="${accountError}">Account error.</p>
 
     <section class="account-grid">
-        <article class="account-panel">
+        <article class="account-panel" id="profile">
             <p class="panel-kicker">Profile</p>
             <h2 th:text="${account.fullName}">Customer Name</h2>
-            <dl class="account-list">
-                <div>
-                    <dt>Email</dt>
-                    <dd th:text="${account.email}">customer@uminimalist.com</dd>
+            <form class="profile-form" th:action="@{/account/profile}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <label>
+                    <span>Full name</span>
+                    <input name="fullName" type="text" th:value="${account.fullName}" minlength="2" maxlength="120" required>
+                </label>
+                <label>
+                    <span>Email</span>
+                    <input type="email" th:value="${account.email}" disabled>
+                </label>
+                <label>
+                    <span>Phone</span>
+                    <input name="phone" type="tel" th:value="${account.phone}" minlength="8" maxlength="20" required>
+                </label>
+                <div class="profile-form-footer">
+                    <span th:text="${account.active ? 'Active account' : 'Disabled account'}">Active account</span>
+                    <button class="btn btn-primary retail-btn" type="submit">Save profile</button>
                 </div>
-                <div>
-                    <dt>Phone</dt>
-                    <dd th:text="${account.phone}">0987654321</dd>
-                </div>
-                <div>
-                    <dt>Status</dt>
-                    <dd th:text="${account.active ? 'Active' : 'Disabled'}">Active</dd>
-                </div>
-            </dl>
+            </form>
         </article>
 
         <article class="account-panel">
@@ -78,14 +83,47 @@
             <p><span th:text="${cart.itemCount}">0</span> item(s) ready for checkout.</p>
             <div class="account-actions">
                 <a class="btn btn-outline-dark retail-btn outline" th:href="@{/cart}">Review cart</a>
-                <form th:if="${!cart.empty}" th:action="@{/checkout}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <button class="btn btn-primary retail-btn" type="submit">Place demo order</button>
-                </form>
+                <a class="btn btn-primary retail-btn" th:if="${!cart.empty}" th:href="@{/checkout}">Checkout</a>
             </div>
         </article>
 
-        <article class="account-panel wide">
+        <article class="account-panel wide" id="shipping">
+            <p class="panel-kicker">Shipping address</p>
+            <h2>Default delivery details</h2>
+            <form class="profile-form address-form" th:action="@{/account/address}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="form-grid-two">
+                    <label>
+                        <span>Recipient</span>
+                        <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" minlength="2" maxlength="120" required>
+                    </label>
+                    <label>
+                        <span>Phone</span>
+                        <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" minlength="8" maxlength="20" required>
+                    </label>
+                </div>
+                <label>
+                    <span>Address line</span>
+                    <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required>
+                </label>
+                <div class="form-grid-two">
+                    <label>
+                        <span>District</span>
+                        <input name="district" type="text" th:value="${shippingAddress.district}" minlength="2" maxlength="120" required>
+                    </label>
+                    <label>
+                        <span>City</span>
+                        <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
+                    </label>
+                </div>
+                <div class="profile-form-footer">
+                    <span th:text="${shippingAddress.complete ? 'Ready for checkout' : 'Complete before checkout'}">Complete before checkout</span>
+                    <button class="btn btn-primary retail-btn" type="submit">Save address</button>
+                </div>
+            </form>
+        </article>
+
+        <article class="account-panel wide" id="orders">
             <p class="panel-kicker">Order activity</p>
             <h2>Order history</h2>
             <div class="order-empty" th:if="${#lists.isEmpty(recentOrders)}">
@@ -112,6 +150,32 @@
                             <span th:text="${item.lineTotalLabel}">$19.90</span>
                         </li>
                     </ul>
+                    <a class="text-link order-detail-link" th:href="@{/account/orders/{orderCode}(orderCode=${order.orderCode})}">View details</a>
+                </article>
+            </div>
+        </article>
+
+        <article class="account-panel wide" id="wishlist">
+            <p class="panel-kicker">Wishlist</p>
+            <h2>Saved products</h2>
+            <div class="order-empty" th:if="${#lists.isEmpty(wishlist)}">
+                <p>No saved products yet. Save products from a product detail page.</p>
+            </div>
+            <div class="wishlist-grid" th:if="${!#lists.isEmpty(wishlist)}">
+                <article class="wishlist-card" th:each="item : ${wishlist}">
+                    <a class="wishlist-image product-image product-image-real" th:href="@{/products/{slug}(slug=${item.slug})}">
+                        <img th:src="@{${item.imagePath}}" th:alt="${item.name}">
+                    </a>
+                    <div>
+                        <p class="panel-kicker" th:text="${item.category}">T-shirt</p>
+                        <h3><a th:href="@{/products/{slug}(slug=${item.slug})}" th:text="${item.name}">Air Cotton Tee</a></h3>
+                        <strong th:text="${item.priceLabel}">$19.90</strong>
+                        <form th:action="@{/wishlist/remove}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <input type="hidden" name="productSlug" th:value="${item.slug}">
+                            <button class="table-action" type="submit">Remove</button>
+                        </form>
+                    </div>
                 </article>
             </div>
         </article>
