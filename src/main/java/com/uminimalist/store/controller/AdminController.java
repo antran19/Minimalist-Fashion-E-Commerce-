@@ -84,4 +84,17 @@ public class AdminController {
         }
         return "redirect:/admin/dashboard#users";
     }
+
+    @PostMapping("/admin/orders/{id}/status")
+    public String updateOrderStatus(@PathVariable Long id,
+                                    @RequestParam String status,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderStatus(id, status);
+            redirectAttributes.addFlashAttribute("adminMessage", "Order status updated to " + status + ".");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#orders";
+    }
 }

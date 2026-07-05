@@ -7,6 +7,7 @@ import com.uminimalist.store.model.CartView;
 import com.uminimalist.store.model.CustomerAddressView;
 import com.uminimalist.store.model.OrderItemView;
 import com.uminimalist.store.model.OrderSummaryView;
+import com.uminimalist.store.model.PaginatedOrders;
 import com.uminimalist.store.repository.ProductVariantRepository;
 import com.uminimalist.store.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
@@ -141,7 +142,7 @@ public class OrderService {
     }
 
     public List<OrderSummaryView> findOrdersForCustomer(String customerEmail) {
-                ensureOrderTables();
+        ensureOrderTables();
         return loadOrders("""
                 SELECT TOP 12 id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
@@ -150,6 +151,55 @@ public class OrderService {
                 WHERE customer_email = ?
                 ORDER BY created_at DESC, id DESC
                 """, customerEmail);
+    }
+
+    public PaginatedOrders findOrdersForCustomerPaginated(String customerEmail, String status, int page, int size) {
+        ensureOrderTables();
+        
+        boolean hasStatus = status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status);
+        
+        String countSql = hasStatus 
+                ? "SELECT COUNT(*) FROM dbo.orders WHERE customer_email = ? AND status = ?"
+                : "SELECT COUNT(*) FROM dbo.orders WHERE customer_email = ?";
+        
+        Object[] countArgs = hasStatus ? new Object[]{customerEmail, status} : new Object[]{customerEmail};
+        
+        Integer totalCount = jdbcTemplate.queryForObject(countSql, Integer.class, countArgs);
+        if (totalCount == null) totalCount = 0;
+        
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        if (totalPages == 0) totalPages = 1;
+        
+        int offset = (page - 1) * size;
+        if (offset < 0) offset = 0;
+        
+        String sql = hasStatus
+                ? """
+                  SELECT id, order_code, customer_name, customer_email,
+                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                      created_at, status, item_count, total_amount
+                  FROM dbo.orders
+                  WHERE customer_email = ? AND status = ?
+                  ORDER BY created_at DESC, id DESC
+                  OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+                  """
+                : """
+                  SELECT id, order_code, customer_name, customer_email,
+                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                      created_at, status, item_count, total_amount
+                  FROM dbo.orders
+                  WHERE customer_email = ?
+                  ORDER BY created_at DESC, id DESC
+                  OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+                  """;
+                  
+        Object[] args = hasStatus 
+                ? new Object[]{customerEmail, status, offset, size}
+                : new Object[]{customerEmail, offset, size};
+                
+        List<OrderSummaryView> orders = loadOrders(sql, args);
+        
+        return new PaginatedOrders(orders, page, totalPages, totalCount, status != null ? status : "ALL");
     }
 
     public Optional<OrderSummaryView> findOrderForCustomer(String customerEmail, String orderCode) {
@@ -216,6 +266,20 @@ public class OrderService {
                 FROM dbo.orders
                 ORDER BY created_at DESC, id DESC
                 """);
+    }
+
+    @Transactional
+    public void updateOrderStatus(Long orderId, String newStatus) {
+        ensureOrderTables();
+        List<String> validStatuses = List.of("PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
+        if (!validStatuses.contains(newStatus.toUpperCase())) {
+            throw new IllegalArgumentException("Invalid order status: " + newStatus);
+        }
+        jdbcTemplate.update("""
+                UPDATE dbo.orders
+                SET status = ?
+                WHERE id = ?
+                """, newStatus.toUpperCase(), orderId);
     }
 
     public int countOrders() {

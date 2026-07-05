@@ -7,7 +7,10 @@ import com.uminimalist.store.service.CustomerAddressService;
 import com.uminimalist.store.service.OrderService;
 import com.uminimalist.store.service.ShoppingCartService;
 import com.uminimalist.store.service.WishlistService;
+import com.uminimalist.store.service.ProductReviewService;
+import com.uminimalist.store.service.VNPayService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,6 +19,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Enumeration;
 
 @Controller
 public class CustomerController {
@@ -25,28 +31,41 @@ public class CustomerController {
     private final OrderService orderService;
     private final CustomerAddressService customerAddressService;
     private final WishlistService wishlistService;
+    private final ProductReviewService productReviewService;
+    private final VNPayService vnPayService;
 
     public CustomerController(UserRepository userRepository,
                               ShoppingCartService shoppingCartService,
                               OrderService orderService,
                               CustomerAddressService customerAddressService,
-                              WishlistService wishlistService) {
+                              WishlistService wishlistService,
+                              ProductReviewService productReviewService,
+                              VNPayService vnPayService) {
         this.userRepository = userRepository;
         this.shoppingCartService = shoppingCartService;
         this.orderService = orderService;
         this.customerAddressService = customerAddressService;
         this.wishlistService = wishlistService;
+        this.productReviewService = productReviewService;
+        this.vnPayService = vnPayService;
     }
 
     @GetMapping("/account")
-    public String account(Authentication authentication, HttpSession session, Model model) {
+    public String account(Authentication authentication,
+                          HttpSession session,
+                          @RequestParam(defaultValue = "ALL") String status,
+                          @RequestParam(defaultValue = "1") int page,
+                          Model model) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
         model.addAttribute("account", user);
         model.addAttribute("cart", shoppingCartService.getCart(session, authentication.getName()));
         model.addAttribute("shippingAddress", customerAddressService.findDefaultAddress(authentication.getName()));
         model.addAttribute("wishlist", wishlistService.findForCustomer(authentication.getName()));
-        model.addAttribute("recentOrders", orderService.findOrdersForCustomer(authentication.getName()));
+        
+        var paginatedOrders = orderService.findOrdersForCustomerPaginated(authentication.getName(), status, page, 5);
+        model.addAttribute("paginatedOrders", paginatedOrders);
+        model.addAttribute("recentOrders", paginatedOrders.orders());
         return "account";
     }
 
@@ -199,12 +218,14 @@ public class CustomerController {
 
     @PostMapping("/checkout/place")
     public String placeOrder(Authentication authentication,
-                             HttpSession session,
+                              HttpSession session,
                              @RequestParam String recipientName,
                              @RequestParam String shippingPhone,
                              @RequestParam String addressLine,
                              @RequestParam String district,
                              @RequestParam String city,
+                             @RequestParam(defaultValue = "COD") String paymentMethod,
+                             HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
         CartView cart = shoppingCartService.getCart(session, authentication.getName());
         if (cart.isEmpty()) {
@@ -217,6 +238,13 @@ public class CustomerController {
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
             var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
             shoppingCartService.clearCart(session, authentication.getName());
+
+            if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
+                double usdAmount = Double.parseDouble(order.totalLabel().replaceAll("[^0-9.]", ""));
+                String paymentUrl = vnPayService.createPaymentUrl(order.orderCode(), usdAmount, request);
+                return "redirect:" + paymentUrl;
+            }
+
             redirectAttributes.addFlashAttribute("accountMessage",
                     "Order " + order.orderCode() + " placed successfully.");
         } catch (IllegalArgumentException exception) {
@@ -224,5 +252,50 @@ public class CustomerController {
             return "redirect:/checkout";
         }
         return "redirect:/account";
+    }
+
+    @GetMapping("/checkout/payment-return")
+    public String paymentReturn(HttpServletRequest request, Model model, RedirectAttributes redirectAttributes) {
+        Map<String, String> fields = new HashMap<>();
+        for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
+            String name = names.nextElement();
+            fields.put(name, request.getParameter(name));
+        }
+
+        String orderCode = fields.get("vnp_TxnRef");
+        String responseCode = fields.get("vnp_ResponseCode");
+
+        boolean verified = vnPayService.verifyCallback(fields);
+        if (verified && "00".equals(responseCode)) {
+            try {
+                var order = orderService.findOrderForCustomer(request.getUserPrincipal().getName(), orderCode)
+                        .orElseThrow(() -> new IllegalArgumentException("Order not found."));
+                orderService.updateOrderStatus(order.id(), "PROCESSING");
+                model.addAttribute("order", order);
+                model.addAttribute("cartCount", 0); // Cart is cleared upon order placement
+                return "checkout-success";
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("accountError", "Error updating order status: " + e.getMessage());
+            }
+        } else {
+            redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
+        }
+
+        return "redirect:/account";
+    }
+
+    @PostMapping("/products/{slug}/reviews")
+    public String addReview(@PathVariable String slug,
+                            Authentication authentication,
+                            @RequestParam int rating,
+                            @RequestParam String comment,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            productReviewService.addReview(authentication.getName(), slug, rating, comment);
+            redirectAttributes.addFlashAttribute("cartMessage", "Review submitted successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+        }
+        return "redirect:/products/" + slug;
     }
 }

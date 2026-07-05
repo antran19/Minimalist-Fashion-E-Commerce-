@@ -81,6 +81,19 @@
                         <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
                     </label>
                 </div>
+                <div style="margin-top: 24px; border-top: 1px solid var(--line); padding-top: 20px;">
+                    <span style="display: block; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; color: var(--muted);">Payment Method</span>
+                    <div style="display: flex; gap: 20px; font-weight: 600;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="paymentMethod" value="COD" checked style="width: auto; margin: 0;">
+                            <span>Cash on Delivery (COD)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="paymentMethod" value="VNPAY" style="width: auto; margin: 0;">
+                            <span>Online Payment via VNPay</span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </section>
 

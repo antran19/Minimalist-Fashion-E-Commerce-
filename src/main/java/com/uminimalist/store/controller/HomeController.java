@@ -2,6 +2,7 @@ package com.uminimalist.store.controller;
 
 import com.uminimalist.store.service.LandingPageService;
 import com.uminimalist.store.service.WishlistService;
+import com.uminimalist.store.service.ProductReviewService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,10 +18,14 @@ public class HomeController {
 
     private final LandingPageService landingPageService;
     private final WishlistService wishlistService;
+    private final ProductReviewService productReviewService;
 
-    public HomeController(LandingPageService landingPageService, WishlistService wishlistService) {
+    public HomeController(LandingPageService landingPageService,
+                          WishlistService wishlistService,
+                          ProductReviewService productReviewService) {
         this.landingPageService = landingPageService;
         this.wishlistService = wishlistService;
+        this.productReviewService = productReviewService;
     }
 
     @GetMapping("/")
@@ -63,6 +68,12 @@ public class HomeController {
                 && authentication.isAuthenticated()
                 && authentication.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         model.addAttribute("inWishlist", authenticated && wishlistService.contains(authentication.getName(), slug));
+        
+        String email = authenticated ? authentication.getName() : null;
+        model.addAttribute("reviews", productReviewService.findReviewsForProduct(slug));
+        model.addAttribute("ratingStats", productReviewService.getStatsForProduct(slug));
+        model.addAttribute("canReview", authenticated && productReviewService.canUserReview(email, slug));
+        
         return "product-detail";
     }
 }

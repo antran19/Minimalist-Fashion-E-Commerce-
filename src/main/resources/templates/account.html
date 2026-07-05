@@ -55,26 +55,50 @@
     <section class="account-grid">
         <article class="account-panel" id="profile">
             <p class="panel-kicker">Profile</p>
-            <h2 th:text="${account.fullName}">Customer Name</h2>
-            <form class="profile-form" th:action="@{/account/profile}" method="post">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <label>
-                    <span>Full name</span>
-                    <input name="fullName" type="text" th:value="${account.fullName}" minlength="2" maxlength="120" required>
-                </label>
-                <label>
-                    <span>Email</span>
-                    <input type="email" th:value="${account.email}" disabled>
-                </label>
-                <label>
-                    <span>Phone</span>
-                    <input name="phone" type="tel" th:value="${account.phone}" minlength="8" maxlength="20" required>
-                </label>
-                <div class="profile-form-footer">
-                    <span th:text="${account.active ? 'Active account' : 'Disabled account'}">Active account</span>
-                    <button class="btn btn-primary retail-btn" type="submit">Save profile</button>
+            
+            <!-- Profile View Mode -->
+            <div id="profile-view">
+                <h2 th:text="${account.fullName}" style="margin-bottom: 12px;">Customer Name</h2>
+                <div class="account-list" style="margin-bottom: 20px;">
+                    <div>
+                        <dt>Email</dt>
+                        <dd th:text="${account.email}">customer@uminimalist.com</dd>
+                    </div>
+                    <div>
+                        <dt>Phone</dt>
+                        <dd th:text="${account.phone}">0987654321</dd>
+                    </div>
+                    <div>
+                        <dt>Status</dt>
+                        <dd th:text="${account.active ? 'Active' : 'Disabled'}">Active</dd>
+                    </div>
                 </div>
-            </form>
+                <button class="btn btn-outline-dark btn-sm outline retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" onclick="toggleEdit('profile')">Edit Profile</button>
+            </div>
+            
+            <!-- Profile Edit Mode -->
+            <div id="profile-edit" class="d-none">
+                <h2 style="margin-bottom: 16px;">Edit Profile</h2>
+                <form class="profile-form" th:action="@{/account/profile}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <label>
+                        <span>Full name</span>
+                        <input name="fullName" type="text" th:value="${account.fullName}" minlength="2" maxlength="120" required>
+                    </label>
+                    <label>
+                        <span>Email</span>
+                        <input type="email" th:value="${account.email}" disabled>
+                    </label>
+                    <label>
+                        <span>Phone</span>
+                        <input name="phone" type="tel" th:value="${account.phone}" minlength="8" maxlength="20" required>
+                    </label>
+                    <div class="profile-form-footer" style="margin-top: 10px;">
+                        <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('profile')">Cancel</button>
+                        <button class="btn btn-dark retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit">Save profile</button>
+                    </div>
+                </form>
+            </div>
         </article>
 
         <article class="account-panel">
@@ -89,48 +113,107 @@
 
         <article class="account-panel wide" id="shipping">
             <p class="panel-kicker">Shipping address</p>
-            <h2>Default delivery details</h2>
-            <form class="profile-form address-form" th:action="@{/account/address}" method="post">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="form-grid-two">
-                    <label>
-                        <span>Recipient</span>
-                        <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" minlength="2" maxlength="120" required>
-                    </label>
-                    <label>
-                        <span>Phone</span>
-                        <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" minlength="8" maxlength="20" required>
-                    </label>
+            
+            <!-- Shipping View Mode -->
+            <div id="shipping-view">
+                <h2 style="margin-bottom: 12px;">Default delivery details</h2>
+                <div th:if="${shippingAddress.complete}" class="account-list" style="margin-bottom: 20px;">
+                    <div>
+                        <dt>Recipient</dt>
+                        <dd th:text="${shippingAddress.recipientName}">John Doe</dd>
+                    </div>
+                    <div>
+                        <dt>Phone</dt>
+                        <dd th:text="${shippingAddress.phone}">0987654321</dd>
+                    </div>
+                    <div>
+                        <dt>Address</dt>
+                        <dd th:text="${shippingAddress.addressLine + ', ' + shippingAddress.district + ', ' + shippingAddress.city}">123 Main St, District 1, Ho Chi Minh City</dd>
+                    </div>
                 </div>
-                <label>
-                    <span>Address line</span>
-                    <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required>
-                </label>
-                <div class="form-grid-two">
-                    <label>
-                        <span>District</span>
-                        <input name="district" type="text" th:value="${shippingAddress.district}" minlength="2" maxlength="120" required>
-                    </label>
-                    <label>
-                        <span>City</span>
-                        <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
-                    </label>
+                <div th:if="${!shippingAddress.complete}" style="margin-bottom: 20px; color: var(--muted); font-weight: 600; font-size: 0.9rem;">
+                    No default shipping address saved. Add one to accelerate your checkout.
                 </div>
-                <div class="profile-form-footer">
-                    <span th:text="${shippingAddress.complete ? 'Ready for checkout' : 'Complete before checkout'}">Complete before checkout</span>
-                    <button class="btn btn-primary retail-btn" type="submit">Save address</button>
-                </div>
-            </form>
+                <button class="btn btn-outline-dark btn-sm outline retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" onclick="toggleEdit('shipping')">
+                    <span th:text="${shippingAddress.complete ? 'Edit Address' : 'Add Address'}">Edit Address</span>
+                </button>
+            </div>
+            
+            <!-- Shipping Edit Mode -->
+            <div id="shipping-edit" class="d-none">
+                <h2 style="margin-bottom: 16px;">Update Address</h2>
+                <form class="profile-form address-form" th:action="@{/account/address}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="form-grid-two">
+                        <label>
+                            <span>Recipient</span>
+                            <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" minlength="2" maxlength="120" required>
+                        </label>
+                        <label>
+                            <span>Phone</span>
+                            <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" minlength="8" maxlength="20" required>
+                        </label>
+                    </div>
+                    <label>
+                        <span>Address line</span>
+                        <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required>
+                    </label>
+                    <div class="form-grid-two">
+                        <label>
+                            <span>District</span>
+                            <input name="district" type="text" th:value="${shippingAddress.district}" minlength="2" maxlength="120" required>
+                        </label>
+                        <label>
+                            <span>City</span>
+                            <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
+                        </label>
+                    </div>
+                    <div class="profile-form-footer" style="margin-top: 10px;">
+                        <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('shipping')">Cancel</button>
+                        <button class="btn btn-dark retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit">Save address</button>
+                    </div>
+                </form>
+            </div>
         </article>
 
         <article class="account-panel wide" id="orders">
             <p class="panel-kicker">Order activity</p>
             <h2>Order history</h2>
-            <div class="order-empty" th:if="${#lists.isEmpty(recentOrders)}">
-                <p>No order history yet. Add a product to cart and place an order to see it here.</p>
+            
+            <!-- Order Filter Tabs -->
+            <div class="order-filter-tabs" style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+                <a th:href="@{/account(status='ALL')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'ALL' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">All Orders</a>
+                <a th:href="@{/account(status='PLACED')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'PLACED' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Placed</a>
+                <a th:href="@{/account(status='PROCESSING')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'PROCESSING' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Processing</a>
+                <a th:href="@{/account(status='SHIPPED')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'SHIPPED' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Shipped</a>
+                <a th:href="@{/account(status='DELIVERED')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'DELIVERED' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Delivered</a>
+                <a th:href="@{/account(status='CANCELLED')}" 
+                   class="btn btn-sm" 
+                   th:classappend="${paginatedOrders.selectedStatus == 'CANCELLED' ? 'btn-dark' : 'btn-outline-dark'}"
+                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Cancelled</a>
             </div>
-            <div class="order-history" th:if="${!#lists.isEmpty(recentOrders)}">
-                <article class="order-card" th:each="order : ${recentOrders}">
+
+            <div class="order-empty" th:if="${#lists.isEmpty(paginatedOrders.orders)}">
+                <p style="margin: 0; color: var(--muted); font-weight: 600;">No order history found for this status.</p>
+            </div>
+            
+            <div class="order-history" th:if="${!#lists.isEmpty(paginatedOrders.orders)}">
+                <article class="order-card" th:each="order : ${paginatedOrders.orders}">
                     <div class="order-card-head">
                         <div>
                             <strong th:text="${order.orderCode}">UM-202607030001</strong>
@@ -153,6 +236,20 @@
                     <a class="text-link order-detail-link" th:href="@{/account/orders/{orderCode}(orderCode=${order.orderCode})}">View details</a>
                 </article>
             </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-container" th:if="${paginatedOrders.totalPages > 1}" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 20px;">
+                <a th:if="${paginatedOrders.hasPrevious()}" 
+                   th:href="@{/account(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage - 1})}" 
+                   class="btn btn-outline-dark btn-sm outline" 
+                   style="font-weight: 700; border-radius: var(--radius); padding: 5px 12px;">Previous</a>
+                <span class="btn btn-sm disabled" style="font-weight: 700; color: var(--ink); border: 0;"
+                      th:text="${'Page ' + paginatedOrders.currentPage + ' of ' + paginatedOrders.totalPages}">Page 1 of 3</span>
+                <a th:if="${paginatedOrders.hasNext()}" 
+                   th:href="@{/account(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage + 1})}" 
+                   class="btn btn-outline-dark btn-sm outline" 
+                   style="font-weight: 700; border-radius: var(--radius); padding: 5px 12px;">Next</a>
+            </div>
         </article>
 
         <article class="account-panel wide" id="wishlist">
@@ -170,11 +267,14 @@
                         <p class="panel-kicker" th:text="${item.category}">T-shirt</p>
                         <h3><a th:href="@{/products/{slug}(slug=${item.slug})}" th:text="${item.name}">Air Cotton Tee</a></h3>
                         <strong th:text="${item.priceLabel}">$19.90</strong>
-                        <form th:action="@{/wishlist/remove}" method="post">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <input type="hidden" name="productSlug" th:value="${item.slug}">
-                            <button class="table-action" type="submit">Remove</button>
-                        </form>
+                        <div class="wishlist-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+                            <a th:href="@{/products/{slug}(slug=${item.slug})}" class="btn btn-dark btn-sm retail-btn" style="width: 100%; min-width: 0; padding: 8px 12px; font-size: 0.85rem; text-align: center;">View Product</a>
+                            <form th:action="@{/wishlist/remove}" method="post" style="text-align: center; margin: 0;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="productSlug" th:value="${item.slug}">
+                                <button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.8rem; font-weight: 600; text-decoration: underline; padding: 0; cursor: pointer;">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 </article>
             </div>
@@ -183,5 +283,15 @@
 </main>
 
 <script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<script>
+    function toggleEdit(panelId) {
+        const viewDiv = document.getElementById(panelId + '-view');
+        const editDiv = document.getElementById(panelId + '-edit');
+        if (viewDiv && editDiv) {
+            viewDiv.classList.toggle('d-none');
+            editDiv.classList.toggle('d-none');
+        }
+    }
+</script>
 </body>
 </html>

@@ -41,18 +41,22 @@ Seed/demo users are initialized from `src/main/java/com/uminimalist/store/config
 
 ### Product Image Polish
 
-- Product cards now support a real `imagePath` instead of relying only on CSS background crops from collage images.
-- New generated product assets were copied into:
-  - `src/main/resources/static/images/products/air-cotton-tee.png`
-  - `src/main/resources/static/images/products/light-utility-jacket.png`
-  - `src/main/resources/static/images/products/everyday-zip-hoodie.png`
-  - `src/main/resources/static/images/products/smart-ankle-pants.png`
-  - `src/main/resources/static/images/products/soft-jersey-tee.png`
-- `LandingPageService` maps important slugs to these product-specific images.
-- `ShoppingCartService` also maps cart item images to the same assets.
+- Product cards now support a real `imagePath` instead of relying only on CSS background crops or placeholder collage images.
+- All 10 product assets are upgraded to high-quality, professional studio photography with a cache-busting v2 suffix (`-v2.png`):
+  - `air-cotton-tee-v2.png` (Cream/White Tee)
+  - `light-utility-jacket-v2.png` (Navy Jacket)
+  - `everyday-zip-hoodie-v2.png` (Grey Hoodie)
+  - `smart-ankle-pants-v2.png` (Black Pants)
+  - `soft-jersey-tee-v2.png` (Sage Tee)
+  - `oxford-shirt-v2.png` (White Oxford Shirt)
+  - `linen-blend-shirt-v2.png` (Natural/Beige Linen Shirt)
+  - `utility-tote-v2.png` (Red Utility Tote)
+  - `easy-cotton-shorts-v2.png` (Khaki Kids Shorts)
+  - `school-day-cardigan-v2.png` (Navy Blue Kids Cardigan)
+- Image mapping switch blocks are synchronized in `LandingPageService`, `ShoppingCartService`, and `WishlistService`.
 - CSS class `.product-image-real` renders images with `object-fit: contain` on a clean off-white product surface.
 - Home `New arrivals` now excludes kids products and accessories so the section does not show the child model/cardigan in the adult landing flow.
-- Existing collage/campaign images are still used as fallback or category/editorial imagery.
+- Visual verification was performed successfully in the browser on `/` and `/products`.
 
 ### Cart
 
@@ -244,13 +248,10 @@ mvn test
 
 ## Verification Notes
 
-- `mvn test` passed after the latest product image/model updates.
-- `mvn test` passed after customer address book and checkout review page were added.
-- `mvn test` passed after customer cancel order and wishlist were added.
-- `mvn test` passed after persisted customer cart, reorder, and order timeline were added.
+- `mvn test` passed after all feature updates.
 - Customer login was previously verified in browser and `/account` rendered correctly.
 - Admin login was previously verified in browser and `/admin/dashboard` rendered correctly.
-- Latest browser refresh after image polish was interrupted by the user before visual verification finished. If the running Spring Boot process does not have devtools hot reload, restart the app to see Java-side changes such as New arrivals filtering.
+- Visual verification was completed in the browser; all 10 products successfully render real studio product images.
 
 ## Current Limitations
 
@@ -264,8 +265,8 @@ mvn test
 
 ## Recommended Next Steps
 
-1. Restart the local Spring Boot app and visually verify `/` and `/products` after image polish.
-2. Add admin order status transitions so Customer can see `PROCESSING`, `SHIPPED`, and `DELIVERED`.
-3. Move product `imagePath` into the database schema instead of service switch statements.
-4. Add admin create/edit product forms if more demo depth is needed.
-5. Add payment simulation or receipt export if the customer demo needs more depth.
+- Add admin order status transitions so Customer can see `PROCESSING`, `SHIPPED`, and `DELIVERED`.
+- Move product `imagePath` into the database schema instead of service switch statements.
+- Add admin create/edit product forms if more demo depth is needed.
+- Add payment simulation or receipt export if the customer demo needs more depth.
+
