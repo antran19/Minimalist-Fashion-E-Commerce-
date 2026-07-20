@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="scripts(full)">
+    <script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+    <th:block th:if="${full}">
+        <script th:src="@{/vendor/gsap/gsap.min.js}"></script>
+        <script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
+        <script th:src="@{/js/landing.js}"></script>
+    </th:block>
+</th:block>
+</html>

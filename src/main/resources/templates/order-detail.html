@@ -1,43 +1,10 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${order.orderCode + ' | U-Minimalist'}">Order | U-Minimalist</title>
-    <meta name="description" content="U-Minimalist customer order detail.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block th:insert="~{fragments/head :: head(${order.orderCode + ' | U-Minimalist'}, 'U-Minimalist customer order detail.')}"></th:block>
 </head>
 <body class="catalog-page">
-<header class="site-header catalog-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <div class="collapse navbar-collapse show" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link active" th:href="@{/account}">Account</a></li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/navbar :: navbar('account', 'site-header catalog-header is-scrolled', '', false, true, false)}"></th:block>
 
 <main class="page-shell account-page">
     <section class="cart-heading" aria-labelledby="order-title">
@@ -152,6 +119,7 @@
     </section>
 </main>
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+<th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 </body>
 </html>

@@ -283,6 +283,44 @@ public class OrderService {
                 """, status.toUpperCase());
     }
 
+    public PaginatedOrders findPaginatedOrders(int page, int size, String query, String status) {
+        ensureOrderTables();
+        int safePage = Math.max(0, page);
+        int offset = safePage * size;
+
+        StringBuilder whereSql = new StringBuilder(" WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            whereSql.append(" AND status = ? ");
+            params.add(status.toUpperCase());
+        }
+
+        if (query != null && !query.isBlank()) {
+            whereSql.append(" AND (LOWER(order_code) LIKE ? OR LOWER(customer_name) LIKE ? OR LOWER(customer_email) LIKE ?) ");
+            String qParam = "%" + query.trim().toLowerCase() + "%";
+            params.add(qParam);
+            params.add(qParam);
+            params.add(qParam);
+        }
+
+        String countSql = "SELECT COUNT(*) FROM dbo.orders " + whereSql;
+        Integer totalCountObj = jdbcTemplate.queryForObject(countSql, Integer.class, params.toArray());
+        long totalItems = totalCountObj == null ? 0 : totalCountObj;
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        if (totalPages < 1) totalPages = 1;
+
+        String selectSql = "SELECT id, order_code, customer_name, customer_email, " +
+                "shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, " +
+                "created_at, status, item_count, total_amount " +
+                "FROM dbo.orders " + whereSql +
+                "ORDER BY created_at DESC, id DESC " +
+                "OFFSET " + offset + " ROWS FETCH NEXT " + size + " ROWS ONLY";
+
+        List<OrderSummaryView> orders = loadOrders(selectSql, params.toArray());
+        return new PaginatedOrders(orders, safePage + 1, totalPages, totalItems, status == null ? "ALL" : status);
+    }
+
     @Transactional
     public void updateOrderStatus(Long orderId, String newStatus) {
         ensureOrderTables();

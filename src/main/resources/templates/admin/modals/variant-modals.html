@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="variant-modals">
+
+    <!-- Add Variant Modal -->
+    <div class="modal fade" id="addVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form th:action="@{/admin/variants/create}" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="productId" id="addVariantProductId">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">Add Variant for <span id="addVariantProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Color <span class="text-danger">*</span></label>
+                        <input type="text" name="color" class="form-control" placeholder="e.g. Black, Navy, White" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Size <span class="text-danger">*</span></label>
+                        <input type="text" name="size" class="form-control" placeholder="e.g. S, M, L, XL" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">SKU <span class="text-danger">*</span></label>
+                        <input type="text" name="sku" class="form-control" placeholder="e.g. TSHIRT-BLK-M" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Stock Quantity <span class="text-danger">*</span></label>
+                        <input type="number" min="0" name="stockQuantity" class="form-control" value="10" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save Variant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Variant Modal -->
+    <div class="modal fade" id="editVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="editVariantForm" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">Edit Product Variant</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Color <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantColor" name="color" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Size <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantSize" name="size" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">SKU <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantSku" name="sku" class="form-control" maxlength="80" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Stock Quantity <span class="text-danger">*</span></label>
+                        <input type="number" min="0" id="editVariantStockQuantity" name="stockQuantity" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</th:block>
+</html>

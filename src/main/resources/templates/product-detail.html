@@ -1,56 +1,10 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${product.name + ' | U-Minimalist'}">Product | U-Minimalist</title>
-    <meta name="description" th:content="${'View size, color, and stock for ' + product.name}">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block th:insert="~{fragments/head :: head(${product.name + ' | U-Minimalist'}, ${'View size, color, and stock for ' + product.name})}"></th:block>
 </head>
 <body class="catalog-page">
-<header class="site-header catalog-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/navbar :: navbar('', 'site-header catalog-header is-scrolled', '', true, false, true)}"></th:block>
 
 <main class="page-shell product-detail-page">
     <a class="back-link" th:href="@{/products}">Back to products</a>
@@ -120,7 +74,7 @@
     <!-- Reviews Section -->
     <section class="reviews-section" style="margin-top: 60px; border-top: 1px solid var(--line); padding-top: 40px;" aria-labelledby="reviews-title">
         <h2 id="reviews-title" style="font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 24px;">Customer Reviews</h2>
-        
+
         <div class="reviews-layout" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: start;">
             <!-- Review List -->
             <div class="reviews-list-container">
@@ -134,7 +88,7 @@
                             <small class="text-muted" th:text="${review.createdAtLabel()}" style="font-weight: 500;">03 Jul 2026</small>
                         </div>
                         <div style="margin-bottom: 8px;">
-                            <span th:each="i : ${#numbers.sequence(1, 5)}" 
+                            <span th:each="i : ${#numbers.sequence(1, 5)}"
                                   th:text="${i <= review.rating ? '★' : '☆'}"
                                   th:style="${i <= review.rating ? 'color: #ffc107; font-size: 1.1rem;' : 'color: #ccc; font-size: 1.1rem;'}"></span>
                         </div>
@@ -148,7 +102,7 @@
                 <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.02em;">Write a Review</h3>
                 <form th:action="@{/products/{slug}/reviews(slug=${product.slug})}" method="post">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    
+
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; font-size: 0.78rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px;">Rating</label>
                         <div class="rating-select" style="display: flex; gap: 8px;">
@@ -167,7 +121,7 @@
                     <button class="btn btn-primary retail-btn" type="submit" style="width: 100%;">Submit Review</button>
                 </form>
             </div>
-            
+
             <!-- Message for anonymous or non-buyers -->
             <div class="write-review-container" th:if="${!canReview}" style="background-color: #fcfcfc; padding: 24px; border-radius: var(--radius); border: 1px solid var(--line); text-align: center;">
                 <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 12px; letter-spacing: -0.02em;">Write a Review</h3>
@@ -185,7 +139,7 @@
     </section>
 </main>
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const stars = document.querySelectorAll(".rating-select .star-icon");
@@ -230,5 +184,6 @@
         });
     });
 </script>
+<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 </body>
 </html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="footer(showNewsletter)">
+    <footer class="site-footer">
+        <div class="page-shell">
+            <div class="footer-brand">
+                <strong>U-Minimalist</strong>
+                <p>Minimal fashion e-commerce system for Java Frameworks.</p>
+            </div>
+            <div class="footer-columns">
+                <div>
+                    <h2>Shop</h2>
+                    <a th:href="@{/products(collection='men')}">Men</a>
+                    <a th:href="@{/products(collection='women')}">Women</a>
+                    <a th:href="@{/products(collection='kids')}">Kids</a>
+                    <a th:href="@{/products(sort='new')}">New arrivals</a>
+                </div>
+                <div>
+                    <h2>Support</h2>
+                    <a th:href="@{/help}">Contact</a>
+                    <a th:href="@{/orders}">Order status</a>
+                    <a th:href="@{/shipping}">Shipping</a>
+                    <a th:href="@{/returns}">Returns</a>
+                </div>
+                <div>
+                    <h2>Account</h2>
+                    <a th:href="@{/login}">Sign in</a>
+                    <a th:href="@{/register}">Create account</a>
+                    <a th:href="@{/cart}">Cart</a>
+                    <a th:href="@{/wishlist}">Wishlist</a>
+                </div>
+                <div>
+                    <h2>Updates</h2>
+                    <p>Seasonal essentials, product drops, and stock updates.</p>
+                    <th:block th:if="${showNewsletter}">
+                        <form class="footer-form" th:action="@{/newsletter}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <label for="footer-email">Email</label>
+                            <div>
+                                <input id="footer-email" name="email" type="email" placeholder="Email address">
+                                <button type="submit">Join</button>
+                            </div>
+                        </form>
+                    </th:block>
+                </div>
+            </div>
+        </div>
+    </footer>
+</th:block>
+</html>
