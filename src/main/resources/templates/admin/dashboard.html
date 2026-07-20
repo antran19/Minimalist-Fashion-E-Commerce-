@@ -296,6 +296,7 @@
 
     <nav class="admin-tabs">
         <button class="admin-tab-btn" id="btn-overview" onclick="switchTab('overview')">Overview</button>
+        <button class="admin-tab-btn" id="btn-categories" onclick="switchTab('categories')">Categories</button>
         <button class="admin-tab-btn" id="btn-catalog" onclick="switchTab('catalog')">Products & Inventory</button>
         <button class="admin-tab-btn" id="btn-orders" onclick="switchTab('orders')">Orders</button>
         <button class="admin-tab-btn" id="btn-users" onclick="switchTab('users')">Users & Accounts</button>
@@ -326,6 +327,45 @@
         </div>
     </div>
 
+    <!-- Categories Panel -->
+    <div class="admin-panel d-none" id="tab-categories">
+        <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <p class="panel-kicker">Taxonomy</p>
+                <h2 style="margin: 0;">Category Management</h2>
+            </div>
+            <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" onclick="openCategoryModal()">+ Add Category</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Slug</th>
+                        <th>Display Order</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="cat : ${categories}">
+                        <td th:text="${cat.id}">1</td>
+                        <td th:text="${cat.name}">Men</td>
+                        <td th:text="${cat.slug}">men</td>
+                        <td th:text="${cat.displayOrder}">1</td>
+                        <td th:text="${cat.active ? 'Active' : 'Hidden'}">Active</td>
+                        <td>
+                            <button class="table-action" 
+                                    th:data-id="${cat.id}" th:data-name="${cat.name}" th:data-slug="${cat.slug}" th:data-desc="${cat.description}" th:data-order="${cat.displayOrder}" th:data-active="${cat.active}"
+                                    onclick="openCategoryModal(this)">Edit</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Catalog Panel -->
     <div class="admin-panel d-none" id="tab-catalog">
         <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
@@ -333,7 +373,10 @@
                 <p class="panel-kicker">Catalog</p>
                 <h2 style="margin: 0;">Products and inventory</h2>
             </div>
-            <a class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2" th:href="@{/products}">View storefront</a>
+            <div>
+                <a class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2 me-2" th:href="@{/products}">View storefront</a>
+                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" onclick="openProductModal()">+ Add Product</button>
+            </div>
         </div>
 
         <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
@@ -366,12 +409,22 @@
                              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                              <button type="submit" class="table-action" th:text="${product.active ? 'Hide' : 'Show'}">Hide</button>
                          </form>
+                         <button class="table-action" style="margin-left: 8px;"
+                                 th:data-id="${product.id}" th:data-name="${product.name}" th:data-slug="${product.slug}" 
+                                 th:data-cat="${product.category.id}" th:data-type="${product.productType}" 
+                                 th:data-desc="${product.description}" th:data-price="${product.basePrice}" 
+                                 th:data-crop="${product.cropClass}" th:data-new="${product.newArrival}" 
+                                 th:data-best="${product.bestSeller}" th:data-active="${product.active}"
+                                 onclick="openProductModal(this)">Edit</button>
                      </div>
                 </div>
 
-                <div style="margin-top: 10px;">
+                <div style="margin-top: 10px; display: flex; gap: 16px; align-items: center;">
                      <button type="button" class="btn btn-link p-0 text-muted" style="font-size: 0.85rem; font-weight: 700; text-decoration: underline; background: none; border: none; cursor: pointer;" onclick="toggleVariantsTable(this)">
                          Show inventory details
+                     </button>
+                     <button type="button" class="btn btn-link p-0" style="font-size: 0.85rem; font-weight: 700; text-decoration: none; background: none; border: none; cursor: pointer; color: var(--ink);" th:data-pid="${product.id}" onclick="openVariantModal(this)">
+                         + Add Variant
                      </button>
                 </div>
 
@@ -406,6 +459,11 @@
                                      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                                      <button type="submit" class="table-action" th:text="${variant.active ? 'Hide' : 'Show'}">Hide</button>
                                  </form>
+                                 <button class="table-action" style="margin-left: 8px;"
+                                         th:data-id="${variant.id}" th:data-pid="${product.id}" th:data-sku="${variant.sku}"
+                                         th:data-color="${variant.color}" th:data-size="${variant.size}"
+                                         th:data-stock="${variant.stockQuantity}" th:data-active="${variant.active}"
+                                         onclick="openVariantModal(this)">Edit</button>
                              </td>
                          </tr>
                          </tbody>
@@ -531,6 +589,165 @@
         </div>
     </div>
 </main>
+
+    <!-- Modals -->
+    <!-- Category Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="categoryModalTitle">Add Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="categoryForm" th:action="@{/admin/categories/save}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <input type="hidden" name="id" id="cat-id">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Name</label>
+                            <input type="text" class="form-control" name="name" id="cat-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Slug</label>
+                            <input type="text" class="form-control" name="slug" id="cat-slug" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Description</label>
+                            <textarea class="form-control" name="description" id="cat-desc" rows="2"></textarea>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label class="form-label fw-bold">Display Order</label>
+                                <input type="number" class="form-control" name="displayOrder" id="cat-order" value="0" required>
+                            </div>
+                            <div class="col d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="active" id="cat-active" value="true" checked>
+                                    <label class="form-check-label fw-bold" for="cat-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100 rounded-1 fw-bold">Save Category</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="productModalTitle">Add Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm" th:action="@{/admin/products/save}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <input type="hidden" name="id" id="prod-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Name</label>
+                                <input type="text" class="form-control" name="name" id="prod-name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Slug</label>
+                                <input type="text" class="form-control" name="slug" id="prod-slug" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Category</label>
+                                <select class="form-select" name="category.id" id="prod-cat" required>
+                                    <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Type (e.g. T-shirt)</label>
+                                <input type="text" class="form-control" name="productType" id="prod-type" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Base Price</label>
+                                <input type="number" step="0.01" class="form-control" name="basePrice" id="prod-price" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Description</label>
+                            <textarea class="form-control" name="description" id="prod-desc" rows="3"></textarea>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Crop Class</label>
+                                <input type="text" class="form-control" name="cropClass" id="prod-crop" value="object-position: center;" required>
+                            </div>
+                            <div class="col-md-8 d-flex align-items-end gap-3 pb-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="newArrival" id="prod-new" value="true">
+                                    <label class="form-check-label fw-bold" for="prod-new">New Arrival</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="bestSeller" id="prod-best" value="true">
+                                    <label class="form-check-label fw-bold" for="prod-best">Best Seller</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="active" id="prod-active" value="true" checked>
+                                    <label class="form-check-label fw-bold" for="prod-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100 rounded-1 fw-bold">Save Product</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variant Modal -->
+    <div class="modal fade" id="variantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="variantModalTitle">Add Variant</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="variantForm" th:action="@{/admin/variants/save}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <input type="hidden" name="id" id="var-id">
+                        <input type="hidden" name="product.id" id="var-pid">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">SKU</label>
+                            <input type="text" class="form-control" name="sku" id="var-sku" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Color</label>
+                                <input type="text" class="form-control" name="color" id="var-color" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Size</label>
+                                <input type="text" class="form-control" name="size" id="var-size" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Stock Quantity</label>
+                                <input type="number" class="form-control" name="stockQuantity" id="var-stock" value="0" required>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end pb-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="active" id="var-active" value="true" checked>
+                                    <label class="form-check-label fw-bold" for="var-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100 rounded-1 fw-bold">Save Variant</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <footer class="site-footer">
     <div class="page-shell">
@@ -711,6 +928,71 @@
             switchTab('overview');
         }
     });
+
+    let catModal, prodModal, varModal;
+    window.addEventListener('DOMContentLoaded', () => {
+        catModal = new bootstrap.Modal(document.getElementById('categoryModal'));
+        prodModal = new bootstrap.Modal(document.getElementById('productModal'));
+        varModal = new bootstrap.Modal(document.getElementById('variantModal'));
+    });
+
+    function openCategoryModal(btn) {
+        if (!btn) {
+            document.getElementById('categoryForm').reset();
+            document.getElementById('cat-id').value = '';
+            document.getElementById('categoryModalTitle').innerText = 'Add Category';
+        } else {
+            document.getElementById('cat-id').value = btn.getAttribute('data-id');
+            document.getElementById('cat-name').value = btn.getAttribute('data-name');
+            document.getElementById('cat-slug').value = btn.getAttribute('data-slug');
+            document.getElementById('cat-desc').value = btn.getAttribute('data-desc');
+            document.getElementById('cat-order').value = btn.getAttribute('data-order');
+            document.getElementById('cat-active').checked = btn.getAttribute('data-active') === 'true';
+            document.getElementById('categoryModalTitle').innerText = 'Edit Category';
+        }
+        catModal.show();
+    }
+
+    function openProductModal(btn) {
+        if (!btn) {
+            document.getElementById('productForm').reset();
+            document.getElementById('prod-id').value = '';
+            document.getElementById('productModalTitle').innerText = 'Add Product';
+        } else {
+            document.getElementById('prod-id').value = btn.getAttribute('data-id');
+            document.getElementById('prod-name').value = btn.getAttribute('data-name');
+            document.getElementById('prod-slug').value = btn.getAttribute('data-slug');
+            document.getElementById('prod-cat').value = btn.getAttribute('data-cat');
+            document.getElementById('prod-type').value = btn.getAttribute('data-type');
+            document.getElementById('prod-desc').value = btn.getAttribute('data-desc');
+            document.getElementById('prod-price').value = btn.getAttribute('data-price');
+            document.getElementById('prod-crop').value = btn.getAttribute('data-crop');
+            document.getElementById('prod-new').checked = btn.getAttribute('data-new') === 'true';
+            document.getElementById('prod-best').checked = btn.getAttribute('data-best') === 'true';
+            document.getElementById('prod-active').checked = btn.getAttribute('data-active') === 'true';
+            document.getElementById('productModalTitle').innerText = 'Edit Product';
+        }
+        prodModal.show();
+    }
+
+    function openVariantModal(btn) {
+        if (!btn.getAttribute('data-id')) {
+            document.getElementById('variantForm').reset();
+            document.getElementById('var-id').value = '';
+            document.getElementById('var-pid').value = btn.getAttribute('data-pid');
+            document.getElementById('variantModalTitle').innerText = 'Add Variant';
+        } else {
+            document.getElementById('var-id').value = btn.getAttribute('data-id');
+            document.getElementById('var-pid').value = btn.getAttribute('data-pid');
+            document.getElementById('var-sku').value = btn.getAttribute('data-sku');
+            document.getElementById('var-color').value = btn.getAttribute('data-color');
+            document.getElementById('var-size').value = btn.getAttribute('data-size');
+            document.getElementById('var-stock').value = btn.getAttribute('data-stock');
+            document.getElementById('var-active').checked = btn.getAttribute('data-active') === 'true';
+            document.getElementById('variantModalTitle').innerText = 'Edit Variant';
+        }
+        varModal.show();
+    }
 </script>
 </body>
 </html>

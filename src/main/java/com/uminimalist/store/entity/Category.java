@@ -66,4 +66,28 @@ public class Category {
     public List<Product> getProducts() {
         return products;
     }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 }

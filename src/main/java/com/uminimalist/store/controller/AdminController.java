@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,6 +31,7 @@ public class AdminController {
     public String dashboard(Model model) {
         List<User> users = adminCatalogService.getUsers();
         List<Product> products = adminCatalogService.getProducts();
+        List<com.uminimalist.store.entity.Category> categories = adminCatalogService.getCategories();
 
         int activeProducts = (int) products.stream().filter(Product::isActive).count();
         int totalVariants = products.stream().mapToInt(product -> product.getVariants().size()).sum();
@@ -40,6 +42,7 @@ public class AdminController {
 
         model.addAttribute("users", users);
         model.addAttribute("products", products);
+        model.addAttribute("categories", categories);
         model.addAttribute("activeProducts", activeProducts);
         model.addAttribute("totalVariants", totalVariants);
         model.addAttribute("lowStockVariants", lowStockVariants);
@@ -47,6 +50,39 @@ public class AdminController {
         model.addAttribute("orderCount", orderService.countOrders());
         model.addAttribute("totalRevenue", orderService.totalRevenueLabel());
         return "admin/dashboard";
+    }
+
+    @PostMapping("/admin/categories/save")
+    public String saveCategory(@ModelAttribute com.uminimalist.store.entity.Category category, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.saveCategory(category);
+            redirectAttributes.addFlashAttribute("adminMessage", "Category saved successfully.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("adminError", "Failed to save category: " + e.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/save")
+    public String saveProduct(@ModelAttribute Product product, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.saveProduct(product);
+            redirectAttributes.addFlashAttribute("adminMessage", "Product saved successfully.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("adminError", "Failed to save product: " + e.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/variants/save")
+    public String saveVariant(@ModelAttribute com.uminimalist.store.entity.ProductVariant variant, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.saveVariant(variant);
+            redirectAttributes.addFlashAttribute("adminMessage", "Variant saved successfully.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("adminError", "Failed to save variant: " + e.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
     }
 
     @PostMapping("/admin/products/{id}/toggle")
