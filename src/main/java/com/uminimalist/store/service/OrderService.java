@@ -268,6 +268,21 @@ public class OrderService {
                 """);
     }
 
+    public List<OrderSummaryView> findOrdersByStatus(String status) {
+        ensureOrderTables();
+        if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) {
+            return findRecentOrders();
+        }
+        return loadOrders("""
+                SELECT TOP 50 id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    created_at, status, item_count, total_amount
+                FROM dbo.orders
+                WHERE status = ?
+                ORDER BY created_at DESC, id DESC
+                """, status.toUpperCase());
+    }
+
     @Transactional
     public void updateOrderStatus(Long orderId, String newStatus) {
         ensureOrderTables();
@@ -290,7 +305,7 @@ public class OrderService {
 
     public String totalRevenueLabel() {
         ensureOrderTables();
-        BigDecimal total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders", BigDecimal.class);
+        BigDecimal total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders WHERE status = 'DELIVERED'", BigDecimal.class);
         return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
     }
 

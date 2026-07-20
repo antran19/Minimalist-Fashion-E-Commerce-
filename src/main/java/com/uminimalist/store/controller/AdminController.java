@@ -1,5 +1,6 @@
 package com.uminimalist.store.controller;
 
+import com.uminimalist.store.entity.Category;
 import com.uminimalist.store.entity.Product;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.service.AdminCatalogService;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Controller
@@ -27,9 +29,10 @@ public class AdminController {
     }
 
     @GetMapping("/admin/dashboard")
-    public String dashboard(Model model) {
+    public String dashboard(@RequestParam(required = false, defaultValue = "ALL") String orderStatus, Model model) {
         List<User> users = adminCatalogService.getUsers();
         List<Product> products = adminCatalogService.getProducts();
+        List<Category> categories = adminCatalogService.getCategories();
 
         int activeProducts = (int) products.stream().filter(Product::isActive).count();
         int totalVariants = products.stream().mapToInt(product -> product.getVariants().size()).sum();
@@ -40,13 +43,85 @@ public class AdminController {
 
         model.addAttribute("users", users);
         model.addAttribute("products", products);
+        model.addAttribute("categories", categories);
+        model.addAttribute("productTypes", adminCatalogService.getProductTypes());
         model.addAttribute("activeProducts", activeProducts);
         model.addAttribute("totalVariants", totalVariants);
         model.addAttribute("lowStockVariants", lowStockVariants);
-        model.addAttribute("orders", orderService.findRecentOrders());
+        model.addAttribute("orders", orderService.findOrdersByStatus(orderStatus));
+        model.addAttribute("selectedStatus", orderStatus);
         model.addAttribute("orderCount", orderService.countOrders());
         model.addAttribute("totalRevenue", orderService.totalRevenueLabel());
         return "admin/dashboard";
+    }
+
+    @PostMapping("/admin/categories/create")
+    public String createCategory(@RequestParam String name,
+                                 @RequestParam(required = false) String description,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.createCategory(name, description);
+            redirectAttributes.addFlashAttribute("adminMessage", "Category created successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#categories";
+    }
+
+    @PostMapping("/admin/categories/{id}/toggle")
+    public String toggleCategory(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        adminCatalogService.toggleCategory(id);
+        redirectAttributes.addFlashAttribute("adminMessage", "Category status updated.");
+        return "redirect:/admin/dashboard#categories";
+    }
+
+    @PostMapping("/admin/products/create")
+    public String createProduct(@RequestParam Long categoryId,
+                                @RequestParam String name,
+                                @RequestParam String basePrice,
+                                @RequestParam(required = false) String productType,
+                                @RequestParam(required = false) String description,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.createProduct(categoryId, name, basePrice, productType, description);
+            redirectAttributes.addFlashAttribute("adminMessage", "Product created successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/{id}/edit")
+    public String updateProduct(@PathVariable Long id,
+                                @RequestParam Long categoryId,
+                                @RequestParam String name,
+                                @RequestParam String basePrice,
+                                @RequestParam(required = false) String productType,
+                                @RequestParam(required = false) String description,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.updateProduct(id, categoryId, name, basePrice, productType, description);
+            redirectAttributes.addFlashAttribute("adminMessage", "Product updated successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/variants/create")
+    public String createVariant(@RequestParam Long productId,
+                                @RequestParam String color,
+                                @RequestParam String size,
+                                @RequestParam String sku,
+                                @RequestParam int stockQuantity,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.createVariant(productId, color, size, sku, stockQuantity);
+            redirectAttributes.addFlashAttribute("adminMessage", "Variant created successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
     }
 
     @PostMapping("/admin/products/{id}/toggle")

@@ -20,4 +20,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @EntityGraph(attributePaths = {"category", "variants"})
     Optional<Product> findBySlugAndActiveTrue(String slug);
+
+    @Query("select distinct p.productType from Product p order by p.productType")
+    List<String> findDistinctProductTypes();
 }

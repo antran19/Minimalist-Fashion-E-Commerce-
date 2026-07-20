@@ -8,4 +8,6 @@ import java.util.List;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findByActiveTrueOrderByDisplayOrderAscNameAsc();
+
+    List<Category> findAllByOrderByDisplayOrderAscNameAsc();
 }
