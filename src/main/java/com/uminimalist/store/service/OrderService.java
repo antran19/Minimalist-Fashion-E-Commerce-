@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
 @Service
 public class OrderService {
 
+    private static final String PENDING_PAYMENT_STATUS = "PENDING_PAYMENT";
+
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
     private final ProductVariantRepository productVariantRepository;
@@ -97,6 +99,23 @@ public class OrderService {
 
     @Transactional
     public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
+        return createOrder(customerEmail, cart, shippingAddress, "PLACED", true);
+    }
+
+    /**
+     * Creates an order that has not been paid for yet. Stock is left untouched until the
+     * payment gateway confirms, so an abandoned or failed payment cannot hold inventory.
+     */
+    @Transactional
+    public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
+        return createOrder(customerEmail, cart, shippingAddress, PENDING_PAYMENT_STATUS, false);
+    }
+
+    private OrderSummaryView createOrder(String customerEmail,
+                                         CartView cart,
+                                         CustomerAddressView shippingAddress,
+                                         String status,
+                                         boolean deductStock) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Your cart is empty.");
         }
@@ -128,13 +147,17 @@ public class OrderService {
             lines.add(new OrderLine(item, variant, unitPrice, lineTotal));
             total = total.add(lineTotal);
             itemCount += item.quantity();
-            variant.setStockQuantity(variant.getStockQuantity() - item.quantity());
+            if (deductStock) {
+                variant.setStockQuantity(variant.getStockQuantity() - item.quantity());
+            }
         }
 
-        productVariantRepository.saveAll(lines.stream().map(OrderLine::variant).toList());
+        if (deductStock) {
+            productVariantRepository.saveAll(lines.stream().map(OrderLine::variant).toList());
+        }
 
         String orderCode = nextOrderCode(user.getId());
-        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total);
+        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total, status);
         insertOrderItems(orderId, lines);
 
         return findOrder(orderId)
@@ -257,6 +280,71 @@ public class OrderService {
                 """, order.id());
     }
 
+    /**
+     * Confirms a pending order once the payment gateway reports success. Stock is only
+     * taken here, and the guarded UPDATE makes the deduction atomic so two shoppers
+     * cannot both claim the last unit. Safe to call twice (the gateway may retry).
+     */
+    @Transactional
+    public OrderSummaryView confirmPaidOrder(String customerEmail, String orderCode) {
+        ensureOrderTables();
+        OrderStatusRow order = requireOrder(customerEmail, orderCode);
+        if (!PENDING_PAYMENT_STATUS.equalsIgnoreCase(order.status())) {
+            return findOrder(order.id())
+                    .orElseThrow(() -> new IllegalArgumentException("Order not found."));
+        }
+
+        List<OrderStockRow> stockRows = jdbcTemplate.query("""
+                        SELECT product_variant_id, quantity
+                        FROM dbo.order_items
+                        WHERE order_id = ?
+                        """,
+                (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
+                order.id());
+
+        for (OrderStockRow stockRow : stockRows) {
+            int updated = jdbcTemplate.update("""
+                    UPDATE dbo.product_variants
+                    SET stock_quantity = stock_quantity - ?
+                    WHERE id = ? AND stock_quantity >= ?
+                    """, stockRow.quantity(), stockRow.productVariantId(), stockRow.quantity());
+            if (updated == 0) {
+                throw new IllegalArgumentException("An item in this order sold out before the payment completed.");
+            }
+        }
+
+        jdbcTemplate.update("UPDATE dbo.orders SET status = 'PROCESSING' WHERE id = ?", order.id());
+        return findOrder(order.id())
+                .orElseThrow(() -> new IllegalStateException("Order was paid but could not be loaded."));
+    }
+
+    /**
+     * Marks a pending order as cancelled after a failed or abandoned payment.
+     * No stock needs restoring because it was never taken.
+     */
+    @Transactional
+    public void markPaymentFailed(String customerEmail, String orderCode) {
+        ensureOrderTables();
+        OrderStatusRow order = requireOrder(customerEmail, orderCode);
+        if (PENDING_PAYMENT_STATUS.equalsIgnoreCase(order.status())) {
+            jdbcTemplate.update("UPDATE dbo.orders SET status = 'CANCELLED' WHERE id = ?", order.id());
+        }
+    }
+
+    private OrderStatusRow requireOrder(String customerEmail, String orderCode) {
+        return jdbcTemplate.query("""
+                        SELECT id, status
+                        FROM dbo.orders
+                        WHERE customer_email = ? AND order_code = ?
+                        """,
+                        (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status")),
+                        customerEmail,
+                        orderCode)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Order not found."));
+    }
+
     public List<OrderSummaryView> findRecentOrders() {
         ensureOrderTables();
         return loadOrders("""
@@ -324,7 +412,7 @@ public class OrderService {
     @Transactional
     public void updateOrderStatus(Long orderId, String newStatus) {
         ensureOrderTables();
-        List<String> validStatuses = List.of("PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
+        List<String> validStatuses = List.of(PENDING_PAYMENT_STATUS, "PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
         if (!validStatuses.contains(newStatus.toUpperCase())) {
             throw new IllegalArgumentException("Invalid order status: " + newStatus);
         }
@@ -347,7 +435,7 @@ public class OrderService {
         return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
     }
 
-    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total) {
+    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total, String status) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement("""
@@ -366,7 +454,7 @@ public class OrderService {
             ps.setString(7, shippingAddress.addressLine());
             ps.setString(8, shippingAddress.district());
             ps.setString(9, shippingAddress.city());
-            ps.setString(10, "PLACED");
+            ps.setString(10, status);
             ps.setInt(11, itemCount);
             ps.setBigDecimal(12, total);
             return ps;

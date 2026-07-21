@@ -236,15 +236,18 @@ public class CustomerController {
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
-            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
-            shoppingCartService.clearCart(session, authentication.getName());
 
             if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
-                double usdAmount = Double.parseDouble(order.totalLabel().replaceAll("[^0-9.]", ""));
-                String paymentUrl = vnPayService.createPaymentUrl(order.orderCode(), usdAmount, request);
+                // Reserve nothing yet: the order stays PENDING_PAYMENT and the cart is kept
+                // so an abandoned payment leaves neither a phantom order nor held stock.
+                var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress);
+                double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
+                String paymentUrl = vnPayService.createPaymentUrl(pendingOrder.orderCode(), usdAmount, request);
                 return "redirect:" + paymentUrl;
             }
 
+            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
+            shoppingCartService.clearCart(session, authentication.getName());
             redirectAttributes.addFlashAttribute("accountMessage",
                     "Order " + order.orderCode() + " placed successfully.");
         } catch (IllegalArgumentException exception) {
@@ -255,7 +258,18 @@ public class CustomerController {
     }
 
     @GetMapping("/checkout/payment-return")
-    public String paymentReturn(HttpServletRequest request, Model model, RedirectAttributes redirectAttributes) {
+    public String paymentReturn(HttpServletRequest request,
+                                HttpSession session,
+                                Model model,
+                                RedirectAttributes redirectAttributes) {
+        java.security.Principal principal = request.getUserPrincipal();
+        if (principal == null) {
+            // The session expired while the shopper was on the gateway. The order is still
+            // PENDING_PAYMENT and holds no stock, so it is safe to just ask them to sign in.
+            return "redirect:/login";
+        }
+        String customerEmail = principal.getName();
+
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
             String name = names.nextElement();
@@ -268,16 +282,20 @@ public class CustomerController {
         boolean verified = vnPayService.verifyCallback(fields);
         if (verified && "00".equals(responseCode)) {
             try {
-                var order = orderService.findOrderForCustomer(request.getUserPrincipal().getName(), orderCode)
-                        .orElseThrow(() -> new IllegalArgumentException("Order not found."));
-                orderService.updateOrderStatus(order.id(), "PROCESSING");
+                var order = orderService.confirmPaidOrder(customerEmail, orderCode);
+                shoppingCartService.clearCart(session, customerEmail);
                 model.addAttribute("order", order);
-                model.addAttribute("cartCount", 0); // Cart is cleared upon order placement
+                model.addAttribute("cartCount", 0);
                 return "checkout-success";
-            } catch (Exception e) {
-                redirectAttributes.addFlashAttribute("accountError", "Error updating order status: " + e.getMessage());
+            } catch (IllegalArgumentException exception) {
+                redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             }
         } else {
+            try {
+                orderService.markPaymentFailed(customerEmail, orderCode);
+            } catch (IllegalArgumentException ignored) {
+                // Nothing to cancel - fall through to the generic failure message.
+            }
             redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
         }
 

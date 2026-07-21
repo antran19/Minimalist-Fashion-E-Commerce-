@@ -85,7 +85,8 @@ public class ProductReviewService {
                 JOIN dbo.order_items oi ON o.id = oi.order_id
                 JOIN dbo.product_variants pv ON pv.id = oi.product_variant_id
                 JOIN dbo.products p ON p.id = pv.product_id
-                WHERE o.customer_email = ? AND p.slug = ? AND o.status <> 'CANCELLED'
+                WHERE o.customer_email = ? AND p.slug = ?
+                  AND o.status NOT IN ('CANCELLED', 'PENDING_PAYMENT')
                 """, Integer.class, email, productSlug);
         return count != null && count > 0;
     }
