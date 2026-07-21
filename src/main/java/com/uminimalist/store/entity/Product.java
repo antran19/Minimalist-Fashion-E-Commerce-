@@ -119,4 +119,44 @@ public class Product {
     public List<ProductVariant> getVariants() {
         return variants;
     }
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setProductType(String productType) {
+        this.productType = productType;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setBasePrice(BigDecimal basePrice) {
+        this.basePrice = basePrice;
+    }
+
+    public void setCropClass(String cropClass) {
+        this.cropClass = cropClass;
+    }
+
+    public void setNewArrival(boolean newArrival) {
+        this.newArrival = newArrival;
+    }
+
+    public void setBestSeller(boolean bestSeller) {
+        this.bestSeller = bestSeller;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

@@ -37,8 +37,7 @@ public class LandingPageService {
                         category.getName(),
                         category.getDescription(),
                         "/products?collection=" + category.getSlug(),
-                        "crop-" + category.getSlug()
-                ))
+                        "crop-" + category.getSlug()))
                 .toList();
     }
 
@@ -52,7 +51,7 @@ public class LandingPageService {
     }
 
     public List<ProductView> getProducts(String query, String collection, String size, String color,
-                                         Double minPrice, Double maxPrice, String sort) {
+            Double minPrice, Double maxPrice, String sort) {
         Stream<ProductView> stream = productViews().stream();
 
         if (hasText(query)) {
@@ -66,11 +65,13 @@ public class LandingPageService {
         }
 
         if (hasText(size)) {
-            stream = stream.filter(product -> product.sizes().stream().anyMatch(option -> option.equalsIgnoreCase(size)));
+            stream = stream
+                    .filter(product -> product.sizes().stream().anyMatch(option -> option.equalsIgnoreCase(size)));
         }
 
         if (hasText(color)) {
-            stream = stream.filter(product -> product.colors().stream().anyMatch(option -> option.equalsIgnoreCase(color)));
+            stream = stream
+                    .filter(product -> product.colors().stream().anyMatch(option -> option.equalsIgnoreCase(color)));
         }
 
         if (minPrice != null) {
@@ -121,8 +122,7 @@ public class LandingPageService {
                 "Variant-first product detail pages for size and color accuracy",
                 "Clear cart totals before checkout",
                 "Inventory checks before every order",
-                "Responsive pages built for quick browsing"
-        );
+                "Responsive pages built for quick browsing");
     }
 
     private List<ProductView> productViews() {
@@ -168,8 +168,7 @@ public class LandingPageService {
                 product.getCropClass(),
                 stock,
                 product.isNewArrival(),
-                product.isBestSeller()
-        );
+                product.isBestSeller());
     }
 
     private Comparator<ProductView> productComparator(String sort) {

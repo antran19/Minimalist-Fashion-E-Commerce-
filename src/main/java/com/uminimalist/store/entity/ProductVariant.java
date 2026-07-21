@@ -72,4 +72,20 @@ public class ProductVariant {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
 }
