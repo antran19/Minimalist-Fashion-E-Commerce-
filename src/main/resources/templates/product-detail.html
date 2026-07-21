@@ -30,12 +30,21 @@
                 </div>
                 <p class="detail-copy">Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.</p>
 
-                <fieldset class="option-group">
+                <fieldset class="option-group color-options-group">
                     <legend>Color</legend>
-                    <label th:each="colorOption, status : ${product.colors}">
-                        <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first}" required>
-                        <span th:text="${colorOption}">White</span>
-                    </label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <label th:each="colorOption, status : ${product.colors}" class="color-swatch-label" style="cursor: pointer; position: relative;">
+                            <!-- Mockup: the second color is out of stock if stock > 0, otherwise all are out of stock if stock == 0 -->
+                            <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first and product.stock > 0}" th:disabled="${product.stock == 0 or (product.stock > 0 and status.index == 1)}" required style="display: none;" class="color-radio">
+                            <div class="swatch-content" th:classappend="${product.stock == 0 or (product.stock > 0 and status.index == 1)} ? 'out-of-stock' : ''" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border: 1.5px solid var(--line); border-radius: 20px; transition: all 0.2s; background: #fff;">
+                                <span class="swatch-circle-detail" th:attr="data-color=${colorOption}" style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: inline-block;"></span>
+                                <span class="swatch-name" style="font-size: 0.85rem; font-weight: 600; color: var(--ink);">
+                                    <span th:text="${colorOption}">White</span>
+                                    <span th:if="${product.stock == 0 or (product.stock > 0 and status.index == 1)}" style="color: #e11b1e; font-size: 0.75rem; margin-left: 4px;">(Hết hàng)</span>
+                                </span>
+                            </div>
+                        </label>
+                    </div>
                 </fieldset>
 
                 <fieldset class="option-group">
@@ -181,6 +190,27 @@
                     });
                 }
             });
+        });
+        // Color swatch mapping
+        const colorMap = {
+            'White': '#ffffff',
+            'Black': '#000000',
+            'Navy': '#000080',
+            'Beige': '#f5f5dc',
+            'Cream': '#fffdd0',
+            'Charcoal': '#36454f',
+            'Slate': '#708090',
+            'Grey': '#808080',
+            'Red': '#ff0000',
+            'Blue': '#0000ff'
+        };
+        document.querySelectorAll('.swatch-circle-detail').forEach(el => {
+            const colorName = el.getAttribute('data-color');
+            if(colorMap[colorName]) {
+                el.style.backgroundColor = colorMap[colorName];
+            } else {
+                el.style.backgroundColor = '#ccc';
+            }
         });
     });
 </script>

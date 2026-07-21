@@ -120,6 +120,10 @@ public class Product {
         return variants;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public void setCategory(Category category) {
         this.category = category;
     }

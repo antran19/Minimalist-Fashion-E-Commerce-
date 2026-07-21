@@ -67,6 +67,10 @@ public class Category {
         return products;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public void setSlug(String slug) {
         this.slug = slug;
     }

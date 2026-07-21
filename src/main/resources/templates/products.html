@@ -92,22 +92,34 @@
 
             <div class="product-grid catalog-grid" th:if="${!#lists.isEmpty(products)}">
                 <article class="product-card reveal-card" th:each="product : ${products}">
-                    <a th:href="@{/products/{slug}(slug=${product.slug})}" class="product-image product-image-real" th:classappend="${product.cropClass}">
-                        <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
-                    </a>
+                    <div class="product-image product-image-real" th:classappend="${product.cropClass}">
+                        <a th:href="@{/products/{slug}(slug=${product.slug})}">
+                            <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+                        </a>
+                        <span class="product-badge" th:if="${product.isNew}">Hàng mới về</span>
+                        <span class="product-badge" th:if="${product.bestSeller}" style="top: 36px; background: #f59e0b;">Bán chạy</span>
+                        <div class="product-actions">
+                            <button class="action-btn" aria-label="Add to cart" title="Thêm vào giỏ">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            </button>
+                            <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Quick view" title="Xem nhanh">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </a>
+                        </div>
+                    </div>
                     <div class="product-meta">
-                        <div class="product-status">
-                            <p th:text="${product.category}">T-shirt</p>
-                            <span th:if="${product.bestSeller}">Best</span>
-                            <span th:if="${product.isNew}">New</span>
-                        </div>
+                        <p>U-MINIMALIST</p>
                         <h3 th:text="${product.name}">Air Cotton Tee</h3>
-                        <div class="product-line">
-                            <span th:text="${product.priceLabel}">$19.90</span>
-                            <span th:text="${product.colorLabel()}">Cream</span>
+                        <div class="product-price-row">
+                            <span class="price-current" th:text="${product.priceLabel}">$19.90</span>
+                            <span class="price-old" th:text="'$' + ${product.price + 10}">$29.90</span>
+                            <span class="price-discount">-25%</span>
                         </div>
-                        <small th:text="${product.sizeLabel()}">S M L XL</small>
-                        <small class="stock-line" th:text="${product.stock + ' in stock'}">48 in stock</small>
+                        <div class="product-swatches">
+                            <span class="swatch-circle" style="background-color: #000;" title="Black"></span>
+                            <span class="swatch-circle" style="background-color: #f5f5dc;" title="Beige"></span>
+                            <span class="swatch-circle" style="background-color: #708090;" title="Slate"></span>
+                        </div>
                     </div>
                 </article>
             </div>
