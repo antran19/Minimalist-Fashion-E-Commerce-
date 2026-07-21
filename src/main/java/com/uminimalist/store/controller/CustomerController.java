@@ -248,18 +248,19 @@ public class CustomerController {
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
+            if ("VNPAY".equalsIgnoreCase(normalizedPaymentMethod)) {
+                var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress);
+                double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
+                String paymentUrl = vnPayService.createPaymentUrl(pendingOrder.orderCode(), usdAmount, request);
+                return "redirect:" + paymentUrl;
+            }
+
             var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod);
             
             // Clear only purchased items from the shopping cart
             java.util.List<String> purchasedSkus = cart.items().stream().map(com.uminimalist.store.model.CartItemView::sku).toList();
             shoppingCartService.removeItems(session, authentication.getName(), purchasedSkus);
             session.removeAttribute("checkoutSkus");
-
-            if ("VNPAY".equals(normalizedPaymentMethod)) {
-                double usdAmount = Double.parseDouble(order.totalLabel().replaceAll("[^0-9.]", ""));
-                String paymentUrl = vnPayService.createPaymentUrl(order.orderCode(), usdAmount, request);
-                return "redirect:" + paymentUrl;
-            }
 
             return "redirect:/checkout/success?orderCode=" + order.orderCode();
         } catch (IllegalArgumentException exception) {
@@ -286,6 +287,7 @@ public class CustomerController {
     @GetMapping("/checkout/payment-return")
     public String paymentReturn(HttpServletRequest request,
                                 Authentication authentication,
+                                HttpSession session,
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
         Map<String, String> fields = new HashMap<>();
@@ -306,40 +308,24 @@ public class CustomerController {
         if (username == null && request.getUserPrincipal() != null) {
             username = request.getUserPrincipal().getName();
         }
+        String customerEmail = username;
 
         boolean verified = vnPayService.verifyCallback(fields);
         if (verified && "00".equals(responseCode)) {
             try {
-                var orderOpt = (username != null)
-                        ? orderService.findOrderForCustomer(username, orderCode)
-                        : java.util.Optional.<com.uminimalist.store.model.OrderSummaryView>empty();
-
-                if (orderOpt.isEmpty()) {
-                    orderOpt = orderService.findRecentOrders().stream()
-                            .filter(o -> o.orderCode().equals(orderCode))
-                            .findFirst();
-                }
-
-                if (orderOpt.isPresent()) {
-                    var order = orderOpt.get();
-                    orderService.updatePaymentStatus(order.id(), "PAID", "PROCESSING");
-                    var updatedOrder = orderService.findOrderForCustomer(order.customerEmail(), orderCode).orElse(order);
-                    model.addAttribute("order", updatedOrder);
-                    model.addAttribute("cartCount", 0);
-                    return "checkout-success";
-                } else {
-                    redirectAttributes.addFlashAttribute("accountError", "Order " + orderCode + " not found.");
-                }
-            } catch (Exception e) {
-                redirectAttributes.addFlashAttribute("accountError", "Error updating order status: " + e.getMessage());
+                var order = orderService.confirmPaidOrder(customerEmail != null ? customerEmail : username, orderCode);
+                shoppingCartService.clearCart(session, customerEmail != null ? customerEmail : username);
+                model.addAttribute("order", order);
+                model.addAttribute("cartCount", 0);
+                return "checkout-success";
+            } catch (Exception exception) {
+                redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             }
         } else {
             try {
-                if (username != null) {
-                    var orderOpt = orderService.findOrderForCustomer(username, orderCode);
-                    orderOpt.ifPresent(o -> orderService.updatePaymentStatus(o.id(), "FAILED", "PENDING_PAYMENT"));
-                }
-            } catch (Exception ignored) {}
+                orderService.markPaymentFailed(customerEmail != null ? customerEmail : username, orderCode);
+            } catch (Exception ignored) {
+            }
             redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
         }
 
