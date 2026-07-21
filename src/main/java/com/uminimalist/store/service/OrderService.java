@@ -84,6 +84,8 @@ public class OrderService {
                         shipping_district NVARCHAR(120) NULL,
                         shipping_city NVARCHAR(120) NULL,
                         status NVARCHAR(30) NOT NULL DEFAULT 'PLACED',
+                        payment_method NVARCHAR(30) NOT NULL DEFAULT 'COD',
+                        payment_status NVARCHAR(30) NOT NULL DEFAULT 'UNPAID',
                         item_count INT NOT NULL,
                         total_amount DECIMAL(10, 2) NOT NULL,
                         created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
@@ -95,33 +97,38 @@ public class OrderService {
         addOrderColumnIfMissing("shipping_address_line", "NVARCHAR(255) NULL");
         addOrderColumnIfMissing("shipping_district", "NVARCHAR(120) NULL");
         addOrderColumnIfMissing("shipping_city", "NVARCHAR(120) NULL");
+        addOrderColumnIfMissing("payment_method", "NVARCHAR(30) NOT NULL DEFAULT 'COD'");
+        addOrderColumnIfMissing("payment_status", "NVARCHAR(30) NOT NULL DEFAULT 'UNPAID'");
     }
 
     @Transactional
     public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return createOrder(customerEmail, cart, shippingAddress, "PLACED", true);
+        return placeOrder(customerEmail, cart, shippingAddress, "COD");
     }
 
-    /**
-     * Creates an order that has not been paid for yet. Stock is left untouched until the
-     * payment gateway confirms, so an abandoned or failed payment cannot hold inventory.
-     */
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return createOrder(customerEmail, cart, shippingAddress, PENDING_PAYMENT_STATUS, false);
+        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY");
     }
 
-    private OrderSummaryView createOrder(String customerEmail,
-                                         CartView cart,
-                                         CustomerAddressView shippingAddress,
-                                         String status,
-                                         boolean deductStock) {
+    @Transactional
+    public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String paymentMethod) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Your cart is empty.");
         }
         if (shippingAddress == null || !shippingAddress.isComplete()) {
             throw new IllegalArgumentException("Please add a complete shipping address before placing the order.");
         }
+
+        String normalizedMethod = (paymentMethod == null || paymentMethod.isBlank()) ? "COD" : paymentMethod.trim().toUpperCase(Locale.ROOT);
+        if (!"COD".equals(normalizedMethod) && !"VNPAY".equals(normalizedMethod)) {
+            throw new IllegalArgumentException("Invalid payment method. Please select Cash on Delivery (COD) or VNPay Demo.");
+        }
+
+        boolean isVnPay = "VNPAY".equals(normalizedMethod);
+        String initialPaymentStatus = isVnPay ? "PENDING" : "UNPAID";
+        String initialOrderStatus = isVnPay ? PENDING_PAYMENT_STATUS : "PLACED";
+        boolean deductStock = !isVnPay;
 
         User user = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
@@ -157,7 +164,7 @@ public class OrderService {
         }
 
         String orderCode = nextOrderCode(user.getId());
-        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total, status);
+        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total, normalizedMethod, initialPaymentStatus, initialOrderStatus);
         insertOrderItems(orderId, lines);
 
         return findOrder(orderId)
@@ -169,7 +176,7 @@ public class OrderService {
         return loadOrders("""
                 SELECT TOP 12 id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                    created_at, status, item_count, total_amount
+                    created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE customer_email = ?
                 ORDER BY created_at DESC, id DESC
@@ -200,7 +207,7 @@ public class OrderService {
                 ? """
                   SELECT id, order_code, customer_name, customer_email,
                       shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                      created_at, status, item_count, total_amount
+                      created_at, status, payment_method, payment_status, item_count, total_amount
                   FROM dbo.orders
                   WHERE customer_email = ? AND status = ?
                   ORDER BY created_at DESC, id DESC
@@ -209,7 +216,7 @@ public class OrderService {
                 : """
                   SELECT id, order_code, customer_name, customer_email,
                       shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                      created_at, status, item_count, total_amount
+                      created_at, status, payment_method, payment_status, item_count, total_amount
                   FROM dbo.orders
                   WHERE customer_email = ?
                   ORDER BY created_at DESC, id DESC
@@ -230,7 +237,7 @@ public class OrderService {
         return loadOrders("""
                 SELECT id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                    created_at, status, item_count, total_amount
+                    created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE customer_email = ? AND order_code = ?
                 """, customerEmail, orderCode).stream().findFirst();
@@ -244,7 +251,7 @@ public class OrderService {
                         FROM dbo.orders
                         WHERE customer_email = ? AND order_code = ?
                         """,
-                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status")),
+                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
                 customerEmail,
                 orderCode);
 
@@ -253,8 +260,12 @@ public class OrderService {
         }
 
         OrderStatusRow order = rows.get(0);
-        if (!"PLACED".equalsIgnoreCase(order.status())) {
-            throw new IllegalArgumentException("Only placed orders can be cancelled.");
+        if ("PAID".equalsIgnoreCase(order.paymentStatus())) {
+            throw new IllegalArgumentException("This order has been paid. Please contact support for a refund before cancelling.");
+        }
+
+        if (!"PLACED".equalsIgnoreCase(order.status()) && !"PENDING_PAYMENT".equalsIgnoreCase(order.status())) {
+            throw new IllegalArgumentException("Only placed or pending payment orders can be cancelled.");
         }
 
         List<OrderStockRow> stockRows = jdbcTemplate.query("""
@@ -333,11 +344,11 @@ public class OrderService {
 
     private OrderStatusRow requireOrder(String customerEmail, String orderCode) {
         return jdbcTemplate.query("""
-                        SELECT id, status
+                        SELECT id, status, payment_status
                         FROM dbo.orders
                         WHERE customer_email = ? AND order_code = ?
                         """,
-                        (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status")),
+                        (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
                         customerEmail,
                         orderCode)
                 .stream()
@@ -350,7 +361,7 @@ public class OrderService {
         return loadOrders("""
                 SELECT TOP 20 id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                    created_at, status, item_count, total_amount
+                    created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 ORDER BY created_at DESC, id DESC
                 """);
@@ -364,11 +375,11 @@ public class OrderService {
         return loadOrders("""
                 SELECT TOP 50 id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                    created_at, status, item_count, total_amount
+                    created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE status = ?
                 ORDER BY created_at DESC, id DESC
-                """, status.toUpperCase());
+                """, status.toUpperCase(Locale.ROOT));
     }
 
     public PaginatedOrders findPaginatedOrders(int page, int size, String query, String status) {
@@ -381,12 +392,12 @@ public class OrderService {
 
         if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
             whereSql.append(" AND status = ? ");
-            params.add(status.toUpperCase());
+            params.add(status.toUpperCase(Locale.ROOT));
         }
 
         if (query != null && !query.isBlank()) {
             whereSql.append(" AND (LOWER(order_code) LIKE ? OR LOWER(customer_name) LIKE ? OR LOWER(customer_email) LIKE ?) ");
-            String qParam = "%" + query.trim().toLowerCase() + "%";
+            String qParam = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
             params.add(qParam);
             params.add(qParam);
             params.add(qParam);
@@ -400,7 +411,7 @@ public class OrderService {
 
         String selectSql = "SELECT id, order_code, customer_name, customer_email, " +
                 "shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, " +
-                "created_at, status, item_count, total_amount " +
+                "created_at, status, payment_method, payment_status, item_count, total_amount " +
                 "FROM dbo.orders " + whereSql +
                 "ORDER BY created_at DESC, id DESC " +
                 "OFFSET " + offset + " ROWS FETCH NEXT " + size + " ROWS ONLY";
@@ -412,15 +423,140 @@ public class OrderService {
     @Transactional
     public void updateOrderStatus(Long orderId, String newStatus) {
         ensureOrderTables();
-        List<String> validStatuses = List.of(PENDING_PAYMENT_STATUS, "PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
-        if (!validStatuses.contains(newStatus.toUpperCase())) {
+        String normalizedStatus = newStatus.toUpperCase(Locale.ROOT);
+        List<String> validStatuses = List.of("PLACED", PENDING_PAYMENT_STATUS, "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
+        if (!validStatuses.contains(normalizedStatus)) {
             throw new IllegalArgumentException("Invalid order status: " + newStatus);
         }
+
+        // Load current order state
+        List<OrderStatusRow> rows = jdbcTemplate.query("""
+                SELECT id, status, payment_status
+                FROM dbo.orders
+                WHERE id = ?
+                """,
+                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
+                orderId);
+
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("Order not found.");
+        }
+
+        String currentStatus = rows.get(0).status();
+        String currentPaymentStatus = rows.get(0).paymentStatus();
+
+        if (normalizedStatus.equals(currentStatus)) {
+            return; // No change
+        }
+
+        // ---- State Machine Validation ----
+        boolean isPaid = "PAID".equalsIgnoreCase(currentPaymentStatus);
+
+        // Cannot change a terminal order
+        if ("DELIVERED".equalsIgnoreCase(currentStatus)) {
+            throw new IllegalArgumentException("Cannot change status of a delivered order.");
+        }
+        if ("CANCELLED".equalsIgnoreCase(currentStatus)) {
+            throw new IllegalArgumentException("Cannot change status of a cancelled order.");
+        }
+
+        // Cannot go backwards
+        if ("CANCELLED".equals(normalizedStatus)) {
+            // Cancel is allowed from most states, but with payment checks
+            validateCancellationAllowed(currentStatus, currentPaymentStatus);
+        } else {
+            // Forward transitions must follow the pipeline
+            validateForwardTransition(currentStatus, normalizedStatus, currentPaymentStatus);
+        }
+
+        // ---- Execute Status Change ----
+        if ("CANCELLED".equals(normalizedStatus)) {
+            // Return stock to inventory
+            List<OrderStockRow> stockRows = jdbcTemplate.query("""
+                    SELECT product_variant_id, quantity
+                    FROM dbo.order_items
+                    WHERE order_id = ?
+                    """,
+                    (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
+                    orderId);
+
+            for (OrderStockRow stockRow : stockRows) {
+                jdbcTemplate.update("""
+                        UPDATE dbo.product_variants
+                        SET stock_quantity = stock_quantity + ?
+                        WHERE id = ?
+                        """, stockRow.quantity(), stockRow.productVariantId());
+            }
+        }
+
+        // Auto-mark COD payment as PAID when delivered
+        String paymentStatusUpdate = null;
+        if ("DELIVERED".equals(normalizedStatus) && !isPaid) {
+            paymentStatusUpdate = "PAID";
+        }
+
+        if (paymentStatusUpdate != null) {
+            jdbcTemplate.update("""
+                    UPDATE dbo.orders
+                    SET status = ?, payment_status = ?
+                    WHERE id = ?
+                    """, normalizedStatus, paymentStatusUpdate, orderId);
+        } else {
+            jdbcTemplate.update("""
+                    UPDATE dbo.orders
+                    SET status = ?
+                    WHERE id = ?
+                    """, normalizedStatus, orderId);
+        }
+    }
+
+    private void validateCancellationAllowed(String currentStatus, String paymentStatus) {
+        boolean isPaid = "PAID".equalsIgnoreCase(paymentStatus);
+
+        if ("SHIPPED".equalsIgnoreCase(currentStatus) || "DELIVERED".equalsIgnoreCase(currentStatus)) {
+            throw new IllegalArgumentException("Cannot cancel an order that has already been shipped or delivered.");
+        }
+
+        if (isPaid) {
+            throw new IllegalArgumentException(
+                "This order has been PAID. Please process a refund before cancelling. " +
+                "The customer's payment must be returned.");
+        }
+    }
+
+    private void validateForwardTransition(String current, String next, String paymentStatus) {
+        boolean isPending = "PENDING".equalsIgnoreCase(paymentStatus);
+
+        Map<String, List<String>> allowedTransitions = Map.of(
+            "PLACED",           List.of("PROCESSING"),
+            "PENDING_PAYMENT",  List.of("PROCESSING"),
+            "PROCESSING",       List.of("SHIPPED"),
+            "SHIPPED",          List.of("DELIVERED")
+        );
+
+        List<String> allowed = allowedTransitions.getOrDefault(current, List.of());
+        if (!allowed.contains(next)) {
+            throw new IllegalArgumentException(
+                "Invalid status transition: '" + current + "' → '" + next + "'. " +
+                "Allowed next status(es): " + String.join(", ", allowed));
+        }
+
+        // If payment is still PENDING (VNPay not confirmed), block moving past PENDING_PAYMENT
+        if (isPending && "PENDING_PAYMENT".equalsIgnoreCase(current) && "PROCESSING".equalsIgnoreCase(next)) {
+            throw new IllegalArgumentException(
+                "This order uses VNPay but payment has not been confirmed yet. " +
+                "Wait for the payment callback or verify payment status first.");
+        }
+    }
+
+    @Transactional
+    public void updatePaymentStatus(Long orderId, String paymentStatus, String orderStatus) {
+        ensureOrderTables();
         jdbcTemplate.update("""
                 UPDATE dbo.orders
-                SET status = ?
+                SET payment_status = ?, status = ?
                 WHERE id = ?
-                """, newStatus.toUpperCase(), orderId);
+                """, paymentStatus.toUpperCase(Locale.ROOT), orderStatus.toUpperCase(Locale.ROOT), orderId);
     }
 
     public int countOrders() {
@@ -435,15 +571,15 @@ public class OrderService {
         return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
     }
 
-    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total, String status) {
+    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total, String paymentMethod, String paymentStatus, String orderStatus) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement("""
                     INSERT INTO dbo.orders
                         (order_code, user_id, customer_name, customer_email,
                          shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                         status, item_count, total_amount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         status, payment_method, payment_status, item_count, total_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, orderCode);
             ps.setLong(2, user.getId());
@@ -454,9 +590,11 @@ public class OrderService {
             ps.setString(7, shippingAddress.addressLine());
             ps.setString(8, shippingAddress.district());
             ps.setString(9, shippingAddress.city());
-            ps.setString(10, status);
-            ps.setInt(11, itemCount);
-            ps.setBigDecimal(12, total);
+            ps.setString(10, orderStatus);
+            ps.setString(11, paymentMethod);
+            ps.setString(12, paymentStatus);
+            ps.setInt(13, itemCount);
+            ps.setBigDecimal(14, total);
             return ps;
         }, keyHolder);
 
@@ -491,7 +629,7 @@ public class OrderService {
         List<OrderSummaryView> orders = loadOrders("""
                 SELECT id, order_code, customer_name, customer_email,
                     shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
-                    created_at, status, item_count, total_amount
+                    created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE id = ?
                 """, orderId);
@@ -511,6 +649,8 @@ public class OrderService {
                 rs.getString("shipping_city"),
                 rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getString("status"),
+                rs.getString("payment_method") == null ? "COD" : rs.getString("payment_method"),
+                rs.getString("payment_status") == null ? "UNPAID" : rs.getString("payment_status"),
                 rs.getInt("item_count"),
                 rs.getBigDecimal("total_amount")
         ), args);
@@ -529,6 +669,8 @@ public class OrderService {
                         row.shippingCity(),
                         row.createdAt(),
                         row.status(),
+                        row.paymentMethod(),
+                        row.paymentStatus(),
                         row.itemCount(),
                         currencyFormat.format(row.totalAmount()),
                         itemsByOrder.getOrDefault(row.id(), List.of())
@@ -584,7 +726,7 @@ public class OrderService {
     private record OrderLine(CartItemView item, ProductVariant variant, BigDecimal unitPrice, BigDecimal lineTotal) {
     }
 
-    private record OrderStatusRow(Long id, String status) {
+    private record OrderStatusRow(Long id, String status, String paymentStatus) {
     }
 
     private record OrderStockRow(Long productVariantId, int quantity) {
@@ -601,6 +743,8 @@ public class OrderService {
                             String shippingCity,
                             LocalDateTime createdAt,
                             String status,
+                            String paymentMethod,
+                            String paymentStatus,
                             int itemCount,
                             BigDecimal totalAmount) {
     }

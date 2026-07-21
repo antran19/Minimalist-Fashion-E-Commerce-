@@ -3,6 +3,8 @@ package com.uminimalist.store.controller;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.UserRegistrationDto;
 import com.uminimalist.store.repository.UserRepository;
+import com.uminimalist.store.service.ShoppingCartService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -18,10 +20,14 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ShoppingCartService shoppingCartService;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository userRepository,
+                          PasswordEncoder passwordEncoder,
+                          ShoppingCartService shoppingCartService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.shoppingCartService = shoppingCartService;
     }
 
     @GetMapping("/login")
@@ -50,6 +56,7 @@ public class AuthController {
     @PostMapping("/register")
     public String registerSubmit(@Valid @ModelAttribute("user") UserRegistrationDto registrationDto,
                                  BindingResult bindingResult,
+                                 HttpSession session,
                                  Model model) {
         normalizeRegistration(registrationDto);
 
@@ -76,6 +83,7 @@ public class AuthController {
         );
 
         userRepository.save(user);
+        shoppingCartService.mergeSessionCartToCustomerAfterRegister(session, registrationDto.getEmail());
         return "redirect:/login?registered=true";
     }
 

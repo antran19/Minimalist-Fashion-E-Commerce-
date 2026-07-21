@@ -197,9 +197,12 @@ public class CustomerController {
                                  HttpSession session,
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
             return "redirect:/cart";
         }
 
@@ -227,49 +230,66 @@ public class CustomerController {
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
             return "redirect:/cart";
+        }
+
+        String normalizedPaymentMethod = paymentMethod == null ? "COD" : paymentMethod.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"COD".equals(normalizedPaymentMethod) && !"VNPAY".equals(normalizedPaymentMethod)) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid payment method selected. Please choose Cash on Delivery (COD) or VNPay Demo.");
+            return "redirect:/checkout";
         }
 
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
-
-            if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
-                // Reserve nothing yet: the order stays PENDING_PAYMENT and the cart is kept
-                // so an abandoned payment leaves neither a phantom order nor held stock.
+            if ("VNPAY".equalsIgnoreCase(normalizedPaymentMethod)) {
                 var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress);
                 double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
                 String paymentUrl = vnPayService.createPaymentUrl(pendingOrder.orderCode(), usdAmount, request);
                 return "redirect:" + paymentUrl;
             }
 
-            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
-            shoppingCartService.clearCart(session, authentication.getName());
-            redirectAttributes.addFlashAttribute("accountMessage",
-                    "Order " + order.orderCode() + " placed successfully.");
+            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod);
+            
+            // Clear only purchased items from the shopping cart
+            java.util.List<String> purchasedSkus = cart.items().stream().map(com.uminimalist.store.model.CartItemView::sku).toList();
+            shoppingCartService.removeItems(session, authentication.getName(), purchasedSkus);
+            session.removeAttribute("checkoutSkus");
+
+            return "redirect:/checkout/success?orderCode=" + order.orderCode();
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             return "redirect:/checkout";
         }
-        return "redirect:/account";
+    }
+
+    @GetMapping("/checkout/success")
+    public String checkoutSuccess(@RequestParam String orderCode,
+                                 Authentication authentication,
+                                 Model model,
+                                 RedirectAttributes redirectAttributes) {
+        var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
+        if (orderOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("accountError", "Order not found.");
+            return "redirect:/account";
+        }
+        model.addAttribute("order", orderOpt.get());
+        model.addAttribute("cartCount", 0);
+        return "checkout-success";
     }
 
     @GetMapping("/checkout/payment-return")
     public String paymentReturn(HttpServletRequest request,
+                                Authentication authentication,
                                 HttpSession session,
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
-        java.security.Principal principal = request.getUserPrincipal();
-        if (principal == null) {
-            // The session expired while the shopper was on the gateway. The order is still
-            // PENDING_PAYMENT and holds no stock, so it is safe to just ask them to sign in.
-            return "redirect:/login";
-        }
-        String customerEmail = principal.getName();
-
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
             String name = names.nextElement();
@@ -279,27 +299,37 @@ public class CustomerController {
         String orderCode = fields.get("vnp_TxnRef");
         String responseCode = fields.get("vnp_ResponseCode");
 
+        if (orderCode == null || orderCode.isBlank()) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid VNPay response: missing order reference.");
+            return "redirect:/account#orders";
+        }
+
+        String username = authentication != null ? authentication.getName() : null;
+        if (username == null && request.getUserPrincipal() != null) {
+            username = request.getUserPrincipal().getName();
+        }
+        String customerEmail = username;
+
         boolean verified = vnPayService.verifyCallback(fields);
         if (verified && "00".equals(responseCode)) {
             try {
-                var order = orderService.confirmPaidOrder(customerEmail, orderCode);
-                shoppingCartService.clearCart(session, customerEmail);
+                var order = orderService.confirmPaidOrder(customerEmail != null ? customerEmail : username, orderCode);
+                shoppingCartService.clearCart(session, customerEmail != null ? customerEmail : username);
                 model.addAttribute("order", order);
                 model.addAttribute("cartCount", 0);
                 return "checkout-success";
-            } catch (IllegalArgumentException exception) {
+            } catch (Exception exception) {
                 redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             }
         } else {
             try {
-                orderService.markPaymentFailed(customerEmail, orderCode);
-            } catch (IllegalArgumentException ignored) {
-                // Nothing to cancel - fall through to the generic failure message.
+                orderService.markPaymentFailed(customerEmail != null ? customerEmail : username, orderCode);
+            } catch (Exception ignored) {
             }
             redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
         }
 
-        return "redirect:/account";
+        return "redirect:/account#orders";
     }
 
     @PostMapping("/products/{slug}/reviews")

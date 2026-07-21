@@ -14,9 +14,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CartController {
 
     private final ShoppingCartService shoppingCartService;
+    private final com.uminimalist.store.repository.ProductVariantRepository productVariantRepository;
 
-    public CartController(ShoppingCartService shoppingCartService) {
+    public CartController(ShoppingCartService shoppingCartService,
+                          com.uminimalist.store.repository.ProductVariantRepository productVariantRepository) {
         this.shoppingCartService = shoppingCartService;
+        this.productVariantRepository = productVariantRepository;
     }
 
     @GetMapping("/cart")
@@ -30,17 +33,36 @@ public class CartController {
                             @RequestParam String color,
                             @RequestParam String size,
                             @RequestParam(defaultValue = "1") int quantity,
+                            @RequestParam(required = false, defaultValue = "add") String action,
                             HttpSession session,
                             Authentication authentication,
                             RedirectAttributes redirectAttributes) {
         try {
             shoppingCartService.addItem(session, customerEmail(authentication), productSlug, color, size, quantity);
-            redirectAttributes.addFlashAttribute("cartMessage", "Added to cart.");
-            return "redirect:/cart";
+            if ("buyNow".equalsIgnoreCase(action)) {
+                var variantOpt = productVariantRepository
+                        .findFirstByProductSlugAndColorIgnoreCaseAndSizeIgnoreCaseAndActiveTrueAndProductActiveTrue(productSlug, color, size);
+                variantOpt.ifPresent(v -> session.setAttribute("checkoutSkus", java.util.List.of(v.getSku())));
+                return "redirect:/checkout";
+            }
+            redirectAttributes.addFlashAttribute("cartMessage", "Item added to cart successfully.");
+            return "redirect:/products/" + productSlug;
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
             return "redirect:/products/" + productSlug;
         }
+    }
+
+    @PostMapping("/cart/checkout")
+    public String processCartSelection(@RequestParam(required = false) java.util.List<String> selectedSkus,
+                                       HttpSession session,
+                                       RedirectAttributes redirectAttributes) {
+        if (selectedSkus == null || selectedSkus.isEmpty()) {
+            redirectAttributes.addFlashAttribute("cartError", "Please select at least one item to checkout.");
+            return "redirect:/cart";
+        }
+        session.setAttribute("checkoutSkus", selectedSkus);
+        return "redirect:/checkout";
     }
 
     @PostMapping("/cart/update")

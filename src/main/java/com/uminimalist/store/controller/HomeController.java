@@ -64,6 +64,7 @@ public class HomeController {
         var product = landingPageService.getProduct(slug)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         model.addAttribute("product", product);
+        model.addAttribute("variantStocks", landingPageService.getVariantStockMap(slug));
         boolean authenticated = authentication != null
                 && authentication.isAuthenticated()
                 && authentication.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));

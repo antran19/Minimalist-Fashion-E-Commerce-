@@ -82,24 +82,28 @@ public class VNPayService {
     }
 
     public boolean verifyCallback(Map<String, String> fields) {
+        if (fields == null) {
+            return false;
+        }
         String vnpSecureHash = fields.get("vnp_SecureHash");
-        if (vnpSecureHash == null) {
+        if (vnpSecureHash == null || vnpSecureHash.isBlank()) {
             return false;
         }
 
-        // Remove hash params
-        fields.remove("vnp_SecureHashType");
-        fields.remove("vnp_SecureHash");
+        // Copy map so original parameters are preserved
+        Map<String, String> hashFields = new HashMap<>(fields);
+        hashFields.remove("vnp_SecureHashType");
+        hashFields.remove("vnp_SecureHash");
 
         // Sort
-        List<String> fieldNames = new ArrayList<>(fields.keySet());
+        List<String> fieldNames = new ArrayList<>(hashFields.keySet());
         Collections.sort(fieldNames);
 
         StringBuilder hashData = new StringBuilder();
         Iterator<String> itr = fieldNames.iterator();
         while (itr.hasNext()) {
             String fieldName = itr.next();
-            String fieldValue = fields.get(fieldName);
+            String fieldValue = hashFields.get(fieldName);
             if ((fieldValue != null) && (fieldValue.length() > 0)) {
                 hashData.append(fieldName);
                 hashData.append('=');
