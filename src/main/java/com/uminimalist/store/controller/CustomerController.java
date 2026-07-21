@@ -197,9 +197,12 @@ public class CustomerController {
                                  HttpSession session,
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
             return "redirect:/cart";
         }
 
@@ -227,35 +230,64 @@ public class CustomerController {
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
             return "redirect:/cart";
+        }
+
+        String normalizedPaymentMethod = paymentMethod == null ? "COD" : paymentMethod.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"COD".equals(normalizedPaymentMethod) && !"VNPAY".equals(normalizedPaymentMethod)) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid payment method selected. Please choose Cash on Delivery (COD) or VNPay Demo.");
+            return "redirect:/checkout";
         }
 
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
-            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
-            shoppingCartService.clearCart(session, authentication.getName());
+            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod);
+            
+            // Clear only purchased items from the shopping cart
+            java.util.List<String> purchasedSkus = cart.items().stream().map(com.uminimalist.store.model.CartItemView::sku).toList();
+            shoppingCartService.removeItems(session, authentication.getName(), purchasedSkus);
+            session.removeAttribute("checkoutSkus");
 
-            if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
+            if ("VNPAY".equals(normalizedPaymentMethod)) {
                 double usdAmount = Double.parseDouble(order.totalLabel().replaceAll("[^0-9.]", ""));
                 String paymentUrl = vnPayService.createPaymentUrl(order.orderCode(), usdAmount, request);
                 return "redirect:" + paymentUrl;
             }
 
-            redirectAttributes.addFlashAttribute("accountMessage",
-                    "Order " + order.orderCode() + " placed successfully.");
+            return "redirect:/checkout/success?orderCode=" + order.orderCode();
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             return "redirect:/checkout";
         }
-        return "redirect:/account";
+    }
+
+    @GetMapping("/checkout/success")
+    public String checkoutSuccess(@RequestParam String orderCode,
+                                 Authentication authentication,
+                                 Model model,
+                                 RedirectAttributes redirectAttributes) {
+        var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
+        if (orderOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("accountError", "Order not found.");
+            return "redirect:/account";
+        }
+        model.addAttribute("order", orderOpt.get());
+        model.addAttribute("cartCount", 0);
+        return "checkout-success";
     }
 
     @GetMapping("/checkout/payment-return")
-    public String paymentReturn(HttpServletRequest request, Model model, RedirectAttributes redirectAttributes) {
+    public String paymentReturn(HttpServletRequest request,
+                                Authentication authentication,
+                                Model model,
+                                RedirectAttributes redirectAttributes) {
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
             String name = names.nextElement();
@@ -265,23 +297,53 @@ public class CustomerController {
         String orderCode = fields.get("vnp_TxnRef");
         String responseCode = fields.get("vnp_ResponseCode");
 
+        if (orderCode == null || orderCode.isBlank()) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid VNPay response: missing order reference.");
+            return "redirect:/account#orders";
+        }
+
+        String username = authentication != null ? authentication.getName() : null;
+        if (username == null && request.getUserPrincipal() != null) {
+            username = request.getUserPrincipal().getName();
+        }
+
         boolean verified = vnPayService.verifyCallback(fields);
         if (verified && "00".equals(responseCode)) {
             try {
-                var order = orderService.findOrderForCustomer(request.getUserPrincipal().getName(), orderCode)
-                        .orElseThrow(() -> new IllegalArgumentException("Order not found."));
-                orderService.updateOrderStatus(order.id(), "PROCESSING");
-                model.addAttribute("order", order);
-                model.addAttribute("cartCount", 0); // Cart is cleared upon order placement
-                return "checkout-success";
+                var orderOpt = (username != null)
+                        ? orderService.findOrderForCustomer(username, orderCode)
+                        : java.util.Optional.<com.uminimalist.store.model.OrderSummaryView>empty();
+
+                if (orderOpt.isEmpty()) {
+                    orderOpt = orderService.findRecentOrders().stream()
+                            .filter(o -> o.orderCode().equals(orderCode))
+                            .findFirst();
+                }
+
+                if (orderOpt.isPresent()) {
+                    var order = orderOpt.get();
+                    orderService.updatePaymentStatus(order.id(), "PAID", "PROCESSING");
+                    var updatedOrder = orderService.findOrderForCustomer(order.customerEmail(), orderCode).orElse(order);
+                    model.addAttribute("order", updatedOrder);
+                    model.addAttribute("cartCount", 0);
+                    return "checkout-success";
+                } else {
+                    redirectAttributes.addFlashAttribute("accountError", "Order " + orderCode + " not found.");
+                }
             } catch (Exception e) {
                 redirectAttributes.addFlashAttribute("accountError", "Error updating order status: " + e.getMessage());
             }
         } else {
+            try {
+                if (username != null) {
+                    var orderOpt = orderService.findOrderForCustomer(username, orderCode);
+                    orderOpt.ifPresent(o -> orderService.updatePaymentStatus(o.id(), "FAILED", "PENDING_PAYMENT"));
+                }
+            } catch (Exception ignored) {}
             redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
         }
 
-        return "redirect:/account";
+        return "redirect:/account#orders";
     }
 
     @PostMapping("/products/{slug}/reviews")

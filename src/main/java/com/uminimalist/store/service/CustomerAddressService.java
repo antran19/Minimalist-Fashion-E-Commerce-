@@ -123,12 +123,14 @@ public class CustomerAddressService {
                 compact(city));
     }
 
+    private static final java.util.regex.Pattern PHONE_PATTERN = java.util.regex.Pattern.compile("^[0-9+\\s\\-()]{8,20}$");
+
     private void validate(CustomerAddressView address) {
         if (address.recipientName().length() < 2 || address.recipientName().length() > 120) {
             throw new IllegalArgumentException("Recipient name must be between 2 and 120 characters.");
         }
-        if (address.phone().length() < 8 || address.phone().length() > 20) {
-            throw new IllegalArgumentException("Shipping phone must be between 8 and 20 characters.");
+        if (address.phone().length() < 8 || address.phone().length() > 20 || !PHONE_PATTERN.matcher(address.phone()).matches()) {
+            throw new IllegalArgumentException("Shipping phone number is invalid. Please enter a valid phone number (8-20 characters/digits).");
         }
         if (address.addressLine().length() < 5 || address.addressLine().length() > 255) {
             throw new IllegalArgumentException("Address line must be between 5 and 255 characters.");

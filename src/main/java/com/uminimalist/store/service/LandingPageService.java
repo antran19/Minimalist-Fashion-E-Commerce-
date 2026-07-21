@@ -89,6 +89,18 @@ public class LandingPageService {
         return productRepository.findBySlugAndActiveTrue(slug).map(this::toProductView);
     }
 
+    public java.util.Map<String, Integer> getVariantStockMap(String slug) {
+        return productRepository.findBySlugAndActiveTrue(slug)
+                .map(product -> product.getVariants().stream()
+                        .filter(ProductVariant::isActive)
+                        .collect(java.util.stream.Collectors.toMap(
+                                v -> (v.getColor() + "_" + v.getSize()).toUpperCase(Locale.ROOT),
+                                ProductVariant::getStockQuantity,
+                                (existing, replacement) -> existing
+                        ))
+                ).orElse(java.util.Collections.emptyMap());
+    }
+
     public List<String> getCollections() {
         return categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc()
                 .stream()

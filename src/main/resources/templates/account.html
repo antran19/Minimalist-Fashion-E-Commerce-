@@ -10,7 +10,7 @@
     <section class="cart-heading" aria-labelledby="account-title">
         <div>
             <h1 id="account-title">Customer account</h1>
-            <p>Demo customer workspace for profile, cart, and order status.</p>
+            <p>Manage your profile, shipping details, and order history.</p>
         </div>
         <a class="btn btn-outline-dark retail-btn outline" th:href="@{/products}">Continue shopping</a>
     </section>
@@ -45,11 +45,11 @@
             <!-- Profile Edit Mode -->
             <div id="profile-edit" class="d-none">
                 <h2 style="margin-bottom: 16px;">Edit Profile</h2>
-                <form class="profile-form" th:action="@{/account/profile}" method="post">
+                <form class="profile-form auto-change-form" th:action="@{/account/profile}" method="post">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <label>
                         <span>Full name</span>
-                        <input name="fullName" type="text" th:value="${account.fullName}" minlength="2" maxlength="120" required>
+                        <input name="fullName" type="text" th:value="${account.fullName}" th:data-initial="${account.fullName}" minlength="2" maxlength="120" required class="track-change-input">
                     </label>
                     <label>
                         <span>Email</span>
@@ -57,11 +57,11 @@
                     </label>
                     <label>
                         <span>Phone</span>
-                        <input name="phone" type="tel" th:value="${account.phone}" minlength="8" maxlength="20" required>
+                        <input name="phone" type="tel" th:value="${account.phone}" th:data-initial="${account.phone}" minlength="8" maxlength="20" required class="track-change-input">
                     </label>
                     <div class="profile-form-footer" style="margin-top: 10px;">
                         <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('profile')">Cancel</button>
-                        <button class="btn btn-dark retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit">Save profile</button>
+                        <button class="btn btn-dark retail-btn btn-save-form" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit" disabled title="Modify values to enable save">Save profile</button>
                     </div>
                 </form>
             </div>
@@ -108,35 +108,35 @@
             <!-- Shipping Edit Mode -->
             <div id="shipping-edit" class="d-none">
                 <h2 style="margin-bottom: 16px;">Update Address</h2>
-                <form class="profile-form address-form" th:action="@{/account/address}" method="post">
+                <form class="profile-form address-form auto-change-form" th:action="@{/account/address}" method="post">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <div class="form-grid-two">
                         <label>
                             <span>Recipient</span>
-                            <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" minlength="2" maxlength="120" required>
+                            <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" th:data-initial="${shippingAddress.recipientName}" minlength="2" maxlength="120" required class="track-change-input">
                         </label>
                         <label>
                             <span>Phone</span>
-                            <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" minlength="8" maxlength="20" required>
+                            <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" th:data-initial="${shippingAddress.phone}" minlength="8" maxlength="20" required class="track-change-input">
                         </label>
                     </div>
                     <label>
                         <span>Address line</span>
-                        <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required>
+                        <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" th:data-initial="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required class="track-change-input">
                     </label>
                     <div class="form-grid-two">
                         <label>
                             <span>District</span>
-                            <input name="district" type="text" th:value="${shippingAddress.district}" minlength="2" maxlength="120" required>
+                            <input name="district" type="text" th:value="${shippingAddress.district}" th:data-initial="${shippingAddress.district}" minlength="2" maxlength="120" required class="track-change-input">
                         </label>
                         <label>
                             <span>City</span>
-                            <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
+                            <input name="city" type="text" th:value="${shippingAddress.city}" th:data-initial="${shippingAddress.city}" minlength="2" maxlength="120" required class="track-change-input">
                         </label>
                     </div>
                     <div class="profile-form-footer" style="margin-top: 10px;">
                         <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('shipping')">Cancel</button>
-                        <button class="btn btn-dark retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit">Save address</button>
+                        <button class="btn btn-dark retail-btn btn-save-form" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit" disabled title="Modify values to enable save">Save address</button>
                     </div>
                 </form>
             </div>
@@ -184,9 +184,11 @@
                         <div>
                             <strong th:text="${order.orderCode}">UM-202607030001</strong>
                             <span th:text="${order.placedAtLabel()}">03 Jul 2026, 10:30</span>
+                            <small style="display: block; color: var(--muted); font-weight: 600; font-size: 0.8rem; margin-top: 2px;" th:text="${order.paymentMethodLabel()}">Cash on Delivery (COD)</small>
                         </div>
-                        <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="badge-role badge-customer" th:text="${order.status}">PLACED</span>
+                            <span th:class="${order.paymentStatusBadgeClass()}" th:text="${order.paymentStatusLabel()}" style="padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">Unpaid</span>
                             <strong th:text="${order.totalLabel}">$69.80</strong>
                         </div>
                     </div>
@@ -258,6 +260,31 @@
             editDiv.classList.toggle('d-none');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.auto-change-form').forEach(form => {
+            const inputs = form.querySelectorAll('.track-change-input');
+            const submitBtn = form.querySelector('.btn-save-form');
+
+            function checkFormChanges() {
+                let hasChanges = false;
+                inputs.forEach(input => {
+                    const initialVal = input.dataset.initial !== undefined ? input.dataset.initial : '';
+                    if (input.value.trim() !== initialVal.trim()) {
+                        hasChanges = true;
+                    }
+                });
+                if (submitBtn) {
+                    submitBtn.disabled = !hasChanges;
+                }
+            }
+
+            inputs.forEach(input => {
+                input.addEventListener('input', checkFormChanges);
+                input.addEventListener('change', checkFormChanges);
+            });
+        });
+    });
 </script>
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 </body>

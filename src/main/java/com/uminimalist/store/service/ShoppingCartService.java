@@ -8,6 +8,7 @@ import com.uminimalist.store.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,11 +48,13 @@ public class ShoppingCartService {
                         user_id BIGINT NOT NULL,
                         sku NVARCHAR(80) NOT NULL,
                         quantity INT NOT NULL,
+                        reserved_until DATETIME2 NULL,
                         created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
                         updated_at DATETIME2 NULL
                     );
                 END
                 """);
+        addCartColumnIfMissing("reserved_until", "DATETIME2 NULL");
         jdbcTemplate.execute("""
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'ux_customer_cart_items_user_sku'
                     AND object_id = OBJECT_ID(N'dbo.customer_cart_items'))
@@ -183,6 +186,38 @@ public class ShoppingCartService {
         return new CartView(items, itemCount, currencyFormat.format(subtotal));
     }
 
+    public CartView getCartFiltered(HttpSession session, String customerEmail, List<String> filterSkus) {
+        CartView fullCart = getCart(session, customerEmail);
+        if (filterSkus == null || filterSkus.isEmpty()) {
+            return fullCart;
+        }
+        List<String> upperSkus = filterSkus.stream().map(String::trim).toList();
+        List<CartItemView> filteredItems = fullCart.items().stream()
+                .filter(item -> upperSkus.contains(item.sku()))
+                .toList();
+
+        if (filteredItems.isEmpty()) {
+            return new CartView(List.of(), 0, currencyFormat.format(0));
+        }
+
+        double subtotal = filteredItems.stream()
+                .mapToDouble(item -> item.unitPrice() * item.quantity())
+                .sum();
+        int itemCount = filteredItems.stream()
+                .mapToInt(CartItemView::quantity)
+                .sum();
+
+        return new CartView(filteredItems, itemCount, currencyFormat.format(subtotal));
+    }
+
+    @Transactional(readOnly = false)
+    public void removeItems(HttpSession session, String customerEmail, List<String> skus) {
+        if (skus == null || skus.isEmpty()) return;
+        for (String sku : skus) {
+            removeItem(session, customerEmail, sku);
+        }
+    }
+
     public int getItemCount(HttpSession session) {
         return getItemCount(session, null);
     }
@@ -210,6 +245,30 @@ public class ShoppingCartService {
             jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ?", userId(customerEmail));
         }
         session.removeAttribute(CART_SESSION_KEY);
+    }
+
+    @Transactional(readOnly = false)
+    public void mergeSessionCartToCustomerAfterRegister(HttpSession session, String customerEmail) {
+        if (!hasText(customerEmail)) return;
+        mergeSessionCartToCustomer(session, customerEmail);
+    }
+
+    @Scheduled(fixedRate = 300_000) // Every 5 minutes
+    @Transactional(readOnly = false)
+    public void releaseExpiredReservations() {
+        jdbcTemplate.update("""
+                DELETE FROM dbo.customer_cart_items
+                WHERE reserved_until IS NOT NULL AND reserved_until < SYSUTCDATETIME()
+                """);
+    }
+
+    private void addCartColumnIfMissing(String columnName, String definition) {
+        jdbcTemplate.execute("""
+                IF COL_LENGTH('dbo.customer_cart_items', '%s') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.customer_cart_items ADD %s %s;
+                END
+                """.formatted(columnName, columnName, definition));
     }
 
     private CartItemView toCartItemView(ProductVariant variant, int quantity) {
@@ -280,6 +339,9 @@ public class ShoppingCartService {
             return;
         }
 
+        // Reserve for 15 minutes
+        java.time.LocalDateTime reservedUntil = java.time.LocalDateTime.now().plusMinutes(15);
+
         Integer count = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
                 FROM dbo.customer_cart_items
@@ -288,14 +350,14 @@ public class ShoppingCartService {
         if (count != null && count > 0) {
             jdbcTemplate.update("""
                     UPDATE dbo.customer_cart_items
-                    SET quantity = ?, updated_at = SYSUTCDATETIME()
+                    SET quantity = ?, reserved_until = ?, updated_at = SYSUTCDATETIME()
                     WHERE user_id = ? AND sku = ?
-                    """, nextQuantity, userId, variant.getSku());
+                    """, nextQuantity, reservedUntil, userId, variant.getSku());
         } else {
             jdbcTemplate.update("""
-                    INSERT INTO dbo.customer_cart_items (user_id, sku, quantity)
-                    VALUES (?, ?, ?)
-                    """, userId, variant.getSku(), nextQuantity);
+                    INSERT INTO dbo.customer_cart_items (user_id, sku, quantity, reserved_until)
+                    VALUES (?, ?, ?, ?)
+                    """, userId, variant.getSku(), nextQuantity, reservedUntil);
         }
     }
 
@@ -309,11 +371,14 @@ public class ShoppingCartService {
         productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(List.of(sku))
                 .stream()
                 .findFirst()
-                .ifPresent(variant -> jdbcTemplate.update("""
+                .ifPresent(variant -> {
+                    java.time.LocalDateTime reservedUntil = java.time.LocalDateTime.now().plusMinutes(15);
+                    jdbcTemplate.update("""
                         UPDATE dbo.customer_cart_items
-                        SET quantity = ?, updated_at = SYSUTCDATETIME()
+                        SET quantity = ?, reserved_until = ?, updated_at = SYSUTCDATETIME()
                         WHERE user_id = ? AND sku = ?
-                        """, Math.min(quantity, variant.getStockQuantity()), userId, sku));
+                        """, Math.min(quantity, variant.getStockQuantity()), reservedUntil, userId, sku);
+                });
     }
 
     private Map<String, Integer> readCustomerCart(String customerEmail) {
