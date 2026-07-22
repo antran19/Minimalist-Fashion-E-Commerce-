@@ -18,6 +18,7 @@ public record ProductView(
         int stock,
         boolean isNew,
         boolean bestSeller,
+        java.util.List<ProductImageView> images,
         LocalDateTime createdAt
 ) {
     public ProductView(
@@ -36,7 +37,27 @@ public record ProductView(
             boolean isNew,
             boolean bestSeller
     ) {
-        this(null, slug, name, collection, category, description, price, priceLabel, colors, sizes, imagePath, cropClass, stock, isNew, bestSeller, null);
+        this(null, slug, name, collection, category, description, price, priceLabel, colors, sizes, imagePath, cropClass, stock, isNew, bestSeller, java.util.List.of(), null);
+    }
+
+    public ProductView(
+            String slug,
+            String name,
+            String collection,
+            String category,
+            String description,
+            double price,
+            String priceLabel,
+            java.util.List<String> colors,
+            java.util.List<String> sizes,
+            String imagePath,
+            String cropClass,
+            int stock,
+            boolean isNew,
+            boolean bestSeller,
+            java.util.List<ProductImageView> images
+    ) {
+        this(null, slug, name, collection, category, description, price, priceLabel, colors, sizes, imagePath, cropClass, stock, isNew, bestSeller, images, null);
     }
     public String colorLabel() {
         return String.join(", ", colors);

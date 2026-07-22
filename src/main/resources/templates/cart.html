@@ -60,7 +60,7 @@
                     <a class="cart-stitch-image product-image product-image-real"
                        th:href="@{/products/{slug}(slug=${item.productSlug})}"
                        th:classappend="${item.cropClass}">
-                        <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
+                        <img th:src="${item.imagePath}" th:alt="${item.productName}">
                     </a>
 
                     <div class="cart-stitch-product">
@@ -182,6 +182,7 @@
                     Checkout
                 </button>
                 <p class="cart-stitch-summary-copy" sec:authorize="hasRole('ADMIN')">Administrator accounts cannot place orders.</p>
+            </div>
         </aside>
     </section>
 

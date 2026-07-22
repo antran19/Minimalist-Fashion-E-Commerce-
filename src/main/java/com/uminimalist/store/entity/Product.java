@@ -15,8 +15,8 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "products")
@@ -33,19 +33,19 @@ public class Product {
     @Column(nullable = false, unique = true, length = 120)
     private String slug;
 
-    @Column(nullable = false, length = 180)
+    @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(name = "product_type", nullable = false, length = 80)
+    @Column(name = "product_type", nullable = false, length = 60)
     private String productType;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
     @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal basePrice;
 
-    @Column(name = "crop_class", nullable = false, length = 80)
+    @Column(name = "crop_class", nullable = false, length = 60)
     private String cropClass;
 
     @Column(name = "new_arrival", nullable = false)
@@ -61,8 +61,12 @@ public class Product {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    @OrderBy("color ASC, size ASC")
-    private List<ProductVariant> variants = new ArrayList<>();
+    @OrderBy("id DESC")
+    private Set<ProductVariant> variants = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("displayOrder ASC, id ASC")
+    private Set<ProductImage> images = new LinkedHashSet<>();
 
     public Long getId() {
         return id;
@@ -116,8 +120,12 @@ public class Product {
         return createdAt;
     }
 
-    public List<ProductVariant> getVariants() {
+    public Set<ProductVariant> getVariants() {
         return variants;
+    }
+
+    public void setVariants(Set<ProductVariant> variants) {
+        this.variants = variants;
     }
 
     public void setId(Long id) {
@@ -162,5 +170,13 @@ public class Product {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Set<ProductImage> getImages() {
+        return images;
+    }
+
+    public void setImages(Set<ProductImage> images) {
+        this.images = images;
     }
 }

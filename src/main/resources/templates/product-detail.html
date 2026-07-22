@@ -9,8 +9,20 @@
 <main class="page-shell product-detail-page">
     <a class="back-link" th:href="@{/products}">Back to products</a>
     <section class="product-detail" aria-labelledby="product-title">
-        <div class="detail-image product-image product-image-real" th:classappend="${product.cropClass}">
-            <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+        <div class="detail-gallery-container" style="flex: 1; max-width: 520px;">
+            <div class="detail-image product-image product-image-real" th:classappend="${product.cropClass}">
+                <img id="main-product-image" th:src="${product.imagePath}" th:alt="${product.name}">
+            </div>
+            <!-- Multi-Image Thumbnail Gallery Bar -->
+            <div id="product-thumbnails-bar" class="detail-thumbnails-grid" th:if="${product.images != null and !product.images.empty}" style="display: flex; gap: 10px; margin-top: 14px; overflow-x: auto; padding-bottom: 6px;">
+                <div th:each="img, iter : ${product.images}"
+                     class="thumb-item"
+                     th:data-url="${img.imageUrl}"
+                     th:data-color="${img.color}"
+                     th:style="'width: 64px; height: 64px; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid ' + (${iter.first} ? 'var(--ink, #000)' : 'transparent') + '; transition: all 0.2s ease; flex-shrink: 0;'">
+                    <img th:src="${img.imageUrl}" th:alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            </div>
         </div>
         <div class="detail-panel">
             <form class="detail-cart-form" th:action="@{/cart}" method="post">
@@ -36,7 +48,7 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <label th:each="colorOption, status : ${product.colors}" class="color-swatch-label">
                             <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first and product.stock > 0}" th:disabled="${product.stock == 0}" required class="color-radio" style="display: none;">
-                            <div class="swatch-content" th:classappend="${product.stock == 0} ? 'out-of-stock' : ''">
+                            <div class="swatch-content" th:classappend="${product.stock == 0 ? 'out-of-stock' : ''}">
                                 <span class="swatch-circle-detail" th:attr="data-color=${colorOption}" th:style="'background-color:' + ${product.colorHex(colorOption)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
                                 <span class="swatch-name" th:text="${colorOption}">White</span>
                             </div>
@@ -158,6 +170,7 @@
                 </p>
             </div>
         </div>
+    </section>
     <!-- Related Products Section -->
     <section class="related-products-section" th:if="${!#lists.isEmpty(relatedProducts)}" style="margin-top: 50px; border-top: 1px solid var(--line); padding-top: 40px;">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
@@ -171,7 +184,7 @@
             <article class="product-card reveal-card" th:each="relProduct : ${relatedProducts}">
                 <div class="product-image product-image-real" th:classappend="${relProduct.cropClass}">
                     <a th:href="@{/products/{slug}(slug=${relProduct.slug})}">
-                        <img th:src="@{${relProduct.imagePath}}" th:alt="${relProduct.name}">
+                        <img th:src="${relProduct.imagePath}" th:alt="${relProduct.name}">
                     </a>
                     <span class="product-badge" th:if="${relProduct.stock <= 0}" style="background: #e11b1e;">Out of Stock</span>
                     <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
@@ -414,9 +427,72 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+        // Gallery Thumbnail & Color Switcher Logic
+        const mainImg = document.getElementById('main-product-image');
+        const thumbs = document.querySelectorAll('.thumb-item');
+
+        function setActiveThumb(selectedThumb) {
+            thumbs.forEach(t => t.style.borderColor = 'transparent');
+            if (selectedThumb) {
+                selectedThumb.style.borderColor = 'var(--ink, #000)';
+                if (mainImg && selectedThumb.dataset.url) {
+                    mainImg.src = selectedThumb.dataset.url;
+                }
+            }
+        }
+
+        thumbs.forEach(t => {
+            t.addEventListener('click', function() {
+                setActiveThumb(this);
+                const thumbColor = (this.dataset.color || '').trim().toLowerCase();
+                if (thumbColor && thumbColor !== 'general') {
+                    const targetRadio = Array.from(document.querySelectorAll('input[name="color"]'))
+                        .find(r => (r.value || '').trim().toLowerCase() === thumbColor);
+                    if (targetRadio && !targetRadio.checked) {
+                        targetRadio.checked = true;
+                        updateAvailableSizes();
+                        updateVariantStock();
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.color-swatch-label').forEach(label => {
+            label.addEventListener('click', function(e) {
+                const radio = this.querySelector('input[name="color"]');
+                if (radio && !radio.disabled) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
         document.querySelectorAll('input[name="color"]').forEach(input => {
             input.addEventListener('change', function() {
+                const selectedColor = (this.value || '').trim().toLowerCase();
+                const hasColorSpecificThumbs = Array.from(thumbs).some(t => {
+                    const tc = (t.dataset.color || '').trim().toLowerCase();
+                    return tc === selectedColor;
+                });
+
+                let matchedThumb = null;
+                thumbs.forEach(t => {
+                    const thumbColor = (t.dataset.color || '').trim().toLowerCase();
+                    if (hasColorSpecificThumbs) {
+                        if (thumbColor === selectedColor || !thumbColor || thumbColor === 'general') {
+                            t.style.display = 'block';
+                            if (!matchedThumb && thumbColor === selectedColor) matchedThumb = t;
+                        } else {
+                            t.style.display = 'none';
+                        }
+                    } else {
+                        t.style.display = 'block';
+                    }
+                });
+
+                if (matchedThumb) {
+                    setActiveThumb(matchedThumb);
+                }
                 updateAvailableSizes();
                 updateVariantStock();
             });
@@ -428,7 +504,12 @@
         updateAvailableColors();
         updateAvailableSizes();
         updateVariantStock();
-    });
+
+        // Initial thumbnail sync
+        const initialCheckedColor = document.querySelector('input[name="color"]:checked');
+        if (initialCheckedColor) {
+            initialCheckedColor.dispatchEvent(new Event('change'));
+        }
     /*]]>*/
 </script>
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
