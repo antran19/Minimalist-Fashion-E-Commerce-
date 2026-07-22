@@ -51,42 +51,62 @@ public class LandingPageService {
     }
 
     public List<ProductView> getProducts(String query, String collection, String size, String color,
-            Double minPrice, Double maxPrice, String sort) {
-        Stream<ProductView> stream = productViews().stream();
+            Double minPrice, Double maxPrice, String sort, Boolean inStockOnly) {
+        List<Product> products = productRepository.findByActiveTrue();
+
+        Stream<Product> stream = products.stream();
 
         if (hasText(query)) {
             String normalizedQuery = normalize(query);
-            stream = stream.filter(product -> normalize(product.name()).contains(normalizedQuery)
-                    || normalize(product.category()).contains(normalizedQuery));
+            stream = stream.filter(product -> normalize(product.getName()).contains(normalizedQuery)
+                    || normalize(product.getCategory().getName()).contains(normalizedQuery)
+                    || normalize(product.getCategory().getSlug()).contains(normalizedQuery));
         }
 
         if (hasText(collection)) {
-            stream = stream.filter(product -> product.collection().equalsIgnoreCase(collection));
+            stream = stream.filter(product -> product.getCategory().getSlug().equalsIgnoreCase(collection));
         }
 
-        if (hasText(size)) {
-            stream = stream
-                    .filter(product -> product.sizes().stream().anyMatch(option -> option.equalsIgnoreCase(size)));
-        }
-
-        if (hasText(color)) {
-            stream = stream
-                    .filter(product -> product.colors().stream().anyMatch(option -> option.equalsIgnoreCase(color)));
-        }
+        // Combined Variant level filter: check if ANY active variant matches size AND color AND inStock
+        stream = stream.filter(product -> product.getVariants().stream().anyMatch(v -> {
+            if (!v.isActive()) return false;
+            if (hasText(color) && !v.getColor().equalsIgnoreCase(color)) return false;
+            if (hasText(size) && !v.getSize().equalsIgnoreCase(size)) return false;
+            if (Boolean.TRUE.equals(inStockOnly) && v.getStockQuantity() <= 0) return false;
+            return true;
+        }));
 
         if (minPrice != null) {
-            stream = stream.filter(product -> product.price() >= minPrice);
+            stream = stream.filter(product -> product.getBasePrice().doubleValue() >= minPrice);
         }
 
         if (maxPrice != null) {
-            stream = stream.filter(product -> product.price() <= maxPrice);
+            stream = stream.filter(product -> product.getBasePrice().doubleValue() <= maxPrice);
         }
 
-        return stream.sorted(productComparator(sort)).toList();
+        List<ProductView> views = stream.map(this::toProductView).toList();
+        return views.stream().sorted(productComparator(sort)).toList();
+    }
+
+    public List<ProductView> getProducts(String query, String collection, String size, String color,
+            Double minPrice, Double maxPrice, String sort) {
+        return getProducts(query, collection, size, color, minPrice, maxPrice, sort, false);
     }
 
     public Optional<ProductView> getProduct(String slug) {
         return productRepository.findBySlugAndActiveTrue(slug).map(this::toProductView);
+    }
+
+    public java.util.Map<String, Integer> getVariantStockMap(String slug) {
+        return productRepository.findBySlugAndActiveTrue(slug)
+                .map(product -> product.getVariants().stream()
+                        .filter(ProductVariant::isActive)
+                        .collect(java.util.stream.Collectors.toMap(
+                                v -> (v.getColor() + "_" + v.getSize()).toUpperCase(Locale.ROOT),
+                                ProductVariant::getStockQuantity,
+                                (existing, replacement) -> existing
+                        ))
+                ).orElse(java.util.Collections.emptyMap());
     }
 
     public List<String> getCollections() {
@@ -132,6 +152,32 @@ public class LandingPageService {
                 .toList();
     }
 
+    public List<ProductView> getRelatedProducts(String currentSlug, String category, int limit) {
+        List<ProductView> all = productViews();
+        List<ProductView> sameCategory = all.stream()
+                .filter(p -> !p.slug().equalsIgnoreCase(currentSlug))
+                .filter(p -> (p.collection() != null && p.collection().equalsIgnoreCase(category))
+                        || (p.category() != null && p.category().equalsIgnoreCase(category)))
+                .limit(limit)
+                .toList();
+
+        if (sameCategory.size() < limit) {
+            List<String> existingSlugs = new java.util.ArrayList<>(sameCategory.stream().map(ProductView::slug).toList());
+            existingSlugs.add(currentSlug);
+
+            List<ProductView> others = all.stream()
+                    .filter(p -> !existingSlugs.contains(p.slug()))
+                    .limit(limit - sameCategory.size())
+                    .toList();
+
+            List<ProductView> combined = new java.util.ArrayList<>(sameCategory);
+            combined.addAll(others);
+            return combined;
+        }
+
+        return sameCategory;
+    }
+
     private ProductView toProductView(Product product) {
         List<ProductVariant> activeVariants = product.getVariants()
                 .stream()
@@ -154,12 +200,16 @@ public class LandingPageService {
                 .sum();
 
         double price = product.getBasePrice().doubleValue();
+        String desc = hasText(product.getDescription())
+                ? product.getDescription()
+                : "Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.";
 
         return new ProductView(
                 product.getSlug(),
                 product.getName(),
                 product.getCategory().getSlug(),
                 product.getProductType(),
+                desc,
                 price,
                 currencyFormat.format(price),
                 colors,

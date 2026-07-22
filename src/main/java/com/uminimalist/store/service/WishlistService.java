@@ -117,7 +117,7 @@ public class WishlistService {
                 (rs, rowNum) -> rs.getLong("id"),
                 productSlug);
         if (ids.isEmpty()) {
-            throw new IllegalArgumentException("Product not found.");
+            throw new IllegalArgumentException("This product is no longer available.");
         }
         return ids.get(0);
     }

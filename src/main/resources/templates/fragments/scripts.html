@@ -7,5 +7,73 @@
         <script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
         <script th:src="@{/js/landing.js}"></script>
     </th:block>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Transform in-page alert elements into floating toast popups below Sign out button
+            const alerts = document.querySelectorAll('.cart-alert, .account-message, .account-error, .alert, .alert-dismissible');
+            
+            if (alerts.length > 0) {
+                let toastContainer = document.getElementById('toast-notification-container');
+                if (!toastContainer) {
+                    toastContainer = document.createElement('div');
+                    toastContainer.id = 'toast-notification-container';
+                    toastContainer.style.cssText = 'position: fixed; top: 85px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; max-width: 380px; width: calc(100% - 48px); pointer-events: none;';
+                    document.body.appendChild(toastContainer);
+                }
+
+                alerts.forEach(function(alertEl) {
+                    const isError = alertEl.classList.contains('error') || alertEl.classList.contains('account-error') || alertEl.classList.contains('alert-danger');
+                    const messageText = alertEl.textContent.trim();
+
+                    if (!messageText) return;
+
+                    // Hide original inline banner element to prevent layout displacement
+                    alertEl.style.display = 'none';
+
+                    // Create popup toast element
+                    const toast = document.createElement('div');
+                    toast.style.cssText = 'pointer-events: auto; background: ' + (isError ? '#fef2f2' : '#ecfdf5') + '; color: ' + (isError ? '#991b1b' : '#065f46') + '; border: 1px solid ' + (isError ? '#fca5a5' : '#6ee7b7') + '; border-left: 5px solid ' + (isError ? '#ef4444' : '#10b981') + '; border-radius: 8px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.9rem; font-weight: 600; opacity: 0; transform: translateX(40px); transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);';
+
+                    toast.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.1rem; line-height: 1; color: ${isError ? '#ef4444' : '#10b981'};">${isError ? '⚠️' : '✓'}</span>
+                            <span>${messageText}</span>
+                        </div>
+                        <button type="button" style="background: none; border: none; font-size: 1.2rem; line-height: 1; color: ${isError ? '#991b1b' : '#065f46'}; cursor: pointer; padding: 0 4px; font-weight: 700;" onclick="this.parentElement.remove()">&times;</button>
+                    `;
+
+                    toastContainer.appendChild(toast);
+
+                    // Animate in
+                    requestAnimationFrame(() => {
+                        toast.style.opacity = '1';
+                        toast.style.transform = 'translateX(0)';
+                    });
+
+                    // Auto dismiss after 4 seconds (4000ms)
+                    setTimeout(function() {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateX(40px)';
+                        setTimeout(() => {
+                            if (toast.parentNode) toast.parentNode.removeChild(toast);
+                        }, 300);
+                    }, 4000);
+                });
+            }
+
+            // Preserve scroll position across form submits to prevent jumping to top of page
+            document.querySelectorAll('form').forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    sessionStorage.setItem('scrollPos_' + window.location.pathname, window.scrollY);
+                });
+            });
+
+            var savedPos = sessionStorage.getItem('scrollPos_' + window.location.pathname);
+            if (savedPos !== null && !window.location.hash) {
+                window.scrollTo({ top: parseInt(savedPos, 10), behavior: 'instant' });
+                sessionStorage.removeItem('scrollPos_' + window.location.pathname);
+            }
+        });
+    </script>
 </th:block>
 </html>

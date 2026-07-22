@@ -64,9 +64,9 @@
                 <p class="text-muted m-0" style="font-size: 0.82rem;">Create new items or jump directly to storefront</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
-                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Add Category</button>
-                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
+                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
+                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Add Category</button>
+                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
                 <a class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2" th:href="@{/products}">View Storefront</a>
             </div>
         </div>
@@ -157,7 +157,7 @@
                 <p class="panel-kicker">Categories</p>
                 <h2 style="margin: 0;">Product categories</h2>
             </div>
-            <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                 + Add Category
             </button>
         </div>
@@ -242,7 +242,7 @@
                 <h2 style="margin: 0;">Products and inventory</h2>
             </div>
             <div style="display: flex; gap: 8px;">
-                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
+                <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
                 <a class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2" th:href="@{/products}">View storefront</a>
             </div>
         </div>
@@ -389,7 +389,7 @@
                 <p class="panel-kicker">Accounts</p>
                 <h2>Registered system users</h2>
             </div>
-            <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 font-weight-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
+            <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
         </div>
         <form th:action="@{/admin/dashboard#users}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px;">
             <input type="text" name="userQuery" class="search-control" th:value="${userQuery}" placeholder="Search accounts by name, email or phone..." style="flex: 1;">
@@ -497,6 +497,7 @@
                     <th>Order</th>
                     <th>Customer</th>
                     <th>Placed</th>
+                    <th>Payment</th>
                     <th>Items</th>
                     <th>Total</th>
                     <th>Status</th>
@@ -511,6 +512,10 @@
                     </td>
                     <td th:text="${order.placedAtLabel()}">03 Jul 2026, 10:30</td>
                     <td>
+                        <small class="d-block fw-bold" th:text="${order.paymentMethodLabel()}">Cash on Delivery (COD)</small>
+                        <span th:class="${order.paymentStatusBadgeClass()}" th:text="${order.paymentStatusLabel()}" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Unpaid</span>
+                    </td>
+                    <td>
                         <span th:text="${order.itemCount + ' item(s)'}">2 item(s)</span>
                         <small class="d-block text-muted" th:if="${!#lists.isEmpty(order.items)}"
                                th:text="${order.items[0].productName}">Air Cotton Tee</small>
@@ -521,6 +526,7 @@
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                             <select name="status" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem; font-weight: 700; border-radius: 4px; padding: 4px 10px;" onchange="this.form.submit()">
                                 <option value="PLACED" th:selected="${order.status == 'PLACED'}">PLACED</option>
+                                <option value="PENDING_PAYMENT" th:selected="${order.status == 'PENDING_PAYMENT'}">PENDING_PAYMENT</option>
                                 <option value="PROCESSING" th:selected="${order.status == 'PROCESSING'}">PROCESSING</option>
                                 <option value="SHIPPED" th:selected="${order.status == 'SHIPPED'}">SHIPPED</option>
                                 <option value="DELIVERED" th:selected="${order.status == 'DELIVERED'}">DELIVERED</option>
@@ -829,7 +835,7 @@
         let feedback = input.nextElementSibling;
         if (!feedback || !feedback.classList.contains('invalid-feedback')) {
             feedback = document.createElement('div');
-            feedback.className = 'invalid-feedback font-weight-bold d-block mt-1';
+            feedback.className = 'invalid-feedback fw-bold d-block mt-1';
             feedback.style.color = '#dc2626';
             feedback.style.fontSize = '0.8rem';
             input.parentNode.insertBefore(feedback, input.nextSibling);

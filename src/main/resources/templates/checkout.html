@@ -17,7 +17,7 @@
 
     <p class="cart-alert error" th:if="${accountError}" th:text="${accountError}">Checkout error.</p>
 
-    <form class="checkout-layout" th:action="@{/checkout/place}" method="post">
+    <form class="checkout-layout" th:action="@{/checkout/place}" method="post" onsubmit="preventDoubleSubmit(this)">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
         <section class="account-panel">
@@ -31,7 +31,18 @@
                     </label>
                     <label>
                         <span>Phone</span>
-                        <input name="shippingPhone" type="tel" th:value="${shippingAddress.phone}" minlength="8" maxlength="20" required>
+                        <input
+                            name="shippingPhone"
+                            type="tel"
+                            th:value="${shippingAddress.phone}"
+                            pattern="^(0|\+?84)(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$"
+                            minlength="10"
+                            maxlength="12"
+                            oninput="this.value = this.value.replace(/[\s.\-()]/g, '')"
+                            inputmode="tel"
+                            placeholder="0912345678"
+                            title="Enter a valid Vietnamese mobile number, for example 0912345678."
+                            required>
                     </label>
                 </div>
                 <label>
@@ -48,16 +59,26 @@
                         <input name="city" type="text" th:value="${shippingAddress.city}" minlength="2" maxlength="120" required>
                     </label>
                 </div>
+                <label style="margin-top: 16px;">
+                    <span>Order Note / Ghi chú (Optional)</span>
+                    <textarea name="notes" rows="3" maxlength="500" placeholder="Notes about your order, e.g. special instructions for delivery." style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; resize: vertical; margin-top: 6px;"></textarea>
+                </label>
                 <div style="margin-top: 24px; border-top: 1px solid var(--line); padding-top: 20px;">
-                    <span style="display: block; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; color: var(--muted);">Payment Method</span>
-                    <div style="display: flex; gap: 20px; font-weight: 600;">
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="paymentMethod" value="COD" checked style="width: auto; margin: 0;">
-                            <span>Cash on Delivery (COD)</span>
+                    <span style="display: block; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 14px; color: var(--muted); letter-spacing: 0.5px;">Select Payment Method</span>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                        <label style="cursor: pointer; border: 2px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s;" onclick="this.parentNode.querySelectorAll('label').forEach(l=>l.style.borderColor='var(--line)'); this.style.borderColor='var(--ink)';">
+                            <div style="display: flex; align-items: center; gap: 10px; font-weight: 700;">
+                                <input type="radio" name="paymentMethod" value="COD" checked style="width: 18px; height: 18px; margin: 0; accent-color: #000;">
+                                <span>💵 Cash on Delivery (COD)</span>
+                            </div>
+                            <small style="color: var(--muted); font-size: 0.82rem; padding-left: 28px;">Pay with cash upon delivery of your items.</small>
                         </label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="paymentMethod" value="VNPAY" style="width: auto; margin: 0;">
-                            <span>Online Payment via VNPay</span>
+                        <label style="cursor: pointer; border: 2px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s;" onclick="this.parentNode.querySelectorAll('label').forEach(l=>l.style.borderColor='var(--line)'); this.style.borderColor='var(--ink)';">
+                            <div style="display: flex; align-items: center; gap: 10px; font-weight: 700;">
+                                <input type="radio" name="paymentMethod" value="VNPAY" style="width: 18px; height: 18px; margin: 0; accent-color: #000;">
+                                <span>💳 VNPay Demo Sandbox</span>
+                            </div>
+                            <small style="color: var(--muted); font-size: 0.82rem; padding-left: 28px;">Pay online securely via VNPay gateway demo.</small>
                         </label>
                     </div>
                 </div>
@@ -78,7 +99,7 @@
                 <span>Subtotal</span>
                 <strong th:text="${cart.subtotalLabel}">$39.80</strong>
             </div>
-            <p>Placing the order reserves stock and saves this address as your default delivery address.</p>
+            <p>Placing the order confirms your items and saves this address as your default delivery address.</p>
             <button class="btn btn-primary retail-btn" type="submit">Place order</button>
         </aside>
 
@@ -86,12 +107,15 @@
             <p class="panel-kicker">Items</p>
             <h2>Cart review</h2>
             <ul class="order-lines checkout-lines">
-                <li th:each="item : ${cart.items}">
-                    <span>
-                        <strong th:text="${item.productName}">Air Cotton Tee</strong>
-                        <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}">Cream / M / Qty 1</small>
-                    </span>
-                    <span th:text="${item.lineTotalLabel}">$19.90</span>
+                <li th:each="item : ${cart.items}" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                        <span>
+                            <strong th:text="${item.productName}">Air Cotton Tee</strong>
+                            <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}" style="display: block; color: var(--muted); font-size: 0.8rem;">Cream / M / Qty 1</small>
+                        </span>
+                    </div>
+                    <span th:text="${item.lineTotalLabel}" style="font-weight: 700;">$19.90</span>
                 </li>
             </ul>
         </section>
@@ -100,5 +124,14 @@
 
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
+<script>
+    function preventDoubleSubmit(form) {
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Processing order...';
+        }
+    }
+</script>
 </body>
 </html>
