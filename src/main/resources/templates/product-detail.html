@@ -434,32 +434,51 @@
             thumbs.forEach(t => t.style.borderColor = 'transparent');
             if (selectedThumb) {
                 selectedThumb.style.borderColor = 'var(--ink, #000)';
-                if (mainImg) mainImg.src = selectedThumb.dataset.url;
+                if (mainImg && selectedThumb.dataset.url) {
+                    mainImg.src = selectedThumb.dataset.url;
+                }
             }
         }
 
         thumbs.forEach(t => {
             t.addEventListener('click', function() {
                 setActiveThumb(this);
+                const thumbColor = (this.dataset.color || '').trim().toLowerCase();
+                if (thumbColor && thumbColor !== 'general') {
+                    const targetRadio = Array.from(document.querySelectorAll('input[name="color"]'))
+                        .find(r => (r.value || '').trim().toLowerCase() === thumbColor);
+                    if (targetRadio && !targetRadio.checked) {
+                        targetRadio.checked = true;
+                        updateAvailableSizes();
+                        updateVariantStock();
+                    }
+                }
             });
         });
 
         document.querySelectorAll('input[name="color"]').forEach(input => {
             input.addEventListener('change', function() {
                 const selectedColor = (this.value || '').trim().toLowerCase();
+                const hasColorSpecificThumbs = Array.from(thumbs).some(t => {
+                    const tc = (t.dataset.color || '').trim().toLowerCase();
+                    return tc === selectedColor;
+                });
+
                 let matchedThumb = null;
                 thumbs.forEach(t => {
                     const thumbColor = (t.dataset.color || '').trim().toLowerCase();
-                    if (thumbColor === selectedColor) {
-                        t.style.display = 'block';
-                        if (!matchedThumb) matchedThumb = t;
-                    } else if (thumbColor && thumbColor !== 'general') {
-                        t.style.display = 'none';
+                    if (hasColorSpecificThumbs) {
+                        if (thumbColor === selectedColor || !thumbColor || thumbColor === 'general') {
+                            t.style.display = 'block';
+                            if (!matchedThumb && thumbColor === selectedColor) matchedThumb = t;
+                        } else {
+                            t.style.display = 'none';
+                        }
                     } else {
                         t.style.display = 'block';
-                        if (!matchedThumb) matchedThumb = t;
                     }
                 });
+
                 if (matchedThumb) {
                     setActiveThumb(matchedThumb);
                 }
