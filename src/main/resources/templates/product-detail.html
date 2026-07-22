@@ -173,9 +173,11 @@
                     <a th:href="@{/products/{slug}(slug=${relProduct.slug})}">
                         <img th:src="@{${relProduct.imagePath}}" th:alt="${relProduct.name}">
                     </a>
-                    <span class="product-badge" th:if="${relProduct.stock <= 0}" style="background: #e11b1e;">Out of Stock</span>
-                    <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
-                    <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.bestSeller}" th:style="${relProduct.isNew ? 'top: 36px; background: #f59e0b;' : 'background: #f59e0b;'}">Best Seller</span>
+                    <div class="product-badges">
+                        <span class="product-badge is-sold-out" th:if="${relProduct.stock <= 0}">Out of Stock</span>
+                        <span class="product-badge is-new" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
+                        <span class="product-badge is-best" th:if="${relProduct.stock > 0 and relProduct.bestSeller}">Best Seller</span>
+                    </div>
                     <div class="product-actions">
                         <a th:href="@{/products/{slug}(slug=${relProduct.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
