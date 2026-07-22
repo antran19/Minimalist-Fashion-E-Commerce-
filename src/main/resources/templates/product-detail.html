@@ -48,7 +48,7 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <label th:each="colorOption, status : ${product.colors}" class="color-swatch-label">
                             <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first and product.stock > 0}" th:disabled="${product.stock == 0}" required class="color-radio" style="display: none;">
-                            <div class="swatch-content" th:classappend="${product.stock == 0} ? 'out-of-stock' : ''">
+                            <div class="swatch-content" th:classappend="${product.stock == 0 ? 'out-of-stock' : ''}">
                                 <span class="swatch-circle-detail" th:attr="data-color=${colorOption}" th:style="'background-color:' + ${product.colorHex(colorOption)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
                                 <span class="swatch-name" th:text="${colorOption}">White</span>
                             </div>
@@ -170,6 +170,7 @@
                 </p>
             </div>
         </div>
+    </section>
     <!-- Related Products Section -->
     <section class="related-products-section" th:if="${!#lists.isEmpty(relatedProducts)}" style="margin-top: 50px; border-top: 1px solid var(--line); padding-top: 40px;">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
@@ -456,6 +457,16 @@
             });
         });
 
+        document.querySelectorAll('.color-swatch-label').forEach(label => {
+            label.addEventListener('click', function(e) {
+                const radio = this.querySelector('input[name="color"]');
+                if (radio && !radio.disabled) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
         document.querySelectorAll('input[name="color"]').forEach(input => {
             input.addEventListener('change', function() {
                 const selectedColor = (this.value || '').trim().toLowerCase();
@@ -499,7 +510,6 @@
         if (initialCheckedColor) {
             initialCheckedColor.dispatchEvent(new Event('change'));
         }
-    });
     /*]]>*/
 </script>
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>

@@ -34,6 +34,12 @@ public class ProductVariant {
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_public_id", length = 200)
+    private String imagePublicId;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -91,5 +97,21 @@ public class ProductVariant {
 
     public void setSize(String size) {
         this.size = size;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getImagePublicId() {
+        return imagePublicId;
+    }
+
+    public void setImagePublicId(String imagePublicId) {
+        this.imagePublicId = imagePublicId;
     }
 }

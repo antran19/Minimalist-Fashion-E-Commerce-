@@ -34,6 +34,11 @@ public class AdminController {
         this.orderService = orderService;
     }
 
+    @GetMapping("/admin")
+    public String adminRoot() {
+        return "redirect:/admin/dashboard";
+    }
+
     @GetMapping("/admin/dashboard")
     public String dashboard(@RequestParam(required = false, defaultValue = "0") int catalogPage,
                             @RequestParam(required = false) String catalogQuery,
@@ -203,9 +208,10 @@ public class AdminController {
                                 @RequestParam String size,
                                 @RequestParam String sku,
                                 @RequestParam int stockQuantity,
+                                @RequestParam(required = false) MultipartFile imageFile,
                                 RedirectAttributes redirectAttributes) {
         try {
-            adminCatalogService.createVariant(productId, color, size, sku, stockQuantity);
+            adminCatalogService.createVariant(productId, color, size, sku, stockQuantity, imageFile);
             redirectAttributes.addFlashAttribute("adminMessage", "Variant created successfully.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
@@ -220,13 +226,27 @@ public class AdminController {
                                 @RequestParam String size,
                                 @RequestParam String sku,
                                 @RequestParam int stockQuantity,
+                                @RequestParam(required = false) MultipartFile imageFile,
                                 RedirectAttributes redirectAttributes) {
         try {
-            adminCatalogService.updateVariant(id, color, size, sku, stockQuantity);
+            adminCatalogService.updateVariant(id, color, size, sku, stockQuantity, imageFile);
             redirectAttributes.addFlashAttribute("adminMessage", "Variant updated successfully.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
             redirectAttributes.addFlashAttribute("adminErrorModal", "#editVariantModal");
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/variants/{id}/image")
+    public String replaceVariantImage(@PathVariable Long id,
+                                      @RequestParam("imageFile") MultipartFile imageFile,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.replaceVariantImage(id, imageFile);
+            redirectAttributes.addFlashAttribute("adminMessage", "Variant image updated successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
         }
         return "redirect:/admin/dashboard#catalog";
     }
@@ -379,5 +399,18 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
         }
         return "redirect:/admin/dashboard#orders";
+    }
+
+    @GetMapping("/admin/orders/{orderCode}")
+    public String orderDetail(@PathVariable String orderCode,
+                              Model model,
+                              RedirectAttributes redirectAttributes) {
+        var order = orderService.findOrderByCode(orderCode);
+        if (order.isEmpty()) {
+            redirectAttributes.addFlashAttribute("adminError", "Order not found.");
+            return "redirect:/admin/dashboard#orders";
+        }
+        model.addAttribute("order", order.get());
+        return "admin/order-detail";
     }
 }

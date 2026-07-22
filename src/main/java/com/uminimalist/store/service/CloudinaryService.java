@@ -19,6 +19,10 @@ public class CloudinaryService {
             "image/gif"
     );
 
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".jpg", ".jpeg", ".png", ".webp", ".gif"
+    );
+
     private final Cloudinary cloudinary;
 
     public CloudinaryService(Cloudinary cloudinary) {
@@ -39,7 +43,16 @@ public class CloudinaryService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+        String filename = file.getOriginalFilename();
+        String ext = "";
+        if (filename != null && filename.contains(".")) {
+            ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+        }
+
+        boolean contentTypeOk = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase());
+        boolean extensionOk = ALLOWED_EXTENSIONS.contains(ext);
+
+        if (!contentTypeOk && !extensionOk) {
             throw new IllegalArgumentException("Invalid file type. Only JPG, PNG, WEBP, and GIF images are allowed.");
         }
 

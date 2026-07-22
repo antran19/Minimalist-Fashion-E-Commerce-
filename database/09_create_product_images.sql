@@ -40,9 +40,17 @@ VALUES
     ((SELECT id FROM dbo.products WHERE slug = N'smart-ankle-pants'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721561/uminimalist/products/smart-ankle-pants/smart-ankle-pants-black.jpg', N'uminimalist/products/smart-ankle-pants/smart-ankle-pants-black', N'Black', 1, 0, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'smart-ankle-pants'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721564/uminimalist/products/smart-ankle-pants/smart-ankle-pants-brown.jpg', N'uminimalist/products/smart-ankle-pants/smart-ankle-pants-brown', N'Brown', 0, 1, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'smart-ankle-pants'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721566/uminimalist/products/smart-ankle-pants/smart-ankle-pants-white.jpg', N'uminimalist/products/smart-ankle-pants/smart-ankle-pants-white', N'White', 0, 2, GETUTCDATE()),
-    ((SELECT id FROM dbo.products WHERE slug = N'soft-jersey-tee'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721568/uminimalist/products/soft-jersey-tee/soft-jersey-tee-brown.jpg', N'uminimalist/products/soft-jersey-tee/soft-jersey-tee-brown', N'Sage', 1, 0, GETUTCDATE()),
+    ((SELECT id FROM dbo.products WHERE slug = N'soft-jersey-tee'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721568/uminimalist/products/soft-jersey-tee/soft-jersey-tee-brown.jpg', N'uminimalist/products/soft-jersey-tee/soft-jersey-tee-brown', N'Brown', 1, 0, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'soft-jersey-tee'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721571/uminimalist/products/soft-jersey-tee/soft-jersey-tee-red.jpg', N'uminimalist/products/soft-jersey-tee/soft-jersey-tee-red', N'Red', 0, 1, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'soft-jersey-tee'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721573/uminimalist/products/soft-jersey-tee/soft-jersey-tee-white.jpg', N'uminimalist/products/soft-jersey-tee/soft-jersey-tee-white', N'White', 0, 2, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'utility-tote'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721575/uminimalist/products/utility-tote/utility-tote-pink.jpg', N'uminimalist/products/utility-tote/utility-tote-pink', N'Pink', 1, 0, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'utility-tote'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721578/uminimalist/products/utility-tote/utility-tote-red.jpg', N'uminimalist/products/utility-tote/utility-tote-red', N'Red', 0, 1, GETUTCDATE()),
     ((SELECT id FROM dbo.products WHERE slug = N'utility-tote'), N'https://res.cloudinary.com/dcroyqkoa/image/upload/v1784721580/uminimalist/products/utility-tote/utility-tote-yellow.jpg', N'uminimalist/products/utility-tote/utility-tote-yellow', N'Yellow', 0, 2, GETUTCDATE());
+
+-- Sync product_images to matching variant SKUs by color
+UPDATE pv
+SET pv.image_url = pi.image_url,
+    pv.image_public_id = pi.public_id
+FROM dbo.product_variants pv
+JOIN dbo.product_images pi ON pi.product_id = pv.product_id AND pi.color = pv.color;
+

@@ -15,4 +15,8 @@ public record CartView(
     public boolean isEmpty() {
         return items.isEmpty();
     }
+
+    public boolean hasWarnings() {
+        return warnings != null && !warnings.isEmpty();
+    }
 }

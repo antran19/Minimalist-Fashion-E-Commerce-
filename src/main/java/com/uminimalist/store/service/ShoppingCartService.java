@@ -428,6 +428,14 @@ public class ShoppingCartService {
         boolean outOfStock = variant.getStockQuantity() <= 0;
         boolean stockExceeded = quantity > variant.getStockQuantity();
 
+        // Prefer variant-level Cloudinary image, fall back to hardcoded product path
+        String resolvedImagePath;
+        if (variant.getImageUrl() != null && !variant.getImageUrl().isBlank()) {
+            resolvedImagePath = variant.getImageUrl();
+        } else {
+            resolvedImagePath = imagePath(variant.getProduct().getSlug());
+        }
+
         return new CartItemView(
                 variant.getSku(),
                 variant.getProduct().getSlug(),
@@ -435,7 +443,7 @@ public class ShoppingCartService {
                 variant.getProduct().getProductType(),
                 variant.getColor(),
                 variant.getSize(),
-                imagePath(variant.getProduct().getSlug()),
+                resolvedImagePath,
                 variant.getProduct().getCropClass(),
                 quantity,
                 variant.getStockQuantity(),
@@ -605,16 +613,16 @@ public class ShoppingCartService {
 
     private String imagePath(String slug) {
         return switch (slug) {
-            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
-            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
-            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
-            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
-            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
-            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
-            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
-            case "utility-tote" -> "/images/products/utility-tote-v2.png";
-            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
-            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-cream.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-gray.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-brown.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-black.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-brown.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-cream.png";
+            case "utility-tote" -> "/images/products/utility-tote-pink.jpg";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
         };
     }

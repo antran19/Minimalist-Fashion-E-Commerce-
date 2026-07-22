@@ -774,6 +774,18 @@ public class OrderService {
         return orders.stream().findFirst();
     }
 
+    public Optional<OrderSummaryView> findOrderByCode(String orderCode) {
+        ensureOrderTables();
+        List<OrderSummaryView> orders = loadOrders("""
+                SELECT id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
+                    created_at, status, payment_method, payment_status, item_count, total_amount
+                FROM dbo.orders
+                WHERE order_code = ?
+                """, orderCode);
+        return orders.stream().findFirst();
+    }
+
     private List<OrderSummaryView> loadOrders(String sql, Object... args) {
         List<OrderRow> rows = jdbcTemplate.query(sql, (rs, rowNum) -> new OrderRow(
                 rs.getLong("id"),
@@ -826,7 +838,8 @@ public class OrderService {
         String placeholders = orderIds.stream().map(id -> "?").collect(Collectors.joining(","));
         return jdbcTemplate.query("""
                         SELECT oi.order_id, oi.product_name, oi.sku, oi.color, oi.size, oi.quantity, oi.unit_price, oi.line_total,
-                               COALESCE(oi.product_slug, p.slug) AS product_slug
+                               COALESCE(oi.product_slug, p.slug) AS product_slug,
+                               pv.image_url AS variant_image_url
                         FROM dbo.order_items oi
                         LEFT JOIN dbo.product_variants pv ON oi.product_variant_id = pv.id
                         LEFT JOIN dbo.products p ON pv.product_id = p.id
@@ -840,7 +853,13 @@ public class OrderService {
                         String slug = rs.getString("product_slug");
                         String sku = rs.getString("sku");
                         String productName = rs.getString("product_name");
-                        String imgPath = imagePath(slug, sku, productName);
+                        String variantImageUrl = rs.getString("variant_image_url");
+                        String imgPath;
+                        if (variantImageUrl != null && !variantImageUrl.isBlank()) {
+                            imgPath = variantImageUrl;
+                        } else {
+                            imgPath = imagePath(slug, sku, productName);
+                        }
                         grouped.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(new OrderItemView(
                                 productName,
                                 sku,
@@ -894,16 +913,16 @@ public class OrderService {
             return "/images/product-collage.png";
         }
         return switch (effectiveSlug) {
-            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
-            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
-            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
-            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
-            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
-            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
-            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
-            case "utility-tote" -> "/images/products/utility-tote-v2.png";
-            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
-            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-cream.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-gray.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-brown.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-black.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-brown.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-cream.png";
+            case "utility-tote" -> "/images/products/utility-tote-pink.jpg";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
         };
     }

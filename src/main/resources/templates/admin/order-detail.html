@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <th:block th:insert="~{fragments/head :: head(${order.orderCode + ' | Admin | U-Minimalist'}, 'Admin order detail.')}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<th:block th:replace="~{fragments/navbar :: navbar('admin', 'site-header is-scrolled', '', true, false, true)}"></th:block>
+
+<main class="admin-container page-shell">
+    <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 th:text="${order.orderCode}">UM-202607030001</h1>
+            <p class="text-muted m-0" th:text="${'Placed ' + order.placedAtLabel() + ' by ' + order.customerName}">Placed by customer</p>
+        </div>
+        <a class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2 fw-bold" th:href="@{/admin/dashboard#orders}">
+            &larr; Back to orders
+        </a>
+    </div>
+
+    <p class="cart-alert success" th:if="${not #strings.isEmpty(adminMessage)}" th:text="${adminMessage}">Updated.</p>
+    <p class="cart-alert error" th:if="${not #strings.isEmpty(adminError)}" th:text="${adminError}">Error.</p>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 360px); gap: 32px; align-items: start;">
+
+        <!-- Left Column: Items & Shipping -->
+        <div style="display: grid; gap: 24px;">
+            <article style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #fff;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin-top: 0; margin-bottom: 16px;">Order Items</h3>
+                <div class="table-responsive">
+                    <table class="table-custom compact" style="font-size: 0.85rem;">
+                        <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Color / Size</th>
+                            <th>Qty</th>
+                            <th>Unit</th>
+                            <th>Total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${order.items}">
+                            <td style="vertical-align: middle;">
+                                <img th:src="${item.imagePath}" th:alt="${item.productName}"
+                                     style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                            </td>
+                            <td style="vertical-align: middle; font-weight: 700;" th:text="${item.productName}">Product</td>
+                            <td style="vertical-align: middle;" th:text="${item.sku}">SKU</td>
+                            <td style="vertical-align: middle;" th:text="${item.color + ' / ' + item.size}">Color / Size</td>
+                            <td style="vertical-align: middle;" th:text="${item.quantity}">1</td>
+                            <td style="vertical-align: middle;" th:text="${item.unitPriceLabel}">$19.90</td>
+                            <td style="vertical-align: middle; font-weight: 700;" th:text="${item.lineTotalLabel}">$19.90</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #fff;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin-top: 0; margin-bottom: 16px;">Shipping Address</h3>
+                <dl style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0;">
+                    <div>
+                        <dt style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted);">Recipient</dt>
+                        <dd style="font-weight: 700; margin: 4px 0 0;" th:text="${order.shippingName}">Name</dd>
+                    </div>
+                    <div>
+                        <dt style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted);">Phone</dt>
+                        <dd style="font-weight: 700; margin: 4px 0 0;" th:text="${order.shippingPhone}">Phone</dd>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <dt style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted);">Address</dt>
+                        <dd style="font-weight: 700; margin: 4px 0 0;" th:text="${order.fullShippingAddress()}">Address</dd>
+                    </div>
+                </dl>
+                <div th:if="${order.notes != null and !order.notes.blank}" style="margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px;">
+                    <dt style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted);">Order Note</dt>
+                    <dd style="font-weight: 500; margin: 4px 0 0;" th:text="${order.notes}">Note</dd>
+                </div>
+            </article>
+        </div>
+
+        <!-- Right Column: Order Info -->
+        <div style="display: grid; gap: 24px;">
+            <article style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #fff;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin-top: 0; margin-bottom: 16px;">Order Info</h3>
+                <dl style="display: grid; gap: 12px; margin: 0;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <dt style="font-size: 0.85rem; color: var(--muted);">Customer</dt>
+                        <dd style="font-weight: 700; margin: 0;" th:text="${order.customerName}">Name</dd>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <dt style="font-size: 0.85rem; color: var(--muted);">Email</dt>
+                        <dd style="font-weight: 700; margin: 0;" th:text="${order.customerEmail}">email</dd>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <dt style="font-size: 0.85rem; color: var(--muted);">Payment Method</dt>
+                        <dd style="font-weight: 700; margin: 0;" th:text="${order.paymentMethodLabel()}">COD</dd>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <dt style="font-size: 0.85rem; color: var(--muted);">Payment Status</dt>
+                        <dd>
+                            <span th:class="${order.paymentStatusBadgeClass()}" th:text="${order.paymentStatusLabel()}"
+                                  style="padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">Unpaid</span>
+                        </dd>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <dt style="font-size: 0.85rem; color: var(--muted);">Items</dt>
+                        <dd style="font-weight: 700; margin: 0;" th:text="${order.itemCount + ' item(s)'}">2 items</dd>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px;">
+                        <dt style="font-size: 1rem; font-weight: 800;">Total</dt>
+                        <dd style="font-size: 1.1rem; font-weight: 800; margin: 0;" th:text="${order.totalLabel}">$69.80</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #fff;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin-top: 0; margin-bottom: 16px;">Update Status</h3>
+                <form th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="mb-3">
+                        <select name="status" class="form-select" style="font-weight: 700; font-size: 0.9rem;">
+                            <option value="PLACED" th:selected="${order.status == 'PLACED'}">PLACED</option>
+                            <option value="PENDING_PAYMENT" th:selected="${order.status == 'PENDING_PAYMENT'}">PENDING_PAYMENT</option>
+                            <option value="PROCESSING" th:selected="${order.status == 'PROCESSING'}">PROCESSING</option>
+                            <option value="SHIPPED" th:selected="${order.status == 'SHIPPED'}">SHIPPED</option>
+                            <option value="DELIVERED" th:selected="${order.status == 'DELIVERED'}">DELIVERED</option>
+                            <option value="CANCELLED" th:selected="${order.status == 'CANCELLED'}">CANCELLED</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" style="width: 100%;">Update Status</button>
+                </form>
+            </article>
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
+</body>
+</html>

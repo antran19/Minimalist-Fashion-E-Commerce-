@@ -138,6 +138,7 @@
                             <p class="account-card-kicker">Shipping address</p>
                             <h2>Default delivery details</h2>
                         </div>
+                    </div>
                     <div class="shipping-summary" th:if="${shippingAddress.complete}">
                         <strong th:text="${shippingAddress.recipientName}"></strong>
                         <span th:text="${shippingAddress.phone}"></span>
@@ -280,7 +281,6 @@
                        th:if="${!cart.empty}"
                        th:href="@{/cart}">
                         Checkout now
->>>>>>> develop
                     </a>
                     <a class="account-button account-button-secondary account-button-block"
                        th:href="@{/cart}">

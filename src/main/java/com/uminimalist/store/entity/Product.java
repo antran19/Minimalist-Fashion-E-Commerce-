@@ -61,7 +61,7 @@ public class Product {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    @OrderBy("color ASC, size ASC")
+    @OrderBy("id DESC")
     private Set<ProductVariant> variants = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
