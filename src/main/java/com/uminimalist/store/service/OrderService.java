@@ -119,12 +119,12 @@ public class OrderService {
 
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", null);
+        return placeOrder(customerEmail, cart, shippingAddress, "PAYPAL", null);
     }
 
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String notes) {
-        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", notes);
+        return placeOrder(customerEmail, cart, shippingAddress, "PAYPAL", notes);
     }
 
     @Transactional
@@ -142,14 +142,14 @@ public class OrderService {
         }
 
         String normalizedMethod = (paymentMethod == null || paymentMethod.isBlank()) ? "COD" : paymentMethod.trim().toUpperCase(Locale.ROOT);
-        if (!"COD".equals(normalizedMethod) && !"VNPAY".equals(normalizedMethod)) {
-            throw new IllegalArgumentException("Invalid payment method. Please select Cash on Delivery (COD) or VNPay Demo.");
+        if (!"COD".equals(normalizedMethod) && !"PAYPAL".equals(normalizedMethod)) {
+            throw new IllegalArgumentException("Invalid payment method. Please select Cash on Delivery (COD) or PayPal.");
         }
 
-        boolean isVnPay = "VNPAY".equals(normalizedMethod);
-        String initialPaymentStatus = isVnPay ? "PENDING" : "UNPAID";
-        String initialOrderStatus = isVnPay ? PENDING_PAYMENT_STATUS : "PLACED";
-        boolean deductStock = !isVnPay;
+        boolean isPayPal = "PAYPAL".equals(normalizedMethod);
+        String initialPaymentStatus = isPayPal ? "PENDING" : "UNPAID";
+        String initialOrderStatus = isPayPal ? PENDING_PAYMENT_STATUS : "PLACED";
+        boolean deductStock = !isPayPal;
 
         User user = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
@@ -391,7 +391,7 @@ public class OrderService {
     }
 
     @Transactional
-    public String preparePayAgainUrl(String customerEmail, String orderCode, jakarta.servlet.http.HttpServletRequest request, VNPayService vnPayService) {
+    public String preparePayAgainUrl(String customerEmail, String orderCode, PayPalService payPalService) {
         ensureOrderTables();
         OrderStatusRow orderRow = findOrderRowByCode(customerEmail, orderCode);
         if (orderRow == null) {
@@ -402,8 +402,8 @@ public class OrderService {
             throw new IllegalArgumentException("Only pending payment orders can be paid again.");
         }
 
-        if (!"VNPAY".equalsIgnoreCase(orderRow.paymentMethod())) {
-            throw new IllegalArgumentException("Only VNPay orders can be paid online again.");
+        if (!"PAYPAL".equalsIgnoreCase(orderRow.paymentMethod())) {
+            throw new IllegalArgumentException("Only PayPal orders can be paid online again.");
         }
 
         if ("PAID".equalsIgnoreCase(orderRow.paymentStatus())) {
@@ -432,11 +432,24 @@ public class OrderService {
 
         jdbcTemplate.update("UPDATE dbo.orders SET payment_status = 'PENDING' WHERE id = ?", orderRow.id());
 
-        int retrySeq = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 999);
-        String retryTxnRef = orderRow.orderCode() + "-R" + retrySeq;
-
-        double usdAmount = orderRow.totalAmount() != null ? orderRow.totalAmount().doubleValue() : 0.0;
-        return vnPayService.createPaymentUrl(retryTxnRef, usdAmount, request);
+        double vndAmount = orderRow.totalAmount() != null ? orderRow.totalAmount().doubleValue() : 0.0;
+        try {
+            com.paypal.api.payments.Payment payment = payPalService.createPayment(
+                    vndAmount,
+                    "sale",
+                    "Order " + orderRow.orderCode(),
+                    "http://localhost:9090/paypal/cancel",
+                    "http://localhost:9090/paypal/success"
+            );
+            for (com.paypal.api.payments.Links link : payment.getLinks()) {
+                if (link.getRel().equals("approval_url")) {
+                    return link.getHref();
+                }
+            }
+        } catch (com.paypal.base.rest.PayPalRESTException e) {
+            throw new RuntimeException("Error creating PayPal payment", e);
+        }
+        return "redirect:/checkout";
     }
 
     private OrderStatusRow findOrderRowByCode(String customerEmail, String orderCode) {
@@ -677,10 +690,10 @@ public class OrderService {
                 "Allowed next status(es): " + String.join(", ", allowed));
         }
 
-        // If payment is still PENDING (VNPay not confirmed), block moving past PENDING_PAYMENT
+        // If payment is still PENDING (PayPal not confirmed), block moving past PENDING_PAYMENT
         if (isPending && "PENDING_PAYMENT".equalsIgnoreCase(current) && "PROCESSING".equalsIgnoreCase(next)) {
             throw new IllegalArgumentException(
-                "This order uses VNPay but payment has not been confirmed yet. " +
+                "This order uses PayPal but payment has not been confirmed yet. " +
                 "Wait for the payment callback or verify payment status first.");
         }
     }
