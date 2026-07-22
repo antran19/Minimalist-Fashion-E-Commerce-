@@ -1,6 +1,9 @@
 package com.uminimalist.store.model;
 
+import java.time.LocalDateTime;
+
 public record ProductView(
+        Long id,
         String slug,
         String name,
         String collection,
@@ -14,8 +17,27 @@ public record ProductView(
         String cropClass,
         int stock,
         boolean isNew,
-        boolean bestSeller
+        boolean bestSeller,
+        LocalDateTime createdAt
 ) {
+    public ProductView(
+            String slug,
+            String name,
+            String collection,
+            String category,
+            String description,
+            double price,
+            String priceLabel,
+            java.util.List<String> colors,
+            java.util.List<String> sizes,
+            String imagePath,
+            String cropClass,
+            int stock,
+            boolean isNew,
+            boolean bestSeller
+    ) {
+        this(null, slug, name, collection, category, description, price, priceLabel, colors, sizes, imagePath, cropClass, stock, isNew, bestSeller, null);
+    }
     public String colorLabel() {
         return String.join(", ", colors);
     }
