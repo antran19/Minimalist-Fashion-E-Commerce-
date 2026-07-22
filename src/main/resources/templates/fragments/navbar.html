@@ -39,8 +39,8 @@
                                th:attr="aria-current=${activePage == 'products' ? 'page' : ''}"
                                aria-label="Search products">Search</a>
                         </li>
-                        <!-- Cart -->
-                        <li class="nav-item">
+                        <!-- Cart (hidden for admins - they cannot place orders) -->
+                        <li class="nav-item" sec:authorize="!hasRole('ADMIN')">
                             <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart"
                                th:classappend="${activePage == 'cart'} ? 'active'"
                                th:attr="aria-current=${activePage == 'cart' ? 'page' : ''}">

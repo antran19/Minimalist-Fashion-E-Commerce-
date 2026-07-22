@@ -60,10 +60,13 @@
                 <p class="stock-note stock-note-available" th:if="${product.stock > 0}" th:text="${product.stock + ' items available'}">16 items available</p>
                 <p class="stock-note stock-note-outofstock" th:if="${product.stock == 0}" style="color: #e11b1e; font-weight: 700;">Out of stock</p>
 
-                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <div style="display: flex; gap: 12px; margin-top: 16px;" sec:authorize="!hasRole('ADMIN')">
                     <button class="btn btn-primary retail-btn" type="submit" name="action" value="add" style="flex: 1;" th:disabled="${product.stock == 0}">Add to cart</button>
                     <button class="btn btn-dark retail-btn" type="submit" name="action" value="buyNow" style="flex: 1; background: #000; border-color: #000;" th:disabled="${product.stock == 0}">Buy now</button>
                 </div>
+                <p class="stock-note" style="margin-top: 16px; color: var(--muted); font-weight: 600;" sec:authorize="hasRole('ADMIN')">
+                    Administrator accounts cannot place orders. Manage this product from the admin dashboard.
+                </p>
             </form>
             <form class="wishlist-detail-action" th:if="${!inWishlist}" th:action="@{/wishlist}" method="post" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

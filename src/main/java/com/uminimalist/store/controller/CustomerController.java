@@ -260,6 +260,10 @@ public class CustomerController {
                                  HttpSession session,
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
+            return "redirect:/cart";
+        }
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
         try {
@@ -302,6 +306,10 @@ public class CustomerController {
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
+            return "redirect:/cart";
+        }
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
         try {
@@ -445,5 +453,12 @@ public class CustomerController {
             redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
         }
         return "redirect:/products/" + slug;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }
