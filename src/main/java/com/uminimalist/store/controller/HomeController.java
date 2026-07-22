@@ -44,8 +44,29 @@ public class HomeController {
                            @RequestParam(required = false) Double minPrice,
                            @RequestParam(required = false) Double maxPrice,
                            @RequestParam(required = false, defaultValue = "new") String sort,
+                           @RequestParam(required = false, defaultValue = "false") Boolean inStock,
                            Model model) {
-        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, minPrice, maxPrice, sort));
+        Double validatedMinPrice = minPrice;
+        Double validatedMaxPrice = maxPrice;
+        String filterError = null;
+
+        if (validatedMinPrice != null && validatedMinPrice < 0) {
+            filterError = "Minimum price cannot be negative. Reset to $0.";
+            validatedMinPrice = 0.0;
+        }
+        if (validatedMaxPrice != null && validatedMaxPrice < 0) {
+            filterError = "Maximum price cannot be negative. Reset to $0.";
+            validatedMaxPrice = 0.0;
+        }
+
+        if (validatedMinPrice != null && validatedMaxPrice != null && validatedMinPrice > validatedMaxPrice) {
+            filterError = "Min price ($" + minPrice + ") cannot be greater than Max price ($" + maxPrice + "). Filter adjusted automatically.";
+            Double temp = validatedMinPrice;
+            validatedMinPrice = validatedMaxPrice;
+            validatedMaxPrice = temp;
+        }
+
+        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, validatedMinPrice, validatedMaxPrice, sort, inStock));
         model.addAttribute("collections", landingPageService.getCollections());
         model.addAttribute("sizes", landingPageService.getSizes());
         model.addAttribute("colors", landingPageService.getColors());
@@ -56,6 +77,10 @@ public class HomeController {
         model.addAttribute("minPrice", minPrice);
         model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("selectedSort", sort);
+        model.addAttribute("inStockOnly", inStock);
+        if (filterError != null) {
+            model.addAttribute("filterError", filterError);
+        }
         return "products";
     }
 
@@ -74,6 +99,8 @@ public class HomeController {
         model.addAttribute("reviews", productReviewService.findReviewsForProduct(slug));
         model.addAttribute("ratingStats", productReviewService.getStatsForProduct(slug));
         model.addAttribute("canReview", authenticated && productReviewService.canUserReview(email, slug));
+        model.addAttribute("reviewStatus", productReviewService.getReviewEligibilityStatus(email, slug));
+        model.addAttribute("relatedProducts", landingPageService.getRelatedProducts(product.slug(), product.collection(), 4));
         
         return "product-detail";
     }

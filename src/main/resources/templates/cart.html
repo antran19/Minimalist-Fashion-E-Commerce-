@@ -16,6 +16,8 @@
     </section>
 
     <p class="cart-alert success" th:if="${cartMessage}" th:text="${cartMessage}">Added to cart.</p>
+    <p class="cart-alert error" th:if="${cartError}" th:text="${cartError}">Error message.</p>
+    <p class="cart-alert warning" style="background: #fffbe6; border-color: #ffe58f; color: #d48806;" th:each="warning : ${cart.warnings}" th:text="${warning}">Warning message.</p>
 
     <!-- Separate checkout form to prevent nested form invalid HTML bug -->
     <form id="cart-checkout-form" th:action="@{/cart/checkout}" method="post" th:if="${!cart.empty}">
@@ -32,9 +34,12 @@
                 </label>
             </div>
 
-            <article class="cart-item" th:each="item : ${cart.items}">
+            <article class="cart-item" th:each="item : ${cart.items}" th:classappend="${item.outOfStock || item.stockExceeded} ? 'is-disabled'">
                 <div style="display: flex; align-items: center; justify-content: center;">
-                    <input type="checkbox" form="cart-checkout-form" name="selectedSkus" th:value="${item.sku}" checked class="cart-item-checkbox"
+                    <input type="checkbox" form="cart-checkout-form" name="selectedSkus" th:value="${item.sku}"
+                           th:checked="${!item.outOfStock && !item.stockExceeded}"
+                           th:disabled="${item.outOfStock || item.stockExceeded}"
+                           class="cart-item-checkbox"
                            th:data-price="${item.unitPrice}" th:data-qty="${item.quantity}"
                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--ink);">
                 </div>
@@ -45,6 +50,8 @@
                     <p th:text="${item.category}">T-shirt</p>
                     <h2>
                         <a th:href="@{/products/{slug}(slug=${item.productSlug})}" th:text="${item.productName}">Air Cotton Tee</a>
+                        <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; background: #fee2e2; color: #dc2626;" th:if="${item.outOfStock}">Out of Stock</span>
+                        <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; background: #fef3c7; color: #d97706;" th:if="${item.stockExceeded}">Exceeds Stock</span>
                     </h2>
                     <dl>
                         <div>
@@ -67,7 +74,7 @@
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <input type="hidden" name="sku" th:value="${item.sku}">
                         <label th:for="${'quantity-' + item.sku}">Quantity</label>
-                        <input th:id="${'quantity-' + item.sku}" name="quantity" type="number" min="0"
+                        <input th:id="${'quantity-' + item.sku}" name="quantity" type="number" min="1" step="1" required
                                th:max="${item.stockQuantity}" th:value="${item.quantity}" th:data-initial="${item.quantity}" class="cart-qty-input">
                         <button type="submit" class="btn-update-item" disabled title="Change quantity to enable update">Update</button>
                     </form>
@@ -118,14 +125,18 @@
             let totalItems = 0;
             let subtotal = 0;
             let checkedCount = 0;
+            let enabledBoxes = 0;
 
             itemCheckboxes.forEach(cb => {
-                if (cb.checked) {
-                    const price = parseFloat(cb.dataset.price) || 0;
-                    const qty = parseInt(cb.dataset.qty) || 1;
-                    totalItems += qty;
-                    subtotal += price * qty;
-                    checkedCount++;
+                if (!cb.disabled) {
+                    enabledBoxes++;
+                    if (cb.checked) {
+                        const price = parseFloat(cb.dataset.price) || 0;
+                        const qty = parseInt(cb.dataset.qty) || 1;
+                        totalItems += qty;
+                        subtotal += price * qty;
+                        checkedCount++;
+                    }
                 }
             });
 
@@ -134,7 +145,8 @@
             if (summarySubtotal) summarySubtotal.textContent = '$' + subtotal.toFixed(2);
 
             if (selectAll) {
-                selectAll.checked = (checkedCount === itemCheckboxes.length && itemCheckboxes.length > 0);
+                selectAll.checked = (enabledBoxes > 0 && checkedCount === enabledBoxes);
+                selectAll.disabled = (enabledBoxes === 0);
             }
 
             if (submitBtn) {
@@ -146,7 +158,9 @@
         if (selectAll) {
             selectAll.addEventListener('change', function() {
                 itemCheckboxes.forEach(cb => {
-                    cb.checked = selectAll.checked;
+                    if (!cb.disabled) {
+                        cb.checked = selectAll.checked;
+                    }
                 });
                 updateCartTotals();
             });
@@ -156,17 +170,31 @@
             cb.addEventListener('change', updateCartTotals);
         });
 
-        // Enable Update button ONLY when quantity input value changes from initial
+        // Enable Update button and update summary totals immediately when quantity input value changes
         document.querySelectorAll('.cart-qty-input').forEach(input => {
+            const article = input.closest('.cart-item');
             const form = input.closest('.item-update-form');
             const btn = form ? form.querySelector('.btn-update-item') : null;
+            const checkbox = article ? article.querySelector('.cart-item-checkbox') : null;
+            const lineTotalEl = article ? article.querySelector('.cart-line-total') : null;
             const initialVal = input.dataset.initial;
 
             function checkQtyChange() {
+                let val = parseInt(input.value);
+                if (!isNaN(val) && val >= 1 && checkbox) {
+                    checkbox.dataset.qty = val;
+                    const price = parseFloat(checkbox.dataset.price) || 0;
+                    if (lineTotalEl) {
+                        lineTotalEl.textContent = '$' + (price * val).toFixed(2);
+                    }
+                }
+
                 if (btn) {
                     const changed = (input.value !== initialVal);
                     btn.disabled = !changed;
                 }
+
+                updateCartTotals();
             }
 
             input.addEventListener('input', checkQtyChange);

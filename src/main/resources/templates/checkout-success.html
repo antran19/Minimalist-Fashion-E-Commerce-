@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <th:block th:insert="~{fragments/head :: head('Payment Successful | U-Minimalist', 'Your payment was processed successfully. Thank you for your order!')}"></th:block>
+    <th:block th:insert="~{fragments/head :: head('Order Placed Successfully | U-Minimalist', 'Your order was placed successfully. Thank you for your purchase!')}"></th:block>
     <style>
         .success-card {
             background: #ffffff;
@@ -98,6 +98,21 @@
             <div>
                 <span>Total Amount</span>
                 <strong class="text-success" th:text="${order.totalLabel}">$19.90</strong>
+            </div>
+            <div style="border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px;">
+                <span style="font-weight: 700; color: var(--ink); display: block; margin-bottom: 12px;">Purchased Items</span>
+                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <li th:each="item : ${order.items}" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                            <div>
+                                <strong th:text="${item.productName}" style="display: block; font-size: 0.9rem;">Air Cotton Tee</strong>
+                                <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}" style="color: var(--muted); font-size: 0.78rem;">Cream / M / Qty 1</small>
+                            </div>
+                        </div>
+                        <span th:text="${item.lineTotalLabel}" style="font-weight: 700; font-size: 0.9rem;">$19.90</span>
+                    </li>
+                </ul>
             </div>
         </div>
 

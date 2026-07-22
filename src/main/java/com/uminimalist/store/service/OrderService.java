@@ -97,22 +97,43 @@ public class OrderService {
         addOrderColumnIfMissing("shipping_address_line", "NVARCHAR(255) NULL");
         addOrderColumnIfMissing("shipping_district", "NVARCHAR(120) NULL");
         addOrderColumnIfMissing("shipping_city", "NVARCHAR(120) NULL");
+        addOrderColumnIfMissing("notes", "NVARCHAR(500) NULL");
         addOrderColumnIfMissing("payment_method", "NVARCHAR(30) NOT NULL DEFAULT 'COD'");
         addOrderColumnIfMissing("payment_status", "NVARCHAR(30) NOT NULL DEFAULT 'UNPAID'");
+        addOrderItemColumnIfMissing("product_slug", "NVARCHAR(120) NULL");
+
+        // Fix any existing legacy orders in DB that were confirmed paid via VNPay but payment_status remained PENDING/UNPAID
+        jdbcTemplate.execute("""
+                UPDATE dbo.orders
+                SET payment_status = 'PAID'
+                WHERE status IN ('PROCESSING', 'SHIPPED', 'DELIVERED')
+                  AND payment_method LIKE '%VNPAY%'
+                  AND (payment_status IS NULL OR payment_status = 'PENDING' OR payment_status = 'UNPAID')
+                """);
     }
 
     @Transactional
     public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return placeOrder(customerEmail, cart, shippingAddress, "COD");
+        return placeOrder(customerEmail, cart, shippingAddress, "COD", null);
     }
 
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY");
+        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", null);
+    }
+
+    @Transactional
+    public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String notes) {
+        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", notes);
     }
 
     @Transactional
     public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String paymentMethod) {
+        return placeOrder(customerEmail, cart, shippingAddress, paymentMethod, null);
+    }
+
+    @Transactional
+    public OrderSummaryView placeOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String paymentMethod, String notes) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Your cart is empty.");
         }
@@ -164,7 +185,7 @@ public class OrderService {
         }
 
         String orderCode = nextOrderCode(user.getId());
-        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total, normalizedMethod, initialPaymentStatus, initialOrderStatus);
+        Long orderId = insertOrder(orderCode, user, shippingAddress, itemCount, total, normalizedMethod, initialPaymentStatus, initialOrderStatus, notes);
         insertOrderItems(orderId, lines);
 
         return findOrder(orderId)
@@ -175,7 +196,7 @@ public class OrderService {
         ensureOrderTables();
         return loadOrders("""
                 SELECT TOP 12 id, order_code, customer_name, customer_email,
-                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                     created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE customer_email = ?
@@ -183,30 +204,46 @@ public class OrderService {
                 """, customerEmail);
     }
 
+    private static final java.util.Set<String> VALID_ORDER_STATUSES = java.util.Set.of(
+            "ALL", "PLACED", "PENDING_PAYMENT", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
+    );
+
     public PaginatedOrders findOrdersForCustomerPaginated(String customerEmail, String status, int page, int size) {
         ensureOrderTables();
         
-        boolean hasStatus = status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status);
+        String normalizedStatus = (status == null || status.isBlank()) ? "ALL" : status.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!VALID_ORDER_STATUSES.contains(normalizedStatus)) {
+            normalizedStatus = "ALL";
+        }
+        
+        boolean hasStatus = !"ALL".equals(normalizedStatus);
         
         String countSql = hasStatus 
                 ? "SELECT COUNT(*) FROM dbo.orders WHERE customer_email = ? AND status = ?"
                 : "SELECT COUNT(*) FROM dbo.orders WHERE customer_email = ?";
         
-        Object[] countArgs = hasStatus ? new Object[]{customerEmail, status} : new Object[]{customerEmail};
+        Object[] countArgs = hasStatus ? new Object[]{customerEmail, normalizedStatus} : new Object[]{customerEmail};
         
         Integer totalCount = jdbcTemplate.queryForObject(countSql, Integer.class, countArgs);
         if (totalCount == null) totalCount = 0;
         
         int totalPages = (int) Math.ceil((double) totalCount / size);
-        if (totalPages == 0) totalPages = 1;
+        if (totalPages <= 0) totalPages = 1;
         
-        int offset = (page - 1) * size;
+        int validatedPage = page;
+        if (validatedPage < 1) {
+            validatedPage = 1;
+        } else if (validatedPage > totalPages) {
+            validatedPage = totalPages;
+        }
+        
+        int offset = (validatedPage - 1) * size;
         if (offset < 0) offset = 0;
         
         String sql = hasStatus
                 ? """
                   SELECT id, order_code, customer_name, customer_email,
-                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                       created_at, status, payment_method, payment_status, item_count, total_amount
                   FROM dbo.orders
                   WHERE customer_email = ? AND status = ?
@@ -215,7 +252,7 @@ public class OrderService {
                   """
                 : """
                   SELECT id, order_code, customer_name, customer_email,
-                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                      shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                       created_at, status, payment_method, payment_status, item_count, total_amount
                   FROM dbo.orders
                   WHERE customer_email = ?
@@ -224,19 +261,19 @@ public class OrderService {
                   """;
                   
         Object[] args = hasStatus 
-                ? new Object[]{customerEmail, status, offset, size}
+                ? new Object[]{customerEmail, normalizedStatus, offset, size}
                 : new Object[]{customerEmail, offset, size};
                 
         List<OrderSummaryView> orders = loadOrders(sql, args);
         
-        return new PaginatedOrders(orders, page, totalPages, totalCount, status != null ? status : "ALL");
+        return new PaginatedOrders(orders, validatedPage, totalPages, totalCount, normalizedStatus);
     }
 
     public Optional<OrderSummaryView> findOrderForCustomer(String customerEmail, String orderCode) {
         ensureOrderTables();
         return loadOrders("""
                 SELECT id, order_code, customer_name, customer_email,
-                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                     created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE customer_email = ? AND order_code = ?
@@ -246,20 +283,8 @@ public class OrderService {
     @Transactional
     public void cancelOrderForCustomer(String customerEmail, String orderCode) {
         ensureOrderTables();
-        List<OrderStatusRow> rows = jdbcTemplate.query("""
-                        SELECT id, status
-                        FROM dbo.orders
-                        WHERE customer_email = ? AND order_code = ?
-                        """,
-                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
-                customerEmail,
-                orderCode);
+        OrderStatusRow order = requireOrder(customerEmail, orderCode);
 
-        if (rows.isEmpty()) {
-            throw new IllegalArgumentException("Order not found.");
-        }
-
-        OrderStatusRow order = rows.get(0);
         if ("PAID".equalsIgnoreCase(order.paymentStatus())) {
             throw new IllegalArgumentException("This order has been paid. Please contact support for a refund before cancelling.");
         }
@@ -268,20 +293,22 @@ public class OrderService {
             throw new IllegalArgumentException("Only placed or pending payment orders can be cancelled.");
         }
 
-        List<OrderStockRow> stockRows = jdbcTemplate.query("""
-                        SELECT product_variant_id, quantity
-                        FROM dbo.order_items
-                        WHERE order_id = ?
-                        """,
-                (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
-                order.id());
+        if (!"PENDING_PAYMENT".equalsIgnoreCase(order.status())) {
+            List<OrderStockRow> stockRows = jdbcTemplate.query("""
+                            SELECT product_variant_id, quantity
+                            FROM dbo.order_items
+                            WHERE order_id = ?
+                            """,
+                    (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
+                    order.id());
 
-        for (OrderStockRow stockRow : stockRows) {
-            jdbcTemplate.update("""
-                    UPDATE dbo.product_variants
-                    SET stock_quantity = stock_quantity + ?
-                    WHERE id = ?
-                    """, stockRow.quantity(), stockRow.productVariantId());
+            for (OrderStockRow stockRow : stockRows) {
+                jdbcTemplate.update("""
+                        UPDATE dbo.product_variants
+                        SET stock_quantity = stock_quantity + ?
+                        WHERE id = ?
+                        """, stockRow.quantity(), stockRow.productVariantId());
+            }
         }
 
         jdbcTemplate.update("""
@@ -299,10 +326,19 @@ public class OrderService {
     @Transactional
     public OrderSummaryView confirmPaidOrder(String customerEmail, String orderCode) {
         ensureOrderTables();
-        OrderStatusRow order = requireOrder(customerEmail, orderCode);
+        OrderStatusRow order = findOrderRowByCode(customerEmail, orderCode);
+        if (order == null) {
+            throw new IllegalArgumentException("Order not found.");
+        }
+
+        if ("PAID".equalsIgnoreCase(order.paymentStatus())) {
+            return findOrder(order.id())
+                    .orElseThrow(() -> new IllegalStateException("Order not found."));
+        }
+
         if (!PENDING_PAYMENT_STATUS.equalsIgnoreCase(order.status())) {
             return findOrder(order.id())
-                    .orElseThrow(() -> new IllegalArgumentException("Order not found."));
+                    .orElseThrow(() -> new IllegalArgumentException("Order is not pending payment."));
         }
 
         List<OrderStockRow> stockRows = jdbcTemplate.query("""
@@ -320,47 +356,140 @@ public class OrderService {
                     WHERE id = ? AND stock_quantity >= ?
                     """, stockRow.quantity(), stockRow.productVariantId(), stockRow.quantity());
             if (updated == 0) {
-                throw new IllegalArgumentException("An item in this order sold out before the payment completed.");
+                jdbcTemplate.update("UPDATE dbo.orders SET status = 'CANCELLED', payment_status = 'FAILED' WHERE id = ?", order.id());
+                throw new IllegalArgumentException("One or more products are no longer available in the requested quantity. Order cancelled.");
             }
         }
 
-        jdbcTemplate.update("UPDATE dbo.orders SET status = 'PROCESSING' WHERE id = ?", order.id());
+        jdbcTemplate.update("UPDATE dbo.orders SET status = 'PROCESSING', payment_status = 'PAID' WHERE id = ?", order.id());
         return findOrder(order.id())
                 .orElseThrow(() -> new IllegalStateException("Order was paid but could not be loaded."));
     }
 
+    public List<String> getOrderSkus(String orderCode) {
+        ensureOrderTables();
+        OrderStatusRow order = findOrderRowByCode(null, orderCode);
+        if (order == null) return List.of();
+        return jdbcTemplate.query("""
+                SELECT pv.sku
+                FROM dbo.order_items oi
+                JOIN dbo.product_variants pv ON oi.product_variant_id = pv.id
+                WHERE oi.order_id = ?
+                """, (rs, rowNum) -> rs.getString("sku"), order.id());
+    }
+
     /**
-     * Marks a pending order as cancelled after a failed or abandoned payment.
-     * No stock needs restoring because it was never taken.
+     * Marks a pending order as PENDING_PAYMENT / FAILED after a failed or abandoned payment.
      */
     @Transactional
     public void markPaymentFailed(String customerEmail, String orderCode) {
         ensureOrderTables();
-        OrderStatusRow order = requireOrder(customerEmail, orderCode);
-        if (PENDING_PAYMENT_STATUS.equalsIgnoreCase(order.status())) {
-            jdbcTemplate.update("UPDATE dbo.orders SET status = 'CANCELLED' WHERE id = ?", order.id());
+        OrderStatusRow order = findOrderRowByCode(customerEmail, orderCode);
+        if (order != null && PENDING_PAYMENT_STATUS.equalsIgnoreCase(order.status())) {
+            jdbcTemplate.update("UPDATE dbo.orders SET status = 'PENDING_PAYMENT', payment_status = 'FAILED' WHERE id = ?", order.id());
         }
     }
 
-    private OrderStatusRow requireOrder(String customerEmail, String orderCode) {
-        return jdbcTemplate.query("""
-                        SELECT id, status, payment_status
-                        FROM dbo.orders
-                        WHERE customer_email = ? AND order_code = ?
+    @Transactional
+    public String preparePayAgainUrl(String customerEmail, String orderCode, jakarta.servlet.http.HttpServletRequest request, VNPayService vnPayService) {
+        ensureOrderTables();
+        OrderStatusRow orderRow = findOrderRowByCode(customerEmail, orderCode);
+        if (orderRow == null) {
+            throw new IllegalArgumentException("Order not found.");
+        }
+
+        if (!"PENDING_PAYMENT".equalsIgnoreCase(orderRow.status())) {
+            throw new IllegalArgumentException("Only pending payment orders can be paid again.");
+        }
+
+        if (!"VNPAY".equalsIgnoreCase(orderRow.paymentMethod())) {
+            throw new IllegalArgumentException("Only VNPay orders can be paid online again.");
+        }
+
+        if ("PAID".equalsIgnoreCase(orderRow.paymentStatus())) {
+            throw new IllegalArgumentException("This order has already been paid.");
+        }
+
+        // Check stock availability before creating payment URL
+        List<OrderStockRow> stockRows = jdbcTemplate.query("""
+                        SELECT product_variant_id, quantity
+                        FROM dbo.order_items
+                        WHERE order_id = ?
                         """,
-                        (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
-                        customerEmail,
-                        orderCode)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Order not found."));
+                (rs, rowNum) -> new OrderStockRow(rs.getLong("product_variant_id"), rs.getInt("quantity")),
+                orderRow.id());
+
+        for (OrderStockRow stockRow : stockRows) {
+            Integer available = jdbcTemplate.queryForObject("""
+                    SELECT stock_quantity FROM dbo.product_variants WHERE id = ? AND active = 1
+                    """, Integer.class, stockRow.productVariantId());
+
+            if (available == null || available < stockRow.quantity()) {
+                jdbcTemplate.update("UPDATE dbo.orders SET status = 'CANCELLED', payment_status = 'FAILED' WHERE id = ?", orderRow.id());
+                throw new IllegalArgumentException("One or more products are no longer available in the requested quantity. Please update your cart and place a new order.");
+            }
+        }
+
+        jdbcTemplate.update("UPDATE dbo.orders SET payment_status = 'PENDING' WHERE id = ?", orderRow.id());
+
+        int retrySeq = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 999);
+        String retryTxnRef = orderRow.orderCode() + "-R" + retrySeq;
+
+        double usdAmount = orderRow.totalAmount() != null ? orderRow.totalAmount().doubleValue() : 0.0;
+        return vnPayService.createPaymentUrl(retryTxnRef, usdAmount, request);
+    }
+
+    private OrderStatusRow findOrderRowByCode(String customerEmail, String orderCode) {
+        if (orderCode == null) return null;
+        String baseCode = orderCode.contains("-R") ? orderCode.substring(0, orderCode.indexOf("-R")) : orderCode;
+        List<OrderStatusRow> list;
+        if (customerEmail != null && !customerEmail.isBlank()) {
+            list = jdbcTemplate.query("""
+                    SELECT id, status, payment_status, payment_method, order_code, total_amount
+                    FROM dbo.orders
+                    WHERE customer_email = ? AND (order_code = ? OR order_code = ?)
+                    """,
+                    (rs, rowNum) -> new OrderStatusRow(
+                            rs.getLong("id"),
+                            rs.getString("status"),
+                            rs.getString("payment_status"),
+                            rs.getString("payment_method"),
+                            rs.getString("order_code"),
+                            rs.getBigDecimal("total_amount")
+                    ),
+                    customerEmail, orderCode, baseCode);
+        } else {
+            list = jdbcTemplate.query("""
+                    SELECT id, status, payment_status, payment_method, order_code, total_amount
+                    FROM dbo.orders
+                    WHERE order_code = ? OR order_code = ?
+                    """,
+                    (rs, rowNum) -> new OrderStatusRow(
+                            rs.getLong("id"),
+                            rs.getString("status"),
+                            rs.getString("payment_status"),
+                            rs.getString("payment_method"),
+                            rs.getString("order_code"),
+                            rs.getBigDecimal("total_amount")
+                    ),
+                    orderCode, baseCode);
+        }
+        return list.stream().findFirst().orElse(null);
+    }
+
+    private OrderStatusRow requireOrder(String customerEmail, String orderCode) {
+        OrderStatusRow row = findOrderRowByCode(customerEmail, orderCode);
+        if (row == null) {
+            throw new IllegalArgumentException("Order not found.");
+        }
+        return row;
     }
 
     public List<OrderSummaryView> findRecentOrders() {
         ensureOrderTables();
         return loadOrders("""
                 SELECT TOP 20 id, order_code, customer_name, customer_email,
-                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                     created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 ORDER BY created_at DESC, id DESC
@@ -374,7 +503,7 @@ public class OrderService {
         }
         return loadOrders("""
                 SELECT TOP 50 id, order_code, customer_name, customer_email,
-                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                     created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE status = ?
@@ -410,7 +539,7 @@ public class OrderService {
         if (totalPages < 1) totalPages = 1;
 
         String selectSql = "SELECT id, order_code, customer_name, customer_email, " +
-                "shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, " +
+                "shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes, " +
                 "created_at, status, payment_method, payment_status, item_count, total_amount " +
                 "FROM dbo.orders " + whereSql +
                 "ORDER BY created_at DESC, id DESC " +
@@ -431,11 +560,18 @@ public class OrderService {
 
         // Load current order state
         List<OrderStatusRow> rows = jdbcTemplate.query("""
-                SELECT id, status, payment_status
+                SELECT id, status, payment_status, payment_method, order_code, total_amount
                 FROM dbo.orders
                 WHERE id = ?
                 """,
-                (rs, rowNum) -> new OrderStatusRow(rs.getLong("id"), rs.getString("status"), rs.getString("payment_status")),
+                (rs, rowNum) -> new OrderStatusRow(
+                        rs.getLong("id"),
+                        rs.getString("status"),
+                        rs.getString("payment_status"),
+                        rs.getString("payment_method"),
+                        rs.getString("order_code"),
+                        rs.getBigDecimal("total_amount")
+                ),
                 orderId);
 
         if (rows.isEmpty()) {
@@ -470,8 +606,8 @@ public class OrderService {
         }
 
         // ---- Execute Status Change ----
-        if ("CANCELLED".equals(normalizedStatus)) {
-            // Return stock to inventory
+        if ("CANCELLED".equals(normalizedStatus) && !"PENDING_PAYMENT".equalsIgnoreCase(currentStatus)) {
+            // Return stock to inventory (only for orders that previously deducted stock)
             List<OrderStockRow> stockRows = jdbcTemplate.query("""
                     SELECT product_variant_id, quantity
                     FROM dbo.order_items
@@ -571,15 +707,15 @@ public class OrderService {
         return currencyFormat.format(total == null ? BigDecimal.ZERO : total);
     }
 
-    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total, String paymentMethod, String paymentStatus, String orderStatus) {
+    private Long insertOrder(String orderCode, User user, CustomerAddressView shippingAddress, int itemCount, BigDecimal total, String paymentMethod, String paymentStatus, String orderStatus, String notes) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement("""
                     INSERT INTO dbo.orders
                         (order_code, user_id, customer_name, customer_email,
-                         shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                         shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                          status, payment_method, payment_status, item_count, total_amount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, orderCode);
             ps.setLong(2, user.getId());
@@ -590,11 +726,12 @@ public class OrderService {
             ps.setString(7, shippingAddress.addressLine());
             ps.setString(8, shippingAddress.district());
             ps.setString(9, shippingAddress.city());
-            ps.setString(10, orderStatus);
-            ps.setString(11, paymentMethod);
-            ps.setString(12, paymentStatus);
-            ps.setInt(13, itemCount);
-            ps.setBigDecimal(14, total);
+            ps.setString(10, notes == null || notes.isBlank() ? null : notes.trim());
+            ps.setString(11, orderStatus);
+            ps.setString(12, paymentMethod);
+            ps.setString(13, paymentStatus);
+            ps.setInt(14, itemCount);
+            ps.setBigDecimal(15, total);
             return ps;
         }, keyHolder);
 
@@ -608,8 +745,8 @@ public class OrderService {
     private void insertOrderItems(Long orderId, List<OrderLine> lines) {
         jdbcTemplate.batchUpdate("""
                 INSERT INTO dbo.order_items
-                    (order_id, product_variant_id, product_name, sku, color, size, quantity, unit_price, line_total)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (order_id, product_variant_id, product_name, sku, color, size, quantity, unit_price, line_total, product_slug)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, lines, 20, (ps, line) -> {
             CartItemView item = line.item();
             ProductVariant variant = line.variant();
@@ -622,13 +759,14 @@ public class OrderService {
             ps.setInt(7, item.quantity());
             ps.setBigDecimal(8, line.unitPrice());
             ps.setBigDecimal(9, line.lineTotal());
+            ps.setString(10, item.productSlug());
         });
     }
 
     private Optional<OrderSummaryView> findOrder(Long orderId) {
         List<OrderSummaryView> orders = loadOrders("""
                 SELECT id, order_code, customer_name, customer_email,
-                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
                     created_at, status, payment_method, payment_status, item_count, total_amount
                 FROM dbo.orders
                 WHERE id = ?
@@ -647,6 +785,7 @@ public class OrderService {
                 rs.getString("shipping_address_line"),
                 rs.getString("shipping_district"),
                 rs.getString("shipping_city"),
+                rs.getString("notes"),
                 rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getString("status"),
                 rs.getString("payment_method") == null ? "COD" : rs.getString("payment_method"),
@@ -667,6 +806,7 @@ public class OrderService {
                         row.shippingAddressLine(),
                         row.shippingDistrict(),
                         row.shippingCity(),
+                        row.notes(),
                         row.createdAt(),
                         row.status(),
                         row.paymentMethod(),
@@ -685,23 +825,32 @@ public class OrderService {
 
         String placeholders = orderIds.stream().map(id -> "?").collect(Collectors.joining(","));
         return jdbcTemplate.query("""
-                        SELECT order_id, product_name, sku, color, size, quantity, unit_price, line_total
-                        FROM dbo.order_items
-                        WHERE order_id IN (%s)
-                        ORDER BY id ASC
+                        SELECT oi.order_id, oi.product_name, oi.sku, oi.color, oi.size, oi.quantity, oi.unit_price, oi.line_total,
+                               COALESCE(oi.product_slug, p.slug) AS product_slug
+                        FROM dbo.order_items oi
+                        LEFT JOIN dbo.product_variants pv ON oi.product_variant_id = pv.id
+                        LEFT JOIN dbo.products p ON pv.product_id = p.id
+                        WHERE oi.order_id IN (%s)
+                        ORDER BY oi.id ASC
                         """.formatted(placeholders),
                 (rs) -> {
                     Map<Long, List<OrderItemView>> grouped = new LinkedHashMap<>();
                     while (rs.next()) {
                         Long orderId = rs.getLong("order_id");
+                        String slug = rs.getString("product_slug");
+                        String sku = rs.getString("sku");
+                        String productName = rs.getString("product_name");
+                        String imgPath = imagePath(slug, sku, productName);
                         grouped.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(new OrderItemView(
-                                rs.getString("product_name"),
-                                rs.getString("sku"),
+                                productName,
+                                sku,
                                 rs.getString("color"),
                                 rs.getString("size"),
                                 rs.getInt("quantity"),
                                 currencyFormat.format(rs.getBigDecimal("unit_price")),
-                                currencyFormat.format(rs.getBigDecimal("line_total"))
+                                currencyFormat.format(rs.getBigDecimal("line_total")),
+                                imgPath,
+                                slug
                         ));
                     }
                     return grouped;
@@ -709,9 +858,60 @@ public class OrderService {
                 orderIds.toArray());
     }
 
+    private String imagePath(String slug, String sku, String productName) {
+        String effectiveSlug = slug;
+        if (effectiveSlug == null || effectiveSlug.isBlank()) {
+            if (sku != null && !sku.isBlank()) {
+                String lowerSku = sku.toLowerCase();
+                if (lowerSku.startsWith("air-cotton-tee")) effectiveSlug = "air-cotton-tee";
+                else if (lowerSku.startsWith("light-utility-jacket")) effectiveSlug = "light-utility-jacket";
+                else if (lowerSku.startsWith("soft-jersey-tee")) effectiveSlug = "soft-jersey-tee";
+                else if (lowerSku.startsWith("everyday-zip-hoodie")) effectiveSlug = "everyday-zip-hoodie";
+                else if (lowerSku.startsWith("smart-ankle-pants")) effectiveSlug = "smart-ankle-pants";
+                else if (lowerSku.startsWith("oxford-shirt")) effectiveSlug = "oxford-shirt";
+                else if (lowerSku.startsWith("linen-blend-shirt")) effectiveSlug = "linen-blend-shirt";
+                else if (lowerSku.startsWith("utility-tote")) effectiveSlug = "utility-tote";
+                else if (lowerSku.startsWith("easy-cotton-shorts")) effectiveSlug = "easy-cotton-shorts";
+                else if (lowerSku.startsWith("school-day-cardigan")) effectiveSlug = "school-day-cardigan";
+            }
+        }
+        if (effectiveSlug == null || effectiveSlug.isBlank()) {
+            if (productName != null && !productName.isBlank()) {
+                String lowerName = productName.toLowerCase();
+                if (lowerName.contains("cotton tee")) effectiveSlug = "air-cotton-tee";
+                else if (lowerName.contains("utility jacket")) effectiveSlug = "light-utility-jacket";
+                else if (lowerName.contains("jersey tee")) effectiveSlug = "soft-jersey-tee";
+                else if (lowerName.contains("zip hoodie")) effectiveSlug = "everyday-zip-hoodie";
+                else if (lowerName.contains("ankle pants")) effectiveSlug = "smart-ankle-pants";
+                else if (lowerName.contains("oxford shirt")) effectiveSlug = "oxford-shirt";
+                else if (lowerName.contains("linen")) effectiveSlug = "linen-blend-shirt";
+                else if (lowerName.contains("tote")) effectiveSlug = "utility-tote";
+                else if (lowerName.contains("shorts")) effectiveSlug = "easy-cotton-shorts";
+                else if (lowerName.contains("cardigan")) effectiveSlug = "school-day-cardigan";
+            }
+        }
+        if (effectiveSlug == null || effectiveSlug.isBlank()) {
+            return "/images/product-collage.png";
+        }
+        return switch (effectiveSlug) {
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
+            case "utility-tote" -> "/images/products/utility-tote-v2.png";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            default -> "/images/product-collage.png";
+        };
+    }
+
     private String nextOrderCode(Long userId) {
-        return "UM-" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + "-" + userId;
+        int randomSuffix = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 1000);
+        return "UM-" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + randomSuffix + "-" + userId;
     }
 
     private void addOrderColumnIfMissing(String columnName, String definition) {
@@ -723,10 +923,19 @@ public class OrderService {
                 """.formatted(columnName, columnName, definition));
     }
 
+    private void addOrderItemColumnIfMissing(String columnName, String definition) {
+        jdbcTemplate.execute("""
+                IF COL_LENGTH('dbo.order_items', '%s') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.order_items ADD %s %s;
+                END
+                """.formatted(columnName, columnName, definition));
+    }
+
     private record OrderLine(CartItemView item, ProductVariant variant, BigDecimal unitPrice, BigDecimal lineTotal) {
     }
 
-    private record OrderStatusRow(Long id, String status, String paymentStatus) {
+    private record OrderStatusRow(Long id, String status, String paymentStatus, String paymentMethod, String orderCode, BigDecimal totalAmount) {
     }
 
     private record OrderStockRow(Long productVariantId, int quantity) {
@@ -741,6 +950,7 @@ public class OrderService {
                             String shippingAddressLine,
                             String shippingDistrict,
                             String shippingCity,
+                            String notes,
                             LocalDateTime createdAt,
                             String status,
                             String paymentMethod,

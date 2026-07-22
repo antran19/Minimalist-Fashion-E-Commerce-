@@ -9,6 +9,7 @@ import com.uminimalist.store.service.ShoppingCartService;
 import com.uminimalist.store.service.WishlistService;
 import com.uminimalist.store.service.ProductReviewService;
 import com.uminimalist.store.service.VNPayService;
+import com.uminimalist.store.util.PhoneValidator;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
@@ -74,25 +75,46 @@ public class CustomerController {
                                 @RequestParam String fullName,
                                 @RequestParam String phone,
                                 RedirectAttributes redirectAttributes) {
-        String normalizedName = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
-        String normalizedPhone = phone == null ? "" : phone.trim();
 
-        if (normalizedName.length() < 2 || normalizedName.length() > 120) {
-            redirectAttributes.addFlashAttribute("accountError", "Full name must be between 2 and 120 characters.");
+        String normalizedName = fullName == null
+                ? ""
+                : fullName.trim().replaceAll("\\s+", " ");
+
+        if (normalizedName.length() < 2 || normalizedName.length() > 120 || !normalizedName.matches(".*\\p{L}.*")) {
+            redirectAttributes.addFlashAttribute(
+                    "accountError",
+                    "Full name must be between 2 and 120 characters and contain at least one letter."
+            );
+
             return "redirect:/account#profile";
         }
-        if (normalizedPhone.length() < 8 || normalizedPhone.length() > 20) {
-            redirectAttributes.addFlashAttribute("accountError", "Phone number must be between 8 and 20 characters.");
+
+        String normalizedPhone;
+
+        try {
+            normalizedPhone = PhoneValidator.normalizeVietnameseMobile(phone);
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "accountError",
+                    exception.getMessage()
+            );
+
             return "redirect:/account#profile";
         }
 
         User user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found."));
+
         user.setFullName(normalizedName);
         user.setPhone(normalizedPhone);
         userRepository.save(user);
 
-        redirectAttributes.addFlashAttribute("accountMessage", "Profile updated.");
+        redirectAttributes.addFlashAttribute(
+                "accountMessage",
+                "Profile updated."
+        );
+
         return "redirect:/account#profile";
     }
 
@@ -155,12 +177,23 @@ public class CustomerController {
         }
 
         int addedItems = 0;
+        java.util.List<String> warnings = new java.util.ArrayList<>();
         for (var item : order.get().items()) {
             try {
                 shoppingCartService.addSku(session, authentication.getName(), item.sku(), item.quantity());
                 addedItems += item.quantity();
-            } catch (IllegalArgumentException ignored) {
-                // Skip unavailable variants so one discontinued item does not block the rest of the reorder.
+            } catch (IllegalArgumentException ex) {
+                // If requested quantity exceeds stock, attempt to add available stock quantity
+                try {
+                    int availableStock = item.stockQuantity();
+                    if (availableStock > 0) {
+                        shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
+                        addedItems += availableStock;
+                        warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Skip completely unavailable or out-of-stock variants
+                }
             }
         }
 
@@ -169,7 +202,11 @@ public class CustomerController {
             return "redirect:/account/orders/" + orderCode;
         }
 
-        redirectAttributes.addFlashAttribute("cartMessage", "Added " + addedItems + " item(s) from " + orderCode + " to cart.");
+        String msg = "Added " + addedItems + " item(s) from " + orderCode + " to cart.";
+        if (!warnings.isEmpty()) {
+            msg += " " + String.join(" ", warnings);
+        }
+        redirectAttributes.addFlashAttribute("cartMessage", msg);
         return "redirect:/cart";
     }
 
@@ -177,8 +214,14 @@ public class CustomerController {
     public String addWishlist(@RequestParam String productSlug,
                               Authentication authentication,
                               RedirectAttributes redirectAttributes) {
-        wishlistService.add(authentication.getName(), productSlug);
-        redirectAttributes.addFlashAttribute("cartMessage", "Saved to wishlist.");
+        try {
+            wishlistService.add(authentication.getName(), productSlug);
+            redirectAttributes.addFlashAttribute("cartMessage", "Saved to wishlist.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("cartError", ex.getMessage());
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("cartError", "This product is no longer available.");
+        }
         return "redirect:/products/" + productSlug;
     }
 
@@ -187,9 +230,29 @@ public class CustomerController {
                                  @RequestParam(defaultValue = "/account#wishlist") String redirectTo,
                                  Authentication authentication,
                                  RedirectAttributes redirectAttributes) {
-        wishlistService.remove(authentication.getName(), productSlug);
-        redirectAttributes.addFlashAttribute("accountMessage", "Removed from wishlist.");
-        return "redirect:" + redirectTo;
+        try {
+            wishlistService.remove(authentication.getName(), productSlug);
+            redirectAttributes.addFlashAttribute("accountMessage", "Removed from wishlist.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("accountError", ex.getMessage());
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("accountError", "This product is no longer available.");
+        }
+        String safeRedirect = sanitizeInternalRedirect(redirectTo, "/account#wishlist");
+        return "redirect:" + safeRedirect;
+    }
+
+    private String sanitizeInternalRedirect(String redirectTo, String fallback) {
+        if (redirectTo == null || !redirectTo.startsWith("/")) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("//") || redirectTo.startsWith("/\\")) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("/account") || redirectTo.startsWith("/products") || redirectTo.equals("/cart") || redirectTo.equals("/")) {
+            return redirectTo;
+        }
+        return fallback;
     }
 
     @GetMapping("/checkout")
@@ -199,10 +262,18 @@ public class CustomerController {
                                  RedirectAttributes redirectAttributes) {
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        try {
+            shoppingCartService.validateAndPrepareCheckoutSkus(session, authentication.getName(), checkoutSkus);
+        } catch (IllegalArgumentException exception) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            return "redirect:/cart";
+        }
+
         CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
             session.removeAttribute("checkoutSkus");
-            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
+            redirectAttributes.addFlashAttribute("cartError", "No items selected for checkout.");
             return "redirect:/cart";
         }
 
@@ -227,15 +298,24 @@ public class CustomerController {
                              @RequestParam String addressLine,
                              @RequestParam String district,
                              @RequestParam String city,
+                             @RequestParam(required = false) String notes,
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        try {
+            shoppingCartService.validateAndPrepareCheckoutSkus(session, authentication.getName(), checkoutSkus);
+        } catch (IllegalArgumentException exception) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            return "redirect:/cart";
+        }
+
         CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
             session.removeAttribute("checkoutSkus");
-            redirectAttributes.addFlashAttribute("accountError", "No items selected for checkout.");
+            redirectAttributes.addFlashAttribute("cartError", "No items selected for checkout.");
             return "redirect:/cart";
         }
 
@@ -249,13 +329,13 @@ public class CustomerController {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
             if ("VNPAY".equalsIgnoreCase(normalizedPaymentMethod)) {
-                var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress);
+                var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress, notes);
                 double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
                 String paymentUrl = vnPayService.createPaymentUrl(pendingOrder.orderCode(), usdAmount, request);
                 return "redirect:" + paymentUrl;
             }
 
-            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod);
+            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod, notes);
             
             // Clear only purchased items from the shopping cart
             java.util.List<String> purchasedSkus = cart.items().stream().map(com.uminimalist.store.model.CartItemView::sku).toList();
@@ -280,7 +360,6 @@ public class CustomerController {
             return "redirect:/account";
         }
         model.addAttribute("order", orderOpt.get());
-        model.addAttribute("cartCount", 0);
         return "checkout-success";
     }
 
@@ -313,10 +392,17 @@ public class CustomerController {
         boolean verified = vnPayService.verifyCallback(fields);
         if (verified && "00".equals(responseCode)) {
             try {
-                var order = orderService.confirmPaidOrder(customerEmail != null ? customerEmail : username, orderCode);
-                shoppingCartService.clearCart(session, customerEmail != null ? customerEmail : username);
+                String targetUser = customerEmail != null ? customerEmail : username;
+                var order = orderService.confirmPaidOrder(targetUser, orderCode);
+
+                // Remove ONLY purchased items from cart, keeping unselected items intact
+                java.util.List<String> orderSkus = orderService.getOrderSkus(orderCode);
+                shoppingCartService.removeItems(session, targetUser, orderSkus);
+                session.removeAttribute("checkoutSkus");
+
+                // Update model cartCount after removing purchased items so navbar shows accurate remaining count
+                model.addAttribute("cartCount", shoppingCartService.getItemCount(session, targetUser));
                 model.addAttribute("order", order);
-                model.addAttribute("cartCount", 0);
                 return "checkout-success";
             } catch (Exception exception) {
                 redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
@@ -330,6 +416,20 @@ public class CustomerController {
         }
 
         return "redirect:/account#orders";
+    }
+
+    @PostMapping("/account/orders/{orderCode}/pay-again")
+    public String payAgain(@PathVariable String orderCode,
+                           Authentication authentication,
+                           HttpServletRequest request,
+                           RedirectAttributes redirectAttributes) {
+        try {
+            String paymentUrl = orderService.preparePayAgainUrl(authentication.getName(), orderCode, request, vnPayService);
+            return "redirect:" + paymentUrl;
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+            return "redirect:/account#orders";
+        }
     }
 
     @PostMapping("/products/{slug}/reviews")
