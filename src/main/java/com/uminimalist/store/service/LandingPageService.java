@@ -52,7 +52,7 @@ public class LandingPageService {
     }
 
     public List<ProductView> getProducts(String query, String collection, String size, String color,
-            Double minPrice, Double maxPrice, String sort, Boolean inStockOnly) {
+            Double minPrice, Double maxPrice, String sort) {
         List<Product> products = productRepository.findByActiveTrue();
 
         Stream<Product> stream = products.stream();
@@ -68,14 +68,15 @@ public class LandingPageService {
             stream = stream.filter(product -> product.getCategory().getSlug().equalsIgnoreCase(collection));
         }
 
-        // Combined Variant level filter: check if ANY active variant matches size AND color AND inStock
-        stream = stream.filter(product -> product.getVariants().stream().anyMatch(v -> {
-            if (!v.isActive()) return false;
-            if (hasText(color) && !v.getColor().equalsIgnoreCase(color)) return false;
-            if (hasText(size) && !v.getSize().equalsIgnoreCase(size)) return false;
-            if (Boolean.TRUE.equals(inStockOnly) && v.getStockQuantity() <= 0) return false;
-            return true;
-        }));
+        // Variant level filter: check if ANY active variant matches size AND color
+        if (hasText(color) || hasText(size)) {
+            stream = stream.filter(product -> product.getVariants().stream().anyMatch(v -> {
+                if (!v.isActive()) return false;
+                if (hasText(color) && !v.getColor().equalsIgnoreCase(color)) return false;
+                if (hasText(size) && !v.getSize().equalsIgnoreCase(size)) return false;
+                return true;
+            }));
+        }
 
         if (minPrice != null) {
             stream = stream.filter(product -> product.getBasePrice().doubleValue() >= minPrice);
@@ -85,13 +86,20 @@ public class LandingPageService {
             stream = stream.filter(product -> product.getBasePrice().doubleValue() <= maxPrice);
         }
 
+        // Filter by sort option if sort is "new" or "best"
+        if ("new".equalsIgnoreCase(sort)) {
+            stream = stream.filter(Product::isNewArrival);
+        } else if ("best".equalsIgnoreCase(sort)) {
+            stream = stream.filter(Product::isBestSeller);
+        }
+
         List<ProductView> views = stream.map(this::toProductView).toList();
         return views.stream().sorted(productComparator(sort)).toList();
     }
 
     public List<ProductView> getProducts(String query, String collection, String size, String color,
-            Double minPrice, Double maxPrice, String sort) {
-        return getProducts(query, collection, size, color, minPrice, maxPrice, sort, false);
+            Double minPrice, Double maxPrice, String sort, Boolean inStockOnly) {
+        return getProducts(query, collection, size, color, minPrice, maxPrice, sort);
     }
 
     public Optional<ProductView> getProduct(String slug) {
@@ -226,6 +234,7 @@ public class LandingPageService {
                         .orElseGet(() -> imagePath(product.getSlug())));
 
         return new ProductView(
+                product.getId(),
                 product.getSlug(),
                 product.getName(),
                 product.getCategory().getSlug(),
@@ -240,19 +249,27 @@ public class LandingPageService {
                 stock,
                 product.isNewArrival(),
                 product.isBestSeller(),
-                imageViews
+                imageViews,
+                product.getCreatedAt()
         );
     }
 
     private Comparator<ProductView> productComparator(String sort) {
-        return switch (Optional.ofNullable(sort).orElse("")) {
-            case "price-asc" -> Comparator.comparingDouble(ProductView::price);
-            case "price-desc" -> Comparator.comparingDouble(ProductView::price).reversed();
+        if (sort == null || sort.isBlank() || sort.equalsIgnoreCase("default")) {
+            return Comparator.comparing(p -> p.id() != null ? p.id() : 0L);
+        }
+
+        return switch (sort.toLowerCase(Locale.ROOT)) {
+            case "price-asc" -> Comparator.comparingDouble(ProductView::price)
+                    .thenComparing(p -> p.id() != null ? p.id() : 0L);
+            case "price-desc" -> Comparator.comparingDouble(ProductView::price).reversed()
+                    .thenComparing(p -> p.id() != null ? p.id() : 0L);
             case "best" -> Comparator.comparing(ProductView::bestSeller).reversed()
-                    .thenComparing(ProductView::name);
+                    .thenComparing(p -> p.id() != null ? p.id() : 0L, Comparator.reverseOrder());
             case "new" -> Comparator.comparing(ProductView::isNew).reversed()
-                    .thenComparing(ProductView::name);
-            default -> Comparator.comparing(ProductView::name);
+                    .thenComparing(p -> p.createdAt() != null ? p.createdAt() : java.time.LocalDateTime.MIN, Comparator.reverseOrder())
+                    .thenComparing(p -> p.id() != null ? p.id() : 0L, Comparator.reverseOrder());
+            default -> Comparator.comparing(p -> p.id() != null ? p.id() : 0L);
         };
     }
 

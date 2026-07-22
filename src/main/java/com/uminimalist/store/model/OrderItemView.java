@@ -22,4 +22,7 @@ public record OrderItemView(
     ) {
         this(productName, sku, color, size, quantity, unitPriceLabel, lineTotalLabel, null, null);
     }
+
+    /** Convenience: stock is not tracked in OrderItemView — always returns 0. */
+    public int stockQuantity() { return 0; }
 }

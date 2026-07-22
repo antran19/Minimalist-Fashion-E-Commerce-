@@ -43,8 +43,7 @@ public class HomeController {
                            @RequestParam(required = false) String color,
                            @RequestParam(required = false) Double minPrice,
                            @RequestParam(required = false) Double maxPrice,
-                           @RequestParam(required = false, defaultValue = "new") String sort,
-                           @RequestParam(required = false, defaultValue = "false") Boolean inStock,
+                           @RequestParam(required = false) String sort,
                            Model model) {
         Double validatedMinPrice = minPrice;
         Double validatedMaxPrice = maxPrice;
@@ -66,7 +65,7 @@ public class HomeController {
             validatedMaxPrice = temp;
         }
 
-        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, validatedMinPrice, validatedMaxPrice, sort, inStock));
+        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, validatedMinPrice, validatedMaxPrice, sort));
         model.addAttribute("collections", landingPageService.getCollections());
         model.addAttribute("sizes", landingPageService.getSizes());
         model.addAttribute("colors", landingPageService.getColors());
@@ -77,7 +76,6 @@ public class HomeController {
         model.addAttribute("minPrice", minPrice);
         model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("selectedSort", sort);
-        model.addAttribute("inStockOnly", inStock);
         if (filterError != null) {
             model.addAttribute("filterError", filterError);
         }

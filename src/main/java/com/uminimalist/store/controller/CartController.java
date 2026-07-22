@@ -38,7 +38,7 @@ public class CartController {
                             Authentication authentication,
                             RedirectAttributes redirectAttributes) {
         if (isAdmin(authentication)) {
-            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot add items to cart or place orders.");
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
             return "redirect:/products/" + productSlug;
         }
         try {
@@ -64,7 +64,7 @@ public class CartController {
                                        Authentication authentication,
                                        RedirectAttributes redirectAttributes) {
         if (isAdmin(authentication)) {
-            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot place orders. Please log in as a customer account.");
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
             return "redirect:/cart";
         }
         try {
@@ -117,10 +117,8 @@ public class CartController {
     }
 
     private boolean isAdmin(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
-        return authentication.getAuthorities()
+        return authentication != null
+                && authentication.getAuthorities()
                 .stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
