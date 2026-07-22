@@ -217,9 +217,19 @@ public class ShoppingCartService {
             return new CartView(List.of(), 0, currencyFormat.format(0), List.of());
         }
 
-        Map<String, ProductVariant> activeVariantsBySku = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(cart.keySet())
-                .stream()
-                .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
+        Set<String> searchSkus = new HashSet<>();
+        for (String s : cart.keySet()) {
+            if (hasText(s)) {
+                searchSkus.add(s.trim());
+                searchSkus.add(s.trim().toUpperCase(Locale.ROOT));
+                searchSkus.add(s.trim().toLowerCase(Locale.ROOT));
+            }
+        }
+
+        Map<String, ProductVariant> activeVariantsBySku = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (ProductVariant v : productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(searchSkus)) {
+            activeVariantsBySku.put(v.getSku(), v);
+        }
 
         List<String> warnings = new java.util.ArrayList<>();
         List<String> removedSkus = new java.util.ArrayList<>();
@@ -276,9 +286,12 @@ public class ShoppingCartService {
         if (filterSkus == null || filterSkus.isEmpty()) {
             return fullCart;
         }
-        List<String> upperSkus = filterSkus.stream().map(String::trim).toList();
+        Set<String> upperSkus = filterSkus.stream()
+                .filter(this::hasText)
+                .map(s -> s.trim().toUpperCase(Locale.ROOT))
+                .collect(Collectors.toSet());
         List<CartItemView> filteredItems = fullCart.items().stream()
-                .filter(item -> upperSkus.contains(item.sku()))
+                .filter(item -> upperSkus.contains(item.sku().toUpperCase(Locale.ROOT)))
                 .toList();
 
         if (filteredItems.isEmpty()) {
@@ -319,22 +332,33 @@ public class ShoppingCartService {
             cartMap = readCart(session);
         }
 
+        Map<String, Integer> caseInsensitiveCartMap = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        caseInsensitiveCartMap.putAll(cartMap);
+
         for (String sku : uniqueSkus) {
-            if (!cartMap.containsKey(sku)) {
+            if (!caseInsensitiveCartMap.containsKey(sku)) {
                 throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
             }
         }
 
-        Map<String, ProductVariant> variantsBySku = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(uniqueSkus)
-                .stream()
-                .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
+        Set<String> searchSkus = new HashSet<>();
+        for (String s : uniqueSkus) {
+            searchSkus.add(s);
+            searchSkus.add(s.toUpperCase(Locale.ROOT));
+            searchSkus.add(s.toLowerCase(Locale.ROOT));
+        }
+
+        Map<String, ProductVariant> variantsBySku = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (ProductVariant v : productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(searchSkus)) {
+            variantsBySku.put(v.getSku(), v);
+        }
 
         for (String sku : uniqueSkus) {
             ProductVariant variant = variantsBySku.get(sku);
             if (variant == null || !variant.isActive() || !variant.getProduct().isActive()) {
                 throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
             }
-            int cartQty = cartMap.get(sku);
+            int cartQty = caseInsensitiveCartMap.get(sku);
             if (variant.getStockQuantity() <= 0) {
                 throw new IllegalArgumentException("Item '" + variant.getProduct().getName() + "' is out of stock.");
             }
@@ -404,6 +428,14 @@ public class ShoppingCartService {
         boolean outOfStock = variant.getStockQuantity() <= 0;
         boolean stockExceeded = quantity > variant.getStockQuantity();
 
+        // Prefer variant-level Cloudinary image, fall back to hardcoded product path
+        String resolvedImagePath;
+        if (variant.getImageUrl() != null && !variant.getImageUrl().isBlank()) {
+            resolvedImagePath = variant.getImageUrl();
+        } else {
+            resolvedImagePath = imagePath(variant.getProduct().getSlug());
+        }
+
         return new CartItemView(
                 variant.getSku(),
                 variant.getProduct().getSlug(),
@@ -411,7 +443,7 @@ public class ShoppingCartService {
                 variant.getProduct().getProductType(),
                 variant.getColor(),
                 variant.getSize(),
-                imagePath(variant.getProduct().getSlug()),
+                resolvedImagePath,
                 variant.getProduct().getCropClass(),
                 quantity,
                 variant.getStockQuantity(),
@@ -581,16 +613,16 @@ public class ShoppingCartService {
 
     private String imagePath(String slug) {
         return switch (slug) {
-            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
-            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
-            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
-            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
-            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
-            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
-            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
-            case "utility-tote" -> "/images/products/utility-tote-v2.png";
-            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
-            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-cream.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-gray.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-brown.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-black.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-brown.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-cream.png";
+            case "utility-tote" -> "/images/products/utility-tote-pink.jpg";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
         };
     }

@@ -236,7 +236,7 @@
                     <a class="catalog-product-image"
                        th:href="@{/products/{slug}(slug=${product.slug})}"
                        th:attr="aria-label=${'View ' + product.name}">
-                        <img th:src="@{${product.imagePath}}"
+                        <img th:src="${product.imagePath}"
                              th:alt="${product.name}"
                              loading="lazy">
 

@@ -1,14 +1,16 @@
 package com.uminimalist.store.controller;
 
+import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.repository.ProductVariantRepository;
 import com.uminimalist.store.repository.UserRepository;
 import com.uminimalist.store.service.CustomerAddressService;
 import com.uminimalist.store.service.OrderService;
 import com.uminimalist.store.service.ShoppingCartService;
 import com.uminimalist.store.service.WishlistService;
 import com.uminimalist.store.service.ProductReviewService;
-import com.uminimalist.store.service.VNPayService;
+import com.uminimalist.store.service.PayPalService;
 import com.uminimalist.store.util.PhoneValidator;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,27 +30,30 @@ import java.util.Enumeration;
 public class CustomerController {
 
     private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ShoppingCartService shoppingCartService;
     private final OrderService orderService;
     private final CustomerAddressService customerAddressService;
     private final WishlistService wishlistService;
     private final ProductReviewService productReviewService;
-    private final VNPayService vnPayService;
+    private final PayPalService payPalService;
 
     public CustomerController(UserRepository userRepository,
+                              ProductVariantRepository productVariantRepository,
                               ShoppingCartService shoppingCartService,
                               OrderService orderService,
                               CustomerAddressService customerAddressService,
                               WishlistService wishlistService,
                               ProductReviewService productReviewService,
-                              VNPayService vnPayService) {
+                              PayPalService payPalService) {
         this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
         this.shoppingCartService = shoppingCartService;
         this.orderService = orderService;
         this.customerAddressService = customerAddressService;
         this.wishlistService = wishlistService;
         this.productReviewService = productReviewService;
-        this.vnPayService = vnPayService;
+        this.payPalService = payPalService;
     }
 
     @GetMapping("/account")
@@ -185,7 +190,9 @@ public class CustomerController {
             } catch (IllegalArgumentException ex) {
                 // If requested quantity exceeds stock, attempt to add available stock quantity
                 try {
-                    int availableStock = item.stockQuantity();
+                    int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
+                            .map(ProductVariant::getStockQuantity)
+                            .orElse(0);
                     if (availableStock > 0) {
                         shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
                         addedItems += availableStock;
@@ -261,6 +268,7 @@ public class CustomerController {
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
         if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
             redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
             return "redirect:/cart";
         }
@@ -307,6 +315,7 @@ public class CustomerController {
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
         if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
             redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
             return "redirect:/cart";
         }
@@ -328,19 +337,34 @@ public class CustomerController {
         }
 
         String normalizedPaymentMethod = paymentMethod == null ? "COD" : paymentMethod.trim().toUpperCase(java.util.Locale.ROOT);
-        if (!"COD".equals(normalizedPaymentMethod) && !"VNPAY".equals(normalizedPaymentMethod)) {
-            redirectAttributes.addFlashAttribute("accountError", "Invalid payment method selected. Please choose Cash on Delivery (COD) or VNPay Demo.");
+        if (!"COD".equals(normalizedPaymentMethod) && !"PAYPAL".equals(normalizedPaymentMethod)) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid payment method selected. Please choose Cash on Delivery (COD) or PayPal.");
             return "redirect:/checkout";
         }
 
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
-            if ("VNPAY".equalsIgnoreCase(normalizedPaymentMethod)) {
+            if ("PAYPAL".equalsIgnoreCase(normalizedPaymentMethod)) {
                 var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress, notes);
                 double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
-                String paymentUrl = vnPayService.createPaymentUrl(pendingOrder.orderCode(), usdAmount, request);
-                return "redirect:" + paymentUrl;
+                
+                try {
+                    com.paypal.api.payments.Payment payment = payPalService.createPayment(
+                            usdAmount * 25000, // Pass VND amount since createPayment handles conversion
+                            "sale",
+                            "Order " + pendingOrder.orderCode(),
+                            "http://localhost:9090/paypal/cancel",
+                            "http://localhost:9090/paypal/success"
+                    );
+                    for (com.paypal.api.payments.Links link : payment.getLinks()) {
+                        if (link.getRel().equals("approval_url")) {
+                            return "redirect:" + link.getHref();
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Error redirecting to PayPal: " + e.getMessage());
+                }
             }
 
             var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod, notes);
@@ -371,58 +395,39 @@ public class CustomerController {
         return "checkout-success";
     }
 
-    @GetMapping("/checkout/payment-return")
-    public String paymentReturn(HttpServletRequest request,
+    @GetMapping("/paypal/success")
+    public String paypalSuccess(@RequestParam("paymentId") String paymentId,
+                                @RequestParam("PayerID") String payerId,
                                 Authentication authentication,
                                 HttpSession session,
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
-        Map<String, String> fields = new HashMap<>();
-        for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
-            String name = names.nextElement();
-            fields.put(name, request.getParameter(name));
-        }
+        try {
+            com.paypal.api.payments.Payment payment = payPalService.executePayment(paymentId, payerId);
+            if (payment.getState().equals("approved")) {
+                String description = payment.getTransactions().get(0).getDescription();
+                String orderCode = description.replace("Order ", "");
 
-        String orderCode = fields.get("vnp_TxnRef");
-        String responseCode = fields.get("vnp_ResponseCode");
-
-        if (orderCode == null || orderCode.isBlank()) {
-            redirectAttributes.addFlashAttribute("accountError", "Invalid VNPay response: missing order reference.");
-            return "redirect:/account#orders";
-        }
-
-        String username = authentication != null ? authentication.getName() : null;
-        if (username == null && request.getUserPrincipal() != null) {
-            username = request.getUserPrincipal().getName();
-        }
-        String customerEmail = username;
-
-        boolean verified = vnPayService.verifyCallback(fields);
-        if (verified && "00".equals(responseCode)) {
-            try {
-                String targetUser = customerEmail != null ? customerEmail : username;
-                var order = orderService.confirmPaidOrder(targetUser, orderCode);
-
-                // Remove ONLY purchased items from cart, keeping unselected items intact
+                String username = authentication != null ? authentication.getName() : null;
+                var order = orderService.confirmPaidOrder(username, orderCode);
+                
                 java.util.List<String> orderSkus = orderService.getOrderSkus(orderCode);
-                shoppingCartService.removeItems(session, targetUser, orderSkus);
+                shoppingCartService.removeItems(session, username, orderSkus);
                 session.removeAttribute("checkoutSkus");
 
-                // Update model cartCount after removing purchased items so navbar shows accurate remaining count
-                model.addAttribute("cartCount", shoppingCartService.getItemCount(session, targetUser));
+                model.addAttribute("cartCount", shoppingCartService.getItemCount(session, username));
                 model.addAttribute("order", order);
                 return "checkout-success";
-            } catch (Exception exception) {
-                redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             }
-        } else {
-            try {
-                orderService.markPaymentFailed(customerEmail != null ? customerEmail : username, orderCode);
-            } catch (Exception ignored) {
-            }
-            redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("accountError", "Payment failed: " + e.getMessage());
         }
+        return "redirect:/account#orders";
+    }
 
+    @GetMapping("/paypal/cancel")
+    public String paypalCancel(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute("accountError", "Payment was canceled.");
         return "redirect:/account#orders";
     }
 
@@ -432,7 +437,7 @@ public class CustomerController {
                            HttpServletRequest request,
                            RedirectAttributes redirectAttributes) {
         try {
-            String paymentUrl = orderService.preparePayAgainUrl(authentication.getName(), orderCode, request, vnPayService);
+            String paymentUrl = orderService.preparePayAgainUrl(authentication.getName(), orderCode, payPalService);
             return "redirect:" + paymentUrl;
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());

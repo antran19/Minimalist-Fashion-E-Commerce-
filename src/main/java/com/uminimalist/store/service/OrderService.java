@@ -119,12 +119,12 @@ public class OrderService {
 
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress) {
-        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", null);
+        return placeOrder(customerEmail, cart, shippingAddress, "PAYPAL", null);
     }
 
     @Transactional
     public OrderSummaryView placePendingOrder(String customerEmail, CartView cart, CustomerAddressView shippingAddress, String notes) {
-        return placeOrder(customerEmail, cart, shippingAddress, "VNPAY", notes);
+        return placeOrder(customerEmail, cart, shippingAddress, "PAYPAL", notes);
     }
 
     @Transactional
@@ -142,14 +142,14 @@ public class OrderService {
         }
 
         String normalizedMethod = (paymentMethod == null || paymentMethod.isBlank()) ? "COD" : paymentMethod.trim().toUpperCase(Locale.ROOT);
-        if (!"COD".equals(normalizedMethod) && !"VNPAY".equals(normalizedMethod)) {
-            throw new IllegalArgumentException("Invalid payment method. Please select Cash on Delivery (COD) or VNPay Demo.");
+        if (!"COD".equals(normalizedMethod) && !"PAYPAL".equals(normalizedMethod)) {
+            throw new IllegalArgumentException("Invalid payment method. Please select Cash on Delivery (COD) or PayPal.");
         }
 
-        boolean isVnPay = "VNPAY".equals(normalizedMethod);
-        String initialPaymentStatus = isVnPay ? "PENDING" : "UNPAID";
-        String initialOrderStatus = isVnPay ? PENDING_PAYMENT_STATUS : "PLACED";
-        boolean deductStock = !isVnPay;
+        boolean isPayPal = "PAYPAL".equals(normalizedMethod);
+        String initialPaymentStatus = isPayPal ? "PENDING" : "UNPAID";
+        String initialOrderStatus = isPayPal ? PENDING_PAYMENT_STATUS : "PLACED";
+        boolean deductStock = !isPayPal;
 
         User user = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
@@ -391,7 +391,7 @@ public class OrderService {
     }
 
     @Transactional
-    public String preparePayAgainUrl(String customerEmail, String orderCode, jakarta.servlet.http.HttpServletRequest request, VNPayService vnPayService) {
+    public String preparePayAgainUrl(String customerEmail, String orderCode, PayPalService payPalService) {
         ensureOrderTables();
         OrderStatusRow orderRow = findOrderRowByCode(customerEmail, orderCode);
         if (orderRow == null) {
@@ -402,8 +402,8 @@ public class OrderService {
             throw new IllegalArgumentException("Only pending payment orders can be paid again.");
         }
 
-        if (!"VNPAY".equalsIgnoreCase(orderRow.paymentMethod())) {
-            throw new IllegalArgumentException("Only VNPay orders can be paid online again.");
+        if (!"PAYPAL".equalsIgnoreCase(orderRow.paymentMethod())) {
+            throw new IllegalArgumentException("Only PayPal orders can be paid online again.");
         }
 
         if ("PAID".equalsIgnoreCase(orderRow.paymentStatus())) {
@@ -432,11 +432,24 @@ public class OrderService {
 
         jdbcTemplate.update("UPDATE dbo.orders SET payment_status = 'PENDING' WHERE id = ?", orderRow.id());
 
-        int retrySeq = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 999);
-        String retryTxnRef = orderRow.orderCode() + "-R" + retrySeq;
-
-        double usdAmount = orderRow.totalAmount() != null ? orderRow.totalAmount().doubleValue() : 0.0;
-        return vnPayService.createPaymentUrl(retryTxnRef, usdAmount, request);
+        double vndAmount = orderRow.totalAmount() != null ? orderRow.totalAmount().doubleValue() : 0.0;
+        try {
+            com.paypal.api.payments.Payment payment = payPalService.createPayment(
+                    vndAmount,
+                    "sale",
+                    "Order " + orderRow.orderCode(),
+                    "http://localhost:9090/paypal/cancel",
+                    "http://localhost:9090/paypal/success"
+            );
+            for (com.paypal.api.payments.Links link : payment.getLinks()) {
+                if (link.getRel().equals("approval_url")) {
+                    return link.getHref();
+                }
+            }
+        } catch (com.paypal.base.rest.PayPalRESTException e) {
+            throw new RuntimeException("Error creating PayPal payment", e);
+        }
+        return "redirect:/checkout";
     }
 
     private OrderStatusRow findOrderRowByCode(String customerEmail, String orderCode) {
@@ -677,10 +690,10 @@ public class OrderService {
                 "Allowed next status(es): " + String.join(", ", allowed));
         }
 
-        // If payment is still PENDING (VNPay not confirmed), block moving past PENDING_PAYMENT
+        // If payment is still PENDING (PayPal not confirmed), block moving past PENDING_PAYMENT
         if (isPending && "PENDING_PAYMENT".equalsIgnoreCase(current) && "PROCESSING".equalsIgnoreCase(next)) {
             throw new IllegalArgumentException(
-                "This order uses VNPay but payment has not been confirmed yet. " +
+                "This order uses PayPal but payment has not been confirmed yet. " +
                 "Wait for the payment callback or verify payment status first.");
         }
     }
@@ -774,6 +787,18 @@ public class OrderService {
         return orders.stream().findFirst();
     }
 
+    public Optional<OrderSummaryView> findOrderByCode(String orderCode) {
+        ensureOrderTables();
+        List<OrderSummaryView> orders = loadOrders("""
+                SELECT id, order_code, customer_name, customer_email,
+                    shipping_name, shipping_phone, shipping_address_line, shipping_district, shipping_city, notes,
+                    created_at, status, payment_method, payment_status, item_count, total_amount
+                FROM dbo.orders
+                WHERE order_code = ?
+                """, orderCode);
+        return orders.stream().findFirst();
+    }
+
     private List<OrderSummaryView> loadOrders(String sql, Object... args) {
         List<OrderRow> rows = jdbcTemplate.query(sql, (rs, rowNum) -> new OrderRow(
                 rs.getLong("id"),
@@ -826,7 +851,8 @@ public class OrderService {
         String placeholders = orderIds.stream().map(id -> "?").collect(Collectors.joining(","));
         return jdbcTemplate.query("""
                         SELECT oi.order_id, oi.product_name, oi.sku, oi.color, oi.size, oi.quantity, oi.unit_price, oi.line_total,
-                               COALESCE(oi.product_slug, p.slug) AS product_slug
+                               COALESCE(oi.product_slug, p.slug) AS product_slug,
+                               pv.image_url AS variant_image_url
                         FROM dbo.order_items oi
                         LEFT JOIN dbo.product_variants pv ON oi.product_variant_id = pv.id
                         LEFT JOIN dbo.products p ON pv.product_id = p.id
@@ -840,7 +866,13 @@ public class OrderService {
                         String slug = rs.getString("product_slug");
                         String sku = rs.getString("sku");
                         String productName = rs.getString("product_name");
-                        String imgPath = imagePath(slug, sku, productName);
+                        String variantImageUrl = rs.getString("variant_image_url");
+                        String imgPath;
+                        if (variantImageUrl != null && !variantImageUrl.isBlank()) {
+                            imgPath = variantImageUrl;
+                        } else {
+                            imgPath = imagePath(slug, sku, productName);
+                        }
                         grouped.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(new OrderItemView(
                                 productName,
                                 sku,
@@ -894,16 +926,16 @@ public class OrderService {
             return "/images/product-collage.png";
         }
         return switch (effectiveSlug) {
-            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
-            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
-            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
-            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
-            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
-            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
-            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
-            case "utility-tote" -> "/images/products/utility-tote-v2.png";
-            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
-            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-cream.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-gray.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-brown.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-black.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-brown.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-cream.png";
+            case "utility-tote" -> "/images/products/utility-tote-pink.jpg";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
         };
     }

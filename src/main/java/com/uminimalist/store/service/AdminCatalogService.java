@@ -21,6 +21,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import com.uminimalist.store.entity.ProductImage;
+import com.uminimalist.store.repository.ProductImageRepository;
+import jakarta.annotation.PostConstruct;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
 @Service
 public class AdminCatalogService {
 
@@ -29,24 +35,58 @@ public class AdminCatalogService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProductImageRepository productImageRepository;
+    private final CloudinaryService cloudinaryService;
+    private final JdbcTemplate jdbcTemplate;
 
     public AdminCatalogService(ProductRepository productRepository,
                                ProductVariantRepository productVariantRepository,
                                UserRepository userRepository,
                                CategoryRepository categoryRepository,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               ProductImageRepository productImageRepository,
+                               CloudinaryService cloudinaryService,
+                               JdbcTemplate jdbcTemplate) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
+        this.productImageRepository = productImageRepository;
+        this.cloudinaryService = cloudinaryService;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @PostConstruct
+    public void ensureVariantImageColumns() {
+        jdbcTemplate.execute("""
+                IF COL_LENGTH('dbo.product_variants', 'image_url') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.product_variants ADD image_url NVARCHAR(500) NULL;
+                END
+                """);
+        jdbcTemplate.execute("""
+                IF COL_LENGTH('dbo.product_variants', 'image_public_id') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.product_variants ADD image_public_id NVARCHAR(200) NULL;
+                END
+                """);
+        // Migrate existing product_images to matching variant SKUs by color
+        jdbcTemplate.execute("""
+                UPDATE pv
+                SET pv.image_url = pi.image_url,
+                    pv.image_public_id = pi.public_id
+                FROM dbo.product_variants pv
+                JOIN dbo.product_images pi ON pi.product_id = pv.product_id AND pi.color = pv.color
+                WHERE pv.image_url IS NULL
+                """);
     }
 
     @Transactional(readOnly = true)
     public List<Product> getProducts() {
         return productRepository.findAllWithCategoryAndVariants()
                 .stream()
-                .sorted(Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(Product::getId).reversed())
                 .toList();
     }
 
@@ -74,7 +114,7 @@ public class AdminCatalogService {
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<Product> getProductsPaged(int page, int size, String query, String filter) {
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page), size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "name"));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page), size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
         if (query != null && !query.trim().isEmpty()) {
             return productRepository.searchProducts(query.trim(), pageable);
         }
@@ -276,7 +316,7 @@ public class AdminCatalogService {
     }
 
     @Transactional
-    public void createVariant(Long productId, String color, String size, String sku, int stockQuantity) {
+    public void createVariant(Long productId, String color, String size, String sku, int stockQuantity, MultipartFile imageFile) {
         if (color == null || color.trim().isEmpty()) {
             throw new IllegalArgumentException("Color cannot be empty.");
         }
@@ -307,11 +347,19 @@ public class AdminCatalogService {
         variant.setStockQuantity(stockQuantity);
         variant.setActive(true);
 
+        // Upload variant image to Cloudinary if provided
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String folderPath = "uminimalist/products/" + product.getSlug() + "/" + cleanSku.toLowerCase(Locale.ROOT);
+            CloudinaryService.UploadResult result = cloudinaryService.uploadImage(imageFile, folderPath);
+            variant.setImageUrl(result.secureUrl());
+            variant.setImagePublicId(result.publicId());
+        }
+
         productVariantRepository.save(variant);
     }
 
     @Transactional
-    public void updateVariant(Long variantId, String color, String size, String sku, int stockQuantity) {
+    public void updateVariant(Long variantId, String color, String size, String sku, int stockQuantity, MultipartFile imageFile) {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new IllegalArgumentException("Variant not found."));
 
@@ -341,7 +389,12 @@ public class AdminCatalogService {
         variant.setSize(size.trim());
         variant.setSku(cleanSku);
         variant.setStockQuantity(stockQuantity);
+
         productVariantRepository.save(variant);
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            replaceVariantImage(variantId, imageFile);
+        }
     }
 
     @Transactional
@@ -521,6 +574,126 @@ public class AdminCatalogService {
             if (password.length() < 8 || password.length() > 72) {
                 throw new IllegalArgumentException("Password must be between 8 and 72 characters.");
             }
+        }
+    }
+
+    @Transactional
+    public void replaceVariantImage(Long variantId, MultipartFile imageFile) {
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new IllegalArgumentException("Variant not found."));
+
+        if (imageFile == null || imageFile.isEmpty()) {
+            throw new IllegalArgumentException("Please select a valid image file.");
+        }
+
+        // Delete old image from Cloudinary
+        if (variant.getImagePublicId() != null && !variant.getImagePublicId().isBlank()) {
+            try {
+                cloudinaryService.deleteImage(variant.getImagePublicId());
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Upload new image
+        String folderPath = "uminimalist/products/" + variant.getProduct().getSlug() + "/" + variant.getSku().toLowerCase(Locale.ROOT);
+        CloudinaryService.UploadResult result = cloudinaryService.uploadImage(imageFile, folderPath);
+        variant.setImageUrl(result.secureUrl());
+        variant.setImagePublicId(result.publicId());
+
+        productVariantRepository.save(variant);
+
+        // Sync with product_images table so color gallery thumbnail updates instantly
+        Product product = variant.getProduct();
+        boolean hasPrimary = product.getImages().stream().anyMatch(ProductImage::isPrimary);
+
+        ProductImage existingImg = product.getImages().stream()
+                .filter(img -> variant.getColor() != null && variant.getColor().equalsIgnoreCase(img.getColor()))
+                .findFirst()
+                .orElse(null);
+
+        if (existingImg != null) {
+            existingImg.setImageUrl(result.secureUrl());
+            existingImg.setPublicId(result.publicId());
+            productImageRepository.save(existingImg);
+        } else {
+            ProductImage newImg = new ProductImage();
+            newImg.setProduct(product);
+            newImg.setImageUrl(result.secureUrl());
+            newImg.setPublicId(result.publicId());
+            newImg.setColor(variant.getColor());
+            newImg.setPrimary(!hasPrimary);
+            newImg.setDisplayOrder(product.getImages().size() + 1);
+            productImageRepository.save(newImg);
+        }
+    }
+
+    @Transactional
+    public ProductImage uploadProductImage(Long productId, MultipartFile file, String color, boolean isPrimary) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        String folderPath = "uminimalist/products/" + product.getSlug();
+        CloudinaryService.UploadResult uploadResult = cloudinaryService.uploadImage(file, folderPath);
+
+        boolean setPrimary = isPrimary || product.getImages().isEmpty();
+        if (setPrimary) {
+            for (ProductImage existing : product.getImages()) {
+                existing.setPrimary(false);
+            }
+        }
+
+        ProductImage image = new ProductImage();
+        image.setProduct(product);
+        image.setImageUrl(uploadResult.secureUrl());
+        image.setPublicId(uploadResult.publicId());
+        image.setColor(color != null && !color.isBlank() ? color.trim() : null);
+        image.setPrimary(setPrimary);
+        image.setDisplayOrder(product.getImages().size() + 1);
+
+        return productImageRepository.save(image);
+    }
+
+    @Transactional
+    public void setPrimaryProductImage(Long productId, Long imageId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        boolean found = false;
+        for (ProductImage image : product.getImages()) {
+            if (image.getId().equals(imageId)) {
+                image.setPrimary(true);
+                found = true;
+            } else {
+                image.setPrimary(false);
+            }
+        }
+        if (!found) {
+            throw new IllegalArgumentException("Image not found for this product.");
+        }
+        productRepository.save(product);
+    }
+
+    @Transactional
+    public void deleteProductImage(Long imageId) {
+        ProductImage image = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("Image not found."));
+
+        if (image.getPublicId() != null && !image.getPublicId().isBlank()) {
+            try {
+                cloudinaryService.deleteImage(image.getPublicId());
+            } catch (Exception ignored) {
+            }
+        }
+
+        Product product = image.getProduct();
+        boolean wasPrimary = image.isPrimary();
+        product.getImages().remove(image);
+        productImageRepository.delete(image);
+
+        if (wasPrimary && !product.getImages().isEmpty()) {
+            ProductImage firstRemaining = product.getImages().iterator().next();
+            firstRemaining.setPrimary(true);
+            productImageRepository.save(firstRemaining);
         }
     }
 

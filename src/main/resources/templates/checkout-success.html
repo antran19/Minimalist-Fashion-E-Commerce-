@@ -104,7 +104,7 @@
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
                     <li th:each="item : ${order.items}" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                            <img th:src="${item.imagePath}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
                             <div>
                                 <strong th:text="${item.productName}" style="display: block; font-size: 0.9rem;">Air Cotton Tee</strong>
                                 <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}" style="color: var(--muted); font-size: 0.78rem;">Cream / M / Qty 1</small>

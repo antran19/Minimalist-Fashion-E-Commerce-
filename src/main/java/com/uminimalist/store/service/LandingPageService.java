@@ -4,6 +4,7 @@ import com.uminimalist.store.entity.Category;
 import com.uminimalist.store.entity.Product;
 import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.model.CategoryView;
+import com.uminimalist.store.model.ProductImageView;
 import com.uminimalist.store.model.ProductView;
 import com.uminimalist.store.repository.CategoryRepository;
 import com.uminimalist.store.repository.ProductRepository;
@@ -209,6 +210,47 @@ public class LandingPageService {
                 ? product.getDescription()
                 : "Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.";
 
+        List<ProductImageView> imageViews = new java.util.ArrayList<>(product.getImages().stream()
+                .map(img -> new ProductImageView(
+                        img.getId(),
+                        img.getImageUrl(),
+                        img.getPublicId(),
+                        img.getColor(),
+                        img.isPrimary(),
+                        img.getDisplayOrder()
+                ))
+                .toList());
+
+        activeVariants.stream()
+                .filter(v -> v.getImageUrl() != null && !v.getImageUrl().isBlank())
+                .forEach(v -> {
+                    boolean alreadyExists = imageViews.stream()
+                            .anyMatch(img -> img.imageUrl().equals(v.getImageUrl()));
+                    if (!alreadyExists) {
+                        imageViews.add(new ProductImageView(
+                                v.getId(),
+                                v.getImageUrl(),
+                                v.getImagePublicId(),
+                                v.getColor(),
+                                false,
+                                imageViews.size()
+                        ));
+                    }
+                });
+
+        String resolvedImagePath = imageViews.stream()
+                .filter(ProductImageView::isPrimary)
+                .map(ProductImageView::imageUrl)
+                .findFirst()
+                .orElseGet(() -> imageViews.stream()
+                        .map(ProductImageView::imageUrl)
+                        .findFirst()
+                        .orElseGet(() -> activeVariants.stream()
+                                .filter(v -> v.getImageUrl() != null && !v.getImageUrl().isBlank())
+                                .map(ProductVariant::getImageUrl)
+                                .findFirst()
+                                .orElseGet(() -> imagePath(product.getSlug()))));
+
         return new ProductView(
                 product.getId(),
                 product.getSlug(),
@@ -220,12 +262,14 @@ public class LandingPageService {
                 currencyFormat.format(price),
                 colors,
                 sizes,
-                imagePath(product.getSlug()),
+                resolvedImagePath,
                 product.getCropClass(),
                 stock,
                 product.isNewArrival(),
                 product.isBestSeller(),
-                product.getCreatedAt());
+                imageViews,
+                product.getCreatedAt()
+        );
     }
 
     private Comparator<ProductView> productComparator(String sort) {
@@ -257,16 +301,16 @@ public class LandingPageService {
 
     private String imagePath(String slug) {
         return switch (slug) {
-            case "air-cotton-tee" -> "/images/products/air-cotton-tee-v2.png";
-            case "light-utility-jacket" -> "/images/products/light-utility-jacket-v2.png";
-            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-v2.png";
-            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie-v2.png";
-            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-v2.png";
-            case "oxford-shirt" -> "/images/products/oxford-shirt-v2.png";
-            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-v2.png";
-            case "utility-tote" -> "/images/products/utility-tote-v2.png";
-            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-v2.png";
-            case "school-day-cardigan" -> "/images/products/school-day-cardigan-v2.png";
+            case "air-cotton-tee" -> "/images/products/air-cotton-tee-cream.png";
+            case "light-utility-jacket" -> "/images/products/light-utility-jacket-gray.png";
+            case "soft-jersey-tee" -> "/images/products/soft-jersey-tee-brown.png";
+            case "everyday-zip-hoodie" -> "/images/products/everyday-zip-hoodie.png";
+            case "smart-ankle-pants" -> "/images/products/smart-ankle-pants-black.png";
+            case "oxford-shirt" -> "/images/products/oxford-shirt-brown.png";
+            case "linen-blend-shirt" -> "/images/products/linen-blend-shirt-cream.png";
+            case "utility-tote" -> "/images/products/utility-tote-pink.jpg";
+            case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
+            case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
         };
     }
