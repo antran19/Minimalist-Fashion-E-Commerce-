@@ -1,56 +1,10 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${product.name + ' | U-Minimalist'}">Product | U-Minimalist</title>
-    <meta name="description" th:content="${'View size, color, and stock for ' + product.name}">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block th:insert="~{fragments/head :: head(${product.name + ' | U-Minimalist'}, ${'View size, color, and stock for ' + product.name})}"></th:block>
 </head>
 <body class="catalog-page">
-<header class="site-header catalog-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/navbar :: navbar('', 'site-header catalog-header is-scrolled', '', true, false, true)}"></th:block>
 
 <main class="page-shell product-detail-page">
     <a class="back-link" th:href="@{/products}">Back to products</a>
@@ -62,6 +16,7 @@
             <form class="detail-cart-form" th:action="@{/cart}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <input type="hidden" name="productSlug" th:value="${product.slug}">
+                <p class="cart-alert success" th:if="${cartMessage}" th:text="${cartMessage}">Item added to cart successfully.</p>
                 <p class="cart-alert error" th:if="${cartError}" th:text="${cartError}">Product variant is not available.</p>
                 <p class="detail-category" th:text="${product.category}">T-shirt</p>
                 <h1 id="product-title" th:text="${product.name}">Air Cotton Tee</h1>
@@ -74,20 +29,16 @@
                 <div class="rating-summary" style="margin-top: -10px; margin-bottom: 20px;" th:if="${ratingStats.reviewCount == 0}">
                     <span class="text-muted" style="font-size: 0.9rem; font-weight: 500;">No reviews yet</span>
                 </div>
-                <p class="detail-copy">Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.</p>
+                <p class="detail-copy" th:text="${product.description}">Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.</p>
 
                 <fieldset class="option-group color-options-group">
                     <legend>Color</legend>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <label th:each="colorOption, status : ${product.colors}" class="color-swatch-label" style="cursor: pointer; position: relative;">
-                            <!-- Mockup: the second color is out of stock if stock > 0, otherwise all are out of stock if stock == 0 -->
-                            <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first and product.stock > 0}" th:disabled="${product.stock == 0 or (product.stock > 0 and status.index == 1)}" required style="display: none;" class="color-radio">
-                            <div class="swatch-content" th:classappend="${product.stock == 0 or (product.stock > 0 and status.index == 1)} ? 'out-of-stock' : ''" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border: 1.5px solid var(--line); border-radius: 20px; transition: all 0.2s; background: #fff;">
-                                <span class="swatch-circle-detail" th:attr="data-color=${colorOption}" style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: inline-block;"></span>
-                                <span class="swatch-name" style="font-size: 0.85rem; font-weight: 600; color: var(--ink);">
-                                    <span th:text="${colorOption}">White</span>
-                                    <span th:if="${product.stock == 0 or (product.stock > 0 and status.index == 1)}" style="color: #e11b1e; font-size: 0.75rem; margin-left: 4px;">(Hết hàng)</span>
-                                </span>
+                        <label th:each="colorOption, status : ${product.colors}" class="color-swatch-label">
+                            <input type="radio" name="color" th:value="${colorOption}" th:checked="${status.first and product.stock > 0}" th:disabled="${product.stock == 0}" required class="color-radio" style="display: none;">
+                            <div class="swatch-content" th:classappend="${product.stock == 0} ? 'out-of-stock' : ''">
+                                <span class="swatch-circle-detail" th:attr="data-color=${colorOption}" th:style="'background-color:' + ${product.colorHex(colorOption)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                                <span class="swatch-name" th:text="${colorOption}">White</span>
                             </div>
                         </label>
                     </div>
@@ -103,11 +54,19 @@
 
                 <div class="quantity-row">
                     <label for="quantity">Quantity</label>
-                    <input id="quantity" name="quantity" type="number" min="1" th:max="${product.stock}" value="1">
+                    <input id="quantity" name="quantity" type="number" min="1" step="1" th:max="${product.stock}" value="1" required>
                 </div>
 
-                <p class="stock-note" th:text="${product.stock + ' items available'}">48 items available</p>
-                <button class="btn btn-primary retail-btn" type="submit">Add to cart</button>
+                <p class="stock-note stock-note-available" th:if="${product.stock > 0}" th:text="${product.stock + ' items available'}">16 items available</p>
+                <p class="stock-note stock-note-outofstock" th:if="${product.stock == 0}" style="color: #e11b1e; font-weight: 700;">Out of stock</p>
+
+                <div style="display: flex; gap: 12px; margin-top: 16px;" sec:authorize="!hasRole('ADMIN')">
+                    <button class="btn btn-primary retail-btn" type="submit" name="action" value="add" style="flex: 1;" th:disabled="${product.stock == 0}">Add to cart</button>
+                    <button class="btn btn-dark retail-btn" type="submit" name="action" value="buyNow" style="flex: 1; background: #000; border-color: #000;" th:disabled="${product.stock == 0}">Buy now</button>
+                </div>
+                <p class="stock-note" style="margin-top: 16px; color: var(--muted); font-weight: 600;" sec:authorize="hasRole('ADMIN')">
+                    Administrator accounts cannot place orders. Manage this product from the admin dashboard.
+                </p>
             </form>
             <form class="wishlist-detail-action" th:if="${!inWishlist}" th:action="@{/wishlist}" method="post" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -129,7 +88,7 @@
     <!-- Reviews Section -->
     <section class="reviews-section" style="margin-top: 60px; border-top: 1px solid var(--line); padding-top: 40px;" aria-labelledby="reviews-title">
         <h2 id="reviews-title" style="font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 24px;">Customer Reviews</h2>
-        
+
         <div class="reviews-layout" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: start;">
             <!-- Review List -->
             <div class="reviews-list-container">
@@ -143,7 +102,7 @@
                             <small class="text-muted" th:text="${review.createdAtLabel()}" style="font-weight: 500;">03 Jul 2026</small>
                         </div>
                         <div style="margin-bottom: 8px;">
-                            <span th:each="i : ${#numbers.sequence(1, 5)}" 
+                            <span th:each="i : ${#numbers.sequence(1, 5)}"
                                   th:text="${i <= review.rating ? '★' : '☆'}"
                                   th:style="${i <= review.rating ? 'color: #ffc107; font-size: 1.1rem;' : 'color: #ccc; font-size: 1.1rem;'}"></span>
                         </div>
@@ -157,7 +116,7 @@
                 <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.02em;">Write a Review</h3>
                 <form th:action="@{/products/{slug}/reviews(slug=${product.slug})}" method="post">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    
+
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; font-size: 0.78rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px;">Rating</label>
                         <div class="rating-select" style="display: flex; gap: 8px;">
@@ -170,31 +129,83 @@
 
                     <div style="margin-bottom: 20px;">
                         <label for="comment" style="display: block; font-size: 0.78rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px;">Comment</label>
-                        <textarea id="comment" name="comment" rows="4" style="width: 100%; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; font-weight: 600; font-size: 0.95rem; resize: vertical;" placeholder="Share your experience with this product..."></textarea>
+                        <textarea id="comment" name="comment" rows="4" required minlength="3" maxlength="1000" style="width: 100%; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; font-weight: 600; font-size: 0.95rem; resize: vertical;" placeholder="Share your experience with this product (3 to 1000 characters)..."></textarea>
                     </div>
 
                     <button class="btn btn-primary retail-btn" type="submit" style="width: 100%;">Submit Review</button>
                 </form>
             </div>
-            
+
             <!-- Message for anonymous or non-buyers -->
             <div class="write-review-container" th:if="${!canReview}" style="background-color: #fcfcfc; padding: 24px; border-radius: var(--radius); border: 1px solid var(--line); text-align: center;">
                 <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 12px; letter-spacing: -0.02em;">Write a Review</h3>
                 <p sec:authorize="isAnonymous()" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
                     Please <a th:href="@{/login}" style="color: var(--accent); text-decoration: underline;">sign in</a> to write a review.
                 </p>
-                <p sec:authorize="isAuthenticated() and !hasRole('ADMIN')" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
-                    Only customers who have purchased this product can leave a review.
-                </p>
+                <div sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
+                    <p th:if="${reviewStatus == 'ALREADY_REVIEWED'}" style="margin: 0; font-size: 0.95rem; color: #16a34a; font-weight: 700; line-height: 1.5;">
+                        ✓ You have already reviewed this product.
+                    </p>
+                    <p th:if="${reviewStatus == 'NOT_DELIVERED'}" style="margin: 0; font-size: 0.9rem; color: #d97706; font-weight: 600; line-height: 1.5;">
+                        You can review this product once your order is delivered.
+                    </p>
+                    <p th:if="${reviewStatus == 'NOT_PURCHASED'}" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
+                        Only customers who have purchased this product can leave a review.
+                    </p>
+                </div>
                 <p sec:authorize="hasRole('ADMIN')" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
                     Administrators cannot leave reviews.
                 </p>
             </div>
         </div>
+    <!-- Related Products Section -->
+    <section class="related-products-section" th:if="${!#lists.isEmpty(relatedProducts)}" style="margin-top: 50px; border-top: 1px solid var(--line); padding-top: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
+            <div>
+                <p class="panel-kicker" style="text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; color: var(--muted); font-weight: 700; margin-bottom: 4px;">Recommendations</p>
+                <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--ink); margin: 0;">You May Also Like</h2>
+            </div>
+            <a th:href="@{/products}" class="text-link" style="font-weight: 600; font-size: 0.9rem;">View catalog &rarr;</a>
+        </div>
+        <div class="product-grid catalog-grid">
+            <article class="product-card reveal-card" th:each="relProduct : ${relatedProducts}">
+                <div class="product-image product-image-real" th:classappend="${relProduct.cropClass}">
+                    <a th:href="@{/products/{slug}(slug=${relProduct.slug})}">
+                        <img th:src="@{${relProduct.imagePath}}" th:alt="${relProduct.name}">
+                    </a>
+                    <div class="product-badges">
+                        <span class="product-badge is-sold-out" th:if="${relProduct.stock <= 0}">Out of Stock</span>
+                        <span class="product-badge is-new" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
+                        <span class="product-badge is-best" th:if="${relProduct.stock > 0 and relProduct.bestSeller}">Best Seller</span>
+                    </div>
+                    <div class="product-actions">
+                        <a th:href="@{/products/{slug}(slug=${relProduct.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        </a>
+                        <a th:href="@{/products/{slug}(slug=${relProduct.slug})}" class="action-btn" aria-label="Quick view" title="Quick view">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="product-meta">
+                    <p th:text="${relProduct.category}">U-MINIMALIST</p>
+                    <h3><a th:href="@{/products/{slug}(slug=${relProduct.slug})}" th:text="${relProduct.name}">Air Cotton Tee</a></h3>
+                    <div class="product-price-row">
+                        <span class="price-current" th:text="${relProduct.priceLabel}">$19.90</span>
+                    </div>
+                    <div class="product-swatches" th:if="${!#lists.isEmpty(relProduct.colors)}">
+                        <span th:each="color : ${relProduct.colors}"
+                              class="swatch-circle"
+                              th:title="${color}"
+                              th:style="'background-color:' + ${relProduct.colorHex(color)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                    </div>
+                </div>
+            </article>
+        </div>
     </section>
 </main>
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+<th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const stars = document.querySelectorAll(".rating-select .star-icon");
@@ -239,26 +250,189 @@
         });
         // Color swatch mapping
         const colorMap = {
-            'White': '#ffffff',
-            'Black': '#000000',
-            'Navy': '#000080',
-            'Beige': '#f5f5dc',
-            'Cream': '#fffdd0',
-            'Charcoal': '#36454f',
-            'Slate': '#708090',
-            'Grey': '#808080',
-            'Red': '#ff0000',
-            'Blue': '#0000ff'
+            'white': '#ffffff',
+            'black': '#18181b',
+            'navy': '#1e293b',
+            'beige': '#e5d5c0',
+            'cream': '#fef08a',
+            'sage': '#9caf88',
+            'natural': '#e3d5ca',
+            'khaki': '#c3b091',
+            'grey': '#808080',
+            'gray': '#808080',
+            'red': '#dc2626',
+            'blue': '#2563eb',
+            'green': '#16a34a',
+            'olive': '#556b2f',
+            'brown': '#78350f',
+            'charcoal': '#36454f',
+            'slate': '#64748b',
+            'pink': '#ec4899',
+            'yellow': '#eab308',
+            'orange': '#f97316',
+            'purple': '#9333ea',
+            'tan': '#d2b48c',
+            'burgundy': '#800020',
+            'maroon': '#800000',
+            'teal': '#008080',
+            'indigo': '#4b0082'
         };
         document.querySelectorAll('.swatch-circle-detail').forEach(el => {
-            const colorName = el.getAttribute('data-color');
-            if(colorMap[colorName]) {
+            const colorName = (el.getAttribute('data-color') || '').toLowerCase().trim();
+            if (colorMap[colorName]) {
                 el.style.backgroundColor = colorMap[colorName];
             } else {
-                el.style.backgroundColor = '#ccc';
+                el.style.backgroundColor = '#cccccc';
             }
         });
     });
 </script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const variantStockMap = /*[[${variantStocks}]]*/ {};
+
+    function updateAvailableColors() {
+        const colorRadios = document.querySelectorAll('input[name="color"]');
+        if (!colorRadios || !variantStockMap) return;
+
+        let firstAvailableColorRadio = null;
+        let currentCheckedDisabled = false;
+
+        colorRadios.forEach(radio => {
+            const colorVal = radio.value;
+            const prefix = (colorVal + '_').toUpperCase();
+
+            let totalStockForColor = 0;
+            for (const [key, stockVal] of Object.entries(variantStockMap)) {
+                if (key.startsWith(prefix)) {
+                    totalStockForColor += (parseInt(stockVal, 10) || 0);
+                }
+            }
+
+            const swatchContent = radio.closest('.color-swatch-label')?.querySelector('.swatch-content');
+
+            if (totalStockForColor > 0) {
+                radio.disabled = false;
+                if (swatchContent) {
+                    swatchContent.classList.remove('out-of-stock');
+                }
+                if (!firstAvailableColorRadio) {
+                    firstAvailableColorRadio = radio;
+                }
+            } else {
+                radio.disabled = true;
+                if (swatchContent) {
+                    swatchContent.classList.add('out-of-stock');
+                }
+                if (radio.checked) {
+                    currentCheckedDisabled = true;
+                }
+            }
+        });
+
+        if (currentCheckedDisabled && firstAvailableColorRadio) {
+            firstAvailableColorRadio.checked = true;
+        }
+    }
+
+    function updateAvailableSizes() {
+        const selectedColor = document.querySelector('input[name="color"]:checked')?.value;
+        const sizeRadios = document.querySelectorAll('input[name="size"]');
+
+        if (!selectedColor || !variantStockMap) return;
+
+        let firstAvailableRadio = null;
+        let currentCheckedDisabled = false;
+
+        sizeRadios.forEach(radio => {
+            const sizeVal = radio.value;
+            const key = (selectedColor + '_' + sizeVal).toUpperCase();
+            const stock = variantStockMap[key] !== undefined ? variantStockMap[key] : 0;
+
+            if (stock > 0) {
+                radio.disabled = false;
+                radio.closest('label')?.classList.remove('out-of-stock-size');
+                if (!firstAvailableRadio) {
+                    firstAvailableRadio = radio;
+                }
+            } else {
+                radio.disabled = true;
+                radio.closest('label')?.classList.add('out-of-stock-size');
+                if (radio.checked) {
+                    currentCheckedDisabled = true;
+                }
+            }
+        });
+
+        if (currentCheckedDisabled && firstAvailableRadio) {
+            firstAvailableRadio.checked = true;
+        }
+    }
+
+    function updateVariantStock() {
+        updateAvailableSizes();
+
+        const selectedColor = document.querySelector('input[name="color"]:checked')?.value;
+        const selectedSize = document.querySelector('input[name="size"]:checked')?.value;
+        const stockNoteAvailable = document.querySelector('.stock-note-available');
+        const stockNoteOutOfStock = document.querySelector('.stock-note-outofstock');
+        const quantityInput = document.getElementById('quantity');
+        const submitBtns = document.querySelectorAll('.detail-cart-form button[type="submit"]');
+
+        if (selectedColor && selectedSize && variantStockMap) {
+            const key = (selectedColor + '_' + selectedSize).toUpperCase();
+            const stock = variantStockMap[key] !== undefined ? variantStockMap[key] : 0;
+
+            if (stock > 0) {
+                if (stockNoteAvailable) {
+                    stockNoteAvailable.textContent = stock + ' items available for ' + selectedColor + ' / ' + selectedSize;
+                    stockNoteAvailable.style.display = 'block';
+                    stockNoteAvailable.style.color = 'var(--muted)';
+                    stockNoteAvailable.style.fontWeight = '600';
+                }
+                if (stockNoteOutOfStock) {
+                    stockNoteOutOfStock.style.display = 'none';
+                }
+            } else {
+                if (stockNoteAvailable) {
+                    stockNoteAvailable.style.display = 'none';
+                }
+                if (stockNoteOutOfStock) {
+                    stockNoteOutOfStock.textContent = 'Out of stock for ' + selectedColor + ' / ' + selectedSize;
+                    stockNoteOutOfStock.style.display = 'block';
+                }
+            }
+
+            if (quantityInput) {
+                quantityInput.max = stock > 0 ? stock : 1;
+                if (parseInt(quantityInput.value, 10) > stock && stock > 0) {
+                    quantityInput.value = stock;
+                }
+            }
+
+            submitBtns.forEach(btn => {
+                btn.disabled = (stock <= 0);
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input[name="color"]').forEach(input => {
+            input.addEventListener('change', function() {
+                updateAvailableSizes();
+                updateVariantStock();
+            });
+        });
+        document.querySelectorAll('input[name="size"]').forEach(input => {
+            input.addEventListener('change', updateVariantStock);
+        });
+
+        updateAvailableColors();
+        updateAvailableSizes();
+        updateVariantStock();
+    });
+    /*]]>*/
+</script>
+<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 </body>
 </html>

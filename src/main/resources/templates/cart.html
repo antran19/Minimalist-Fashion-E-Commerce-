@@ -1,136 +1,383 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cart | U-Minimalist</title>
-    <meta name="description" content="Review U-Minimalist cart items, quantities, and totals before checkout.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block
+        th:insert="~{fragments/head :: head('Cart | U-Minimalist', 'Review U-Minimalist cart items, quantities, stock, and totals before checkout.')}">
+    </th:block>
+    <link rel="stylesheet" th:href="@{/css/cart-stitch.css(v=1)}">
 </head>
-<body class="catalog-page">
-<header class="site-header catalog-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-current="page" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
+
+<body class="catalog-page cart-stitch-body">
+    <th:block
+        th:replace="~{fragments/navbar :: navbar('cart', 'site-header catalog-header is-scrolled', '', true, false, true)}">
+    </th:block>
+
+    <main class="page-shell cart-stitch-page">
+        <header class="cart-stitch-header" aria-labelledby="cart-title">
+            <div>
+                <p class="cart-stitch-eyebrow">Your selection</p>
+                <h1 id="cart-title">Shopping cart</h1>
+                <p class="cart-stitch-header-copy">Review selected variants, quantities, stock, and subtotal before
+                    checkout.</p>
+            </div>
+            <a class="cart-stitch-button cart-stitch-button-secondary" th:href="@{/products}">Continue shopping</a>
+        </header>
+
+        <p class="cart-alert success" th:if="${cartMessage}" th:text="${cartMessage}"></p>
+        <p class="cart-alert error" th:if="${cartError}" th:text="${cartError}"></p>
+
+        <div class="cart-stitch-warning-list" th:if="${cart.hasWarnings()}">
+            <p class="cart-stitch-alert warning" th:each="warning : ${cart.warnings}" th:text="${warning}"></p>
+        </div>
+
+        <!-- Checkout selection remains a separate form so update/remove forms never become nested forms. -->
+        <form id="cart-checkout-form" th:action="@{/cart/checkout}" method="post" th:if="${!cart.empty}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        </form>
+
+        <section class="cart-stitch-layout" th:if="${!cart.empty}">
+            <div class="cart-stitch-content">
+                <div class="cart-stitch-toolbar">
+                    <label class="cart-stitch-select-all" for="selectAllCart">
+                        <input id="selectAllCart" type="checkbox" checked>
+                        <span>Select all available items</span>
+                        <span class="cart-stitch-toolbar-count">(<span id="cart-selected-count-label"
+                                th:text="${cart.itemCount}"></span>)</span>
+                    </label>
+                    <span class="cart-stitch-toolbar-help">Only eligible items are included in checkout.</span>
+                </div>
+
+                <div class="cart-stitch-items" aria-label="Cart items">
+                    <article class="cart-stitch-item" th:each="item : ${cart.items}"
+                        th:classappend="${item.outOfStock || item.stockExceeded} ? ' is-unavailable' : ''">
+                        <div class="cart-stitch-selection">
+                            <input type="checkbox" form="cart-checkout-form" name="selectedSkus" th:value="${item.sku}"
+                                th:checked="${!item.outOfStock && !item.stockExceeded}"
+                                th:disabled="${item.outOfStock || item.stockExceeded}" th:data-price="${item.unitPrice}"
+                                th:data-qty="${item.quantity}" class="cart-stitch-item-checkbox"
+                                th:aria-label="${'Select ' + item.productName + ' for checkout'}">
+                        </div>
+
+                        <a class="cart-stitch-image product-image product-image-real"
+                            th:href="@{/products/{slug}(slug=${item.productSlug})}" th:classappend="${item.cropClass}">
+                            <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
                         </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
 
-<main class="page-shell cart-page">
-    <section class="cart-heading" aria-labelledby="cart-title">
-        <div>
-            <h1 id="cart-title">Shopping cart</h1>
-            <p>Review selected variants, quantities, stock, and subtotal before checkout.</p>
-        </div>
-        <a class="btn btn-outline-dark retail-btn outline" th:href="@{/products}">Continue shopping</a>
-    </section>
+                        <div class="cart-stitch-product">
+                            <p class="cart-stitch-category" th:text="${item.category}"></p>
+                            <h2>
+                                <a th:href="@{/products/{slug}(slug=${item.productSlug})}"
+                                    th:text="${item.productName}"></a>
+                            </h2>
 
-    <p class="cart-alert success" th:if="${cartMessage}" th:text="${cartMessage}">Added to cart.</p>
+                            <dl class="cart-stitch-variant-list">
+                                <div>
+                                    <dt>Color</dt>
+                                    <dd th:text="${item.color}"></dd>
+                                </div>
+                                <div>
+                                    <dt>Size</dt>
+                                    <dd th:text="${item.size}"></dd>
+                                </div>
+                                <div>
+                                    <dt>Stock</dt>
+                                    <dd>
+                                        <span class="cart-stitch-stock is-out" th:if="${item.outOfStock}">Out of
+                                            stock</span>
+                                        <span class="cart-stitch-stock is-warning"
+                                            th:if="${!item.outOfStock && item.stockExceeded}"
+                                            th:text="${item.stockQuantity + ' available — update quantity'}"></span>
+                                        <span class="cart-stitch-stock"
+                                            th:if="${!item.outOfStock && !item.stockExceeded}"
+                                            th:text="${item.stockQuantity + ' available'}"></span>
+                                    </dd>
+                                </div>
+                            </dl>
 
-    <section class="cart-layout" th:if="${!cart.empty}">
-        <div class="cart-items" aria-label="Cart items">
-            <article class="cart-item" th:each="item : ${cart.items}">
-                <a class="cart-item-image product-image product-image-real" th:href="@{/products/{slug}(slug=${item.productSlug})}" th:classappend="${item.cropClass}">
-                    <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
-                </a>
-                <div class="cart-item-copy">
-                    <p th:text="${item.category}">T-shirt</p>
-                    <h2>
-                        <a th:href="@{/products/{slug}(slug=${item.productSlug})}" th:text="${item.productName}">Air Cotton Tee</a>
-                    </h2>
-                    <dl>
-                        <div>
-                            <dt>Color</dt>
-                            <dd th:text="${item.color}">Cream</dd>
+                            <div class="cart-stitch-status-row">
+                                <span class="cart-stitch-badge is-danger" th:if="${item.outOfStock}">Unavailable</span>
+                                <span class="cart-stitch-badge is-warning"
+                                    th:if="${!item.outOfStock && item.stockExceeded}">Quantity exceeds stock</span>
+                            </div>
                         </div>
-                        <div>
-                            <dt>Size</dt>
-                            <dd th:text="${item.size}">M</dd>
+
+                        <div class="cart-stitch-quantity-column">
+                            <span class="cart-stitch-field-label">Quantity</span>
+                            <form th:action="@{/cart/update}" method="post" class="cart-stitch-update-form">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="sku" th:value="${item.sku}">
+
+                                <div class="cart-stitch-stepper"
+                                    th:classappend="${item.outOfStock} ? ' is-disabled' : ''">
+                                    <button type="button" class="cart-stitch-stepper-button"
+                                        data-quantity-action="decrease" th:disabled="${item.outOfStock}"
+                                        th:aria-label="${'Decrease quantity for ' + item.productName}">−</button>
+                                    <input class="cart-stitch-quantity-input" th:id="${'quantity-' + item.sku}"
+                                        name="quantity" type="number" min="1" step="1" required
+                                        th:max="${item.stockQuantity}" th:value="${item.quantity}"
+                                        th:data-initial="${item.quantity}" th:disabled="${item.outOfStock}"
+                                        th:aria-label="${'Quantity for ' + item.productName}">
+                                    <button type="button" class="cart-stitch-stepper-button"
+                                        data-quantity-action="increase" th:disabled="${item.outOfStock}"
+                                        th:aria-label="${'Increase quantity for ' + item.productName}">+</button>
+                                </div>
+
+                                <p class="cart-stitch-quantity-error" aria-live="polite"></p>
+                                <button type="submit" class="cart-stitch-update-button" th:if="${!item.outOfStock}"
+                                    disabled>Update quantity</button>
+                            </form>
                         </div>
-                        <div>
-                            <dt>Stock</dt>
-                            <dd th:text="${item.stockQuantity}">12</dd>
+
+                        <div class="cart-stitch-price-column">
+                            <div>
+                                <span>Unit price</span>
+                                <p th:text="${item.unitPriceLabel}"></p>
+                            </div>
+                            <div class="cart-stitch-line-total-wrap">
+                                <span>Item total</span>
+                                <strong class="cart-stitch-line-total" th:text="${item.lineTotalLabel}"></strong>
+                            </div>
+                            <form th:action="@{/cart/remove}" method="post" class="cart-stitch-remove-form">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <input type="hidden" name="sku" th:value="${item.sku}">
+                                <button type="submit" class="cart-stitch-remove-button">Remove</button>
+                            </form>
                         </div>
-                    </dl>
+                    </article>
                 </div>
-                <div class="cart-item-actions">
-                    <p th:text="${item.unitPriceLabel}">$19.90</p>
-                    <form th:action="@{/cart/update}" method="post">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <input type="hidden" name="sku" th:value="${item.sku}">
-                        <label th:for="${'quantity-' + item.sku}">Quantity</label>
-                        <input th:id="${'quantity-' + item.sku}" name="quantity" type="number" min="0"
-                               th:max="${item.stockQuantity}" th:value="${item.quantity}">
-                        <button type="submit">Update</button>
-                    </form>
-                    <form th:action="@{/cart/remove}" method="post">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <input type="hidden" name="sku" th:value="${item.sku}">
-                        <button class="remove-button" type="submit">Remove</button>
-                    </form>
-                </div>
-                <strong class="cart-line-total" th:text="${item.lineTotalLabel}">$39.80</strong>
-            </article>
-        </div>
-
-        <aside class="cart-summary" aria-label="Cart summary">
-            <h2>Summary</h2>
-            <div>
-                <span>Items</span>
-                <strong th:text="${cart.itemCount}">2</strong>
             </div>
-            <div>
-                <span>Subtotal</span>
-                <strong th:text="${cart.subtotalLabel}">$39.80</strong>
+
+            <aside class="cart-stitch-sidebar" aria-label="Order summary">
+                <div class="cart-stitch-summary">
+                    <p class="cart-stitch-eyebrow">Checkout overview</p>
+                    <h2>Order summary</h2>
+
+                    <div class="cart-stitch-summary-row">
+                        <span>Selected quantity</span>
+                        <strong id="summary-selected-count" th:text="${cart.itemCount}"></strong>
+                    </div>
+                    <div class="cart-stitch-summary-row is-total">
+                        <span>Subtotal</span>
+                        <strong id="summary-selected-subtotal" th:text="${cart.subtotalLabel}"></strong>
+                    </div>
+
+                    <p class="cart-stitch-summary-copy">Review shipping details and confirm the order on the next step
+                        before stock is reserved.</p>
+                    <p id="cart-summary-notice" class="cart-stitch-summary-notice" aria-live="polite" hidden></p>
+
+                    <button id="checkout-submit-btn" form="cart-checkout-form" type="submit"
+                        class="cart-stitch-button cart-stitch-button-primary cart-stitch-checkout-button"
+                        sec:authorize="!hasRole('ADMIN')">
+                        Checkout
+                    </button>
+                    <p class="cart-stitch-summary-copy" sec:authorize="hasRole('ADMIN')">Administrator accounts cannot
+                        place orders.</p>
+            </aside>
+        </section>
+
+        <section class="cart-stitch-empty" th:if="${cart.empty}" aria-labelledby="empty-cart-title">
+            <div class="cart-stitch-empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6 8h12l-1 12H7L6 8Z"></path>
+                    <path d="M9 8V6a3 3 0 0 1 6 0v2"></path>
+                </svg>
             </div>
-            <p>Review shipping details and confirm the order before stock is reserved.</p>
-            <a class="btn btn-primary retail-btn" th:href="@{/checkout}">Checkout</a>
-        </aside>
-    </section>
+            <p class="cart-stitch-eyebrow">Nothing selected yet</p>
+            <h2 id="empty-cart-title">Your cart is empty</h2>
+            <p>Add a size and color from a product detail page to start building your order.</p>
+            <a class="cart-stitch-button cart-stitch-button-primary" th:href="@{/products}">Browse products</a>
+        </section>
+    </main>
 
-    <section class="empty-state cart-empty" th:if="${cart.empty}">
-        <h2>Your cart is empty</h2>
-        <p>Add a size and color from any product detail page to start a cart.</p>
-        <a class="btn btn-primary retail-btn" th:href="@{/products}">Browse products</a>
-    </section>
-</main>
+    <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+    <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectAll = document.getElementById('selectAllCart');
+            const itemCheckboxes = Array.from(document.querySelectorAll('.cart-stitch-item-checkbox'));
+            const summaryCount = document.getElementById('summary-selected-count');
+            const summarySubtotal = document.getElementById('summary-selected-subtotal');
+            const countLabel = document.getElementById('cart-selected-count-label');
+            const submitButton = document.getElementById('checkout-submit-btn');
+            const summaryNotice = document.getElementById('cart-summary-notice');
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+            function formatMoney(value) {
+                return '$' + value.toFixed(2);
+            }
+
+            function getItemState(checkbox) {
+                const item = checkbox.closest('.cart-stitch-item');
+                return {
+                    item: item,
+                    isDirty: item && item.dataset.quantityDirty === 'true',
+                    isInvalid: item && item.dataset.quantityInvalid === 'true'
+                };
+            }
+
+            function updateCartTotals() {
+                let selectedQuantity = 0;
+                let subtotal = 0;
+                let selectedRows = 0;
+                let enabledRows = 0;
+                let hasSelectedDirtyQuantity = false;
+                let hasSelectedInvalidQuantity = false;
+
+                itemCheckboxes.forEach(function (checkbox) {
+                    if (checkbox.disabled) {
+                        return;
+                    }
+
+                    enabledRows++;
+                    if (!checkbox.checked) {
+                        return;
+                    }
+
+                    selectedRows++;
+                    const quantity = parseInt(checkbox.dataset.qty, 10) || 1;
+                    const price = parseFloat(checkbox.dataset.price) || 0;
+                    const state = getItemState(checkbox);
+
+                    selectedQuantity += quantity;
+                    subtotal += price * quantity;
+                    hasSelectedDirtyQuantity = hasSelectedDirtyQuantity || state.isDirty;
+                    hasSelectedInvalidQuantity = hasSelectedInvalidQuantity || state.isInvalid;
+                });
+
+                if (summaryCount) {
+                    summaryCount.textContent = selectedQuantity;
+                }
+                if (countLabel) {
+                    countLabel.textContent = selectedQuantity;
+                }
+                if (summarySubtotal) {
+                    summarySubtotal.textContent = formatMoney(subtotal);
+                }
+
+                if (selectAll) {
+                    selectAll.checked = enabledRows > 0 && selectedRows === enabledRows;
+                    selectAll.indeterminate = selectedRows > 0 && selectedRows < enabledRows;
+                    selectAll.disabled = enabledRows === 0;
+                }
+
+                let notice = '';
+                if (hasSelectedInvalidQuantity) {
+                    notice = 'Correct invalid quantities before checkout.';
+                } else if (hasSelectedDirtyQuantity) {
+                    notice = 'Save changed quantities before checkout.';
+                } else if (selectedRows === 0) {
+                    notice = 'Select at least one available item to continue.';
+                }
+
+                if (summaryNotice) {
+                    summaryNotice.textContent = notice;
+                    summaryNotice.hidden = notice === '';
+                }
+
+                if (submitButton) {
+                    const isDisabled = selectedRows === 0 || hasSelectedDirtyQuantity || hasSelectedInvalidQuantity;
+                    submitButton.disabled = isDisabled;
+                    submitButton.textContent = selectedRows > 0
+                        ? 'Checkout (' + selectedQuantity + ')'
+                        : 'Checkout (0)';
+                }
+            }
+
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    itemCheckboxes.forEach(function (checkbox) {
+                        if (!checkbox.disabled) {
+                            checkbox.checked = selectAll.checked;
+                        }
+                    });
+                    updateCartTotals();
+                });
+            }
+
+            itemCheckboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', updateCartTotals);
+            });
+
+            document.querySelectorAll('.cart-stitch-update-form').forEach(function (form) {
+                const item = form.closest('.cart-stitch-item');
+                const input = form.querySelector('.cart-stitch-quantity-input');
+                const updateButton = form.querySelector('.cart-stitch-update-button');
+                const errorElement = form.querySelector('.cart-stitch-quantity-error');
+                const decreaseButton = form.querySelector('[data-quantity-action="decrease"]');
+                const increaseButton = form.querySelector('[data-quantity-action="increase"]');
+                const checkbox = item ? item.querySelector('.cart-stitch-item-checkbox') : null;
+                const lineTotal = item ? item.querySelector('.cart-stitch-line-total') : null;
+
+                if (!item || !input || input.disabled) {
+                    return;
+                }
+
+                const initialQuantity = parseInt(input.dataset.initial, 10);
+                const maximumQuantity = parseInt(input.max, 10);
+
+                function validateAndRefresh() {
+                    const quantity = parseInt(input.value, 10);
+                    let errorMessage = '';
+
+                    if (!Number.isInteger(quantity) || quantity < 1) {
+                        errorMessage = 'Quantity must be at least 1.';
+                    } else if (Number.isInteger(maximumQuantity) && quantity > maximumQuantity) {
+                        errorMessage = 'Only ' + maximumQuantity + ' item(s) are available.';
+                    }
+
+                    const isInvalid = errorMessage !== '';
+                    const isDirty = !isInvalid && quantity !== initialQuantity;
+
+                    item.dataset.quantityInvalid = String(isInvalid);
+                    item.dataset.quantityDirty = String(isDirty);
+                    item.classList.toggle('has-quantity-error', isInvalid);
+                    item.classList.toggle('has-unsaved-quantity', isDirty);
+
+                    if (errorElement) {
+                        errorElement.textContent = errorMessage;
+                    }
+                    if (updateButton) {
+                        updateButton.disabled = isInvalid || !isDirty;
+                    }
+                    if (decreaseButton) {
+                        decreaseButton.disabled = quantity <= 1;
+                    }
+                    if (increaseButton) {
+                        increaseButton.disabled = Number.isInteger(maximumQuantity) && quantity >= maximumQuantity;
+                    }
+
+                    if (!isInvalid && checkbox) {
+                        checkbox.dataset.qty = String(quantity);
+                        const price = parseFloat(checkbox.dataset.price) || 0;
+                        if (lineTotal) {
+                            lineTotal.textContent = formatMoney(price * quantity);
+                        }
+                    }
+
+                    updateCartTotals();
+                }
+
+                form.querySelectorAll('.cart-stitch-stepper-button').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        const currentQuantity = parseInt(input.value, 10) || 1;
+                        const action = button.dataset.quantityAction;
+                        const nextQuantity = action === 'increase'
+                            ? currentQuantity + 1
+                            : currentQuantity - 1;
+
+                        input.value = String(nextQuantity);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                });
+
+                input.addEventListener('input', validateAndRefresh);
+                input.addEventListener('change', validateAndRefresh);
+                validateAndRefresh();
+            });
+
+            updateCartTotals();
+        });
+    </script>
 </body>
+
 </html>

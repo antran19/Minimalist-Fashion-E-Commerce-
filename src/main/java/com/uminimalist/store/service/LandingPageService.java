@@ -45,9 +45,6 @@ public class LandingPageService {
     public List<ProductView> getNewArrivals() {
         return productViews().stream()
                 .filter(ProductView::isNew)
-                .filter(product -> !"kids".equalsIgnoreCase(product.collection()))
-                .filter(product -> !"Accessories".equalsIgnoreCase(product.category()))
-                .limit(8)
                 .toList();
     }
 
