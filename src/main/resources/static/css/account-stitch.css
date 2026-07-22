@@ -1,0 +1,1102 @@
+/*
+ * Customer Account redesign adapted from Stitch for the HSF project.
+ * Scope is intentionally limited to account.html by using account-specific classes.
+ */
+
+.account-dashboard-body {
+    background: #f8f8f6;
+}
+
+.account-dashboard-page {
+    padding-top: 108px;
+    padding-bottom: 88px;
+}
+
+.account-dashboard-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #dcdad6;
+}
+
+.account-dashboard-header h1 {
+    margin: 4px 0 8px;
+    font-size: clamp(2.5rem, 5vw, 5rem);
+    font-weight: 800;
+    line-height: 0.98;
+    letter-spacing: -0.06em;
+}
+
+.account-dashboard-header p:not(.account-eyebrow) {
+    max-width: 650px;
+    margin: 0;
+    color: #65635f;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.account-eyebrow,
+.account-card-kicker {
+    margin: 0;
+    color: #6a6761;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.account-dashboard-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.31fr) minmax(0, 0.69fr);
+    gap: 28px;
+    align-items: start;
+    margin-top: 34px;
+}
+
+.account-dashboard-sidebar {
+    position: sticky;
+    top: 96px;
+    display: grid;
+    gap: 20px;
+}
+
+.account-dashboard-main {
+    display: grid;
+    gap: 28px;
+    min-width: 0;
+}
+
+.account-dashboard-card,
+.orders-section,
+.wishlist-section {
+    border: 1px solid #d9d6d1;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.account-dashboard-card {
+    padding: 24px;
+}
+
+.orders-section,
+.wishlist-section {
+    padding: 28px;
+}
+
+.profile-summary-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.profile-avatar {
+    display: grid;
+    flex: 0 0 60px;
+    width: 60px;
+    height: 60px;
+    place-items: center;
+    border-radius: 12px;
+    background: #0a0a0a;
+    color: #ffffff;
+    font-size: 1.55rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.profile-summary-title {
+    min-width: 0;
+}
+
+.profile-summary-title h2,
+.account-card-title-row h2,
+.orders-section-head h2,
+.wishlist-section-head h2 {
+    margin: 0;
+    color: #0a0a0a;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+}
+
+.profile-summary-title h2 {
+    overflow: hidden;
+    font-size: 1.35rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-summary-title p {
+    margin: 3px 0 0;
+    color: #6a6761;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.account-summary-list {
+    margin: 0 0 20px;
+}
+
+.account-summary-list > div {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 13px 0;
+    border-top: 1px solid #eceae6;
+}
+
+.account-summary-list dt {
+    color: #6a6761;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.account-summary-list dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: #171717;
+    font-size: 0.88rem;
+    font-weight: 650;
+    text-align: right;
+}
+
+.account-state-badge,
+.account-order-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.account-state-badge {
+    padding: 5px 8px;
+}
+
+.account-state-badge.is-active {
+    border-color: #a7e9c3;
+    background: #edfdf3;
+    color: #08783b;
+}
+
+.account-state-badge.is-disabled {
+    border-color: #e4b4b4;
+    background: #fff1f1;
+    color: #a31515;
+}
+
+.account-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.account-card-title-row h2 {
+    margin-top: 4px;
+    font-size: 1.22rem;
+}
+
+.account-card-icon {
+    display: grid;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 50%;
+    background: #f1f0ed;
+}
+
+.account-card-icon svg,
+.account-empty-icon svg {
+    width: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.shipping-summary {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.shipping-summary strong {
+    font-size: 1rem;
+}
+
+.shipping-summary span,
+.shipping-summary p,
+.account-empty-compact p,
+.account-empty-compact span {
+    margin: 0;
+    color: #65635f;
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.account-empty-compact {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px dashed #cfcbc4;
+    border-radius: 8px;
+    background: #faf9f7;
+}
+
+.account-empty-compact p {
+    color: #171717;
+    font-weight: 700;
+}
+
+.cart-summary-card {
+    border-top: 4px solid #0a0a0a;
+}
+
+.cart-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.cart-summary-head > span {
+    color: #6a6761;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.cart-summary-total {
+    margin: 10px 0 6px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.cart-summary-copy {
+    margin: 0;
+    color: #65635f;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.cart-summary-warnings {
+    display: grid;
+    gap: 6px;
+    margin: 14px 0 0;
+    padding: 12px 12px 12px 30px;
+    border: 1px solid #efd49b;
+    border-radius: 7px;
+    background: #fff9ea;
+    color: #805300;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.cart-summary-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.account-button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 750;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.account-button:hover,
+.account-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.account-button-primary {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+    color: #ffffff;
+}
+
+.account-button-primary:hover,
+.account-button-primary:focus-visible {
+    border-color: #2b2b2b;
+    background: #2b2b2b;
+    color: #ffffff;
+}
+
+.account-button-secondary {
+    border-color: #292929;
+    background: #ffffff;
+    color: #111111;
+}
+
+.account-button-secondary:hover,
+.account-button-secondary:focus-visible {
+    background: #f0efec;
+    color: #111111;
+}
+
+.account-button:disabled {
+    border-color: #d8d6d2;
+    background: #eceae6;
+    color: #95918a;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.account-button-block {
+    width: 100%;
+}
+
+.account-button-small {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+}
+
+.account-edit-form {
+    display: grid;
+    gap: 14px;
+}
+
+.account-edit-form label {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+}
+
+.account-edit-form label > span {
+    color: #6a6761;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.account-edit-form input {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #d2cfca;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111111;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.account-edit-form input:focus {
+    border-color: #111111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.account-edit-form input:disabled {
+    background: #f0efec;
+    color: #77736d;
+}
+
+.account-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.account-form-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.orders-section-head,
+.wishlist-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.orders-section-head h2,
+.wishlist-section-head h2 {
+    margin-top: 4px;
+    font-size: clamp(1.65rem, 2.3vw, 2.25rem);
+}
+
+.orders-section-head p:not(.account-eyebrow) {
+    max-width: 590px;
+    margin: 6px 0 0;
+    color: #65635f;
+    font-size: 0.9rem;
+}
+
+.orders-count,
+.wishlist-section-head > span {
+    flex: 0 0 auto;
+    padding-top: 6px;
+    color: #65635f;
+    font-size: 0.85rem;
+}
+
+.order-filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 24px 0;
+    padding-bottom: 17px;
+    overflow-x: auto;
+    border-bottom: 1px solid #e2dfda;
+    scrollbar-width: thin;
+}
+
+.order-filter-tabs a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 15px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: #2c2b29;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.order-filter-tabs a:hover,
+.order-filter-tabs a:focus-visible {
+    border-color: #d2cfca;
+    background: #f1f0ed;
+}
+
+.order-filter-tabs a.is-active {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+    color: #ffffff;
+}
+
+.order-card-list {
+    display: grid;
+    gap: 20px;
+}
+
+.premium-order-card {
+    overflow: hidden;
+    border: 1px solid #d5d1cb;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.premium-order-card:hover {
+    border-color: #b7b2aa;
+    box-shadow: 0 12px 30px rgba(24, 22, 18, 0.07);
+    transform: translateY(-2px);
+}
+
+.premium-order-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #dcd8d2;
+    background: #f3f2f0;
+}
+
+.premium-order-code,
+.premium-order-meta > div {
+    display: grid;
+    gap: 3px;
+}
+
+.premium-order-code > span,
+.premium-order-meta > div > span,
+.premium-order-total > span {
+    color: #69655f;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.premium-order-code strong {
+    overflow-wrap: anywhere;
+    font-size: 0.92rem;
+}
+
+.premium-order-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.premium-order-meta > div {
+    margin-right: 5px;
+    text-align: right;
+}
+
+.premium-order-meta > div strong {
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+.account-order-status {
+    max-width: 145px;
+    padding: 7px 10px;
+    text-align: center;
+}
+
+.account-order-status.status-pending_payment {
+    border-color: #f0c98d;
+    background: #fff8eb;
+    color: #c46300;
+}
+
+.account-order-status.status-placed {
+    border-color: #bfc8d8;
+    background: #f1f5fb;
+    color: #334a70;
+}
+
+.account-order-status.status-processing {
+    border-color: #b8cff2;
+    background: #edf5ff;
+    color: #1f5fae;
+}
+
+.account-order-status.status-shipped {
+    border-color: #b9d8d4;
+    background: #effbf9;
+    color: #177366;
+}
+
+.account-order-status.status-delivered {
+    border-color: #a7e9c3;
+    background: #edfdf3;
+    color: #08783b;
+}
+
+.account-order-status.status-cancelled {
+    border-color: #efb1b1;
+    background: #fff1f1;
+    color: #b21f1f;
+}
+
+.premium-order-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    align-items: center;
+    padding: 20px;
+}
+
+.premium-order-items {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.premium-order-items > li {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr) auto;
+    gap: 15px;
+    align-items: center;
+}
+
+.premium-order-items > li + li {
+    padding-top: 14px;
+    border-top: 1px solid #eceae6;
+}
+
+.premium-order-image {
+    display: block;
+    width: 68px;
+    height: 82px;
+    overflow: hidden;
+    border: 1px solid #e1ded9;
+    border-radius: 5px;
+    background: #f1f0ed;
+}
+
+.premium-order-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.premium-order-product {
+    min-width: 0;
+}
+
+.premium-order-product h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.premium-order-product h3 a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.premium-order-product p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 5px 0;
+    color: #66625c;
+    font-size: 0.82rem;
+}
+
+.premium-order-product small {
+    color: #76716a;
+    font-size: 0.76rem;
+    font-style: italic;
+}
+
+.premium-order-line-total {
+    font-size: 0.92rem;
+}
+
+.premium-order-total {
+    min-width: 105px;
+    padding-left: 22px;
+    border-left: 1px solid #e4e1dc;
+    text-align: right;
+}
+
+.premium-order-total strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 1.65rem;
+    letter-spacing: -0.04em;
+}
+
+.premium-order-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 14px 20px;
+    border-top: 1px solid #e5e2dd;
+}
+
+.premium-order-actions form,
+.premium-wishlist-actions form {
+    margin: 0;
+}
+
+.account-text-link {
+    border: 0;
+    background: transparent;
+    color: #111111;
+    padding: 4px 0;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 750;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
+.account-text-link:hover,
+.account-text-link:focus-visible {
+    color: #66625c;
+}
+
+.payment-badge {
+    flex: 0 0 auto;
+}
+
+.account-empty-state {
+    display: grid;
+    justify-items: center;
+    padding: 46px 24px;
+    border: 1px dashed #cbc6bf;
+    border-radius: 10px;
+    background: #faf9f7;
+    text-align: center;
+}
+
+.account-empty-icon {
+    display: grid;
+    width: 64px;
+    height: 64px;
+    place-items: center;
+    margin-bottom: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #a29d95;
+}
+
+.account-empty-icon svg {
+    width: 28px;
+}
+
+.account-empty-state h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.account-empty-state p {
+    max-width: 450px;
+    margin: 8px 0 20px;
+    color: #6a6761;
+    font-size: 0.9rem;
+}
+
+.account-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e3e0db;
+}
+
+.account-pagination > span {
+    color: #65635f;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.account-pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.account-pagination-num {
+    display: inline-flex;
+    min-width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    border: 1px solid #dcd9d4;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #171717;
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.account-pagination-num:hover,
+.account-pagination-num:focus-visible {
+    border-color: #0a0a0a;
+    background: #f1f0ed;
+    color: #0a0a0a;
+}
+
+.account-pagination-num.is-active {
+    border-color: #0a0a0a;
+    background: #0a0a0a;
+    color: #ffffff;
+    cursor: default;
+}
+
+.wishlist-section-head {
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.premium-wishlist-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.premium-wishlist-card {
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid #ddd9d3;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.premium-wishlist-image {
+    display: block;
+    min-height: 150px;
+    background: #f1f0ed;
+}
+
+.premium-wishlist-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.premium-wishlist-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.premium-wishlist-content > p {
+    margin: 0 0 4px;
+    color: #6a6761;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.premium-wishlist-content h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.premium-wishlist-content h3 a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.premium-wishlist-content > strong {
+    margin-top: 6px;
+    font-size: 0.95rem;
+}
+
+.premium-wishlist-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: auto;
+    padding-top: 16px;
+}
+
+.account-remove-link {
+    color: #a72121;
+}
+
+@media (max-width: 1180px) {
+    .account-dashboard-layout {
+        grid-template-columns: minmax(260px, 0.36fr) minmax(0, 0.64fr);
+    }
+
+    .premium-order-head {
+        align-items: flex-start;
+    }
+
+    .premium-order-meta {
+        flex-wrap: wrap;
+    }
+
+    .premium-order-body {
+        grid-template-columns: 1fr;
+    }
+
+    .premium-order-total {
+        padding-top: 16px;
+        padding-left: 0;
+        border-top: 1px solid #e4e1dc;
+        border-left: 0;
+        text-align: left;
+    }
+
+    .premium-order-total strong {
+        font-size: 1.35rem;
+    }
+
+    .premium-wishlist-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .account-dashboard-page {
+        padding-top: 96px;
+    }
+
+    .account-dashboard-header {
+        align-items: flex-start;
+    }
+
+    .account-dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .account-dashboard-sidebar {
+        position: static;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cart-summary-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 680px) {
+    .account-dashboard-page {
+        padding-bottom: 56px;
+    }
+
+    .account-dashboard-header {
+        display: grid;
+        gap: 22px;
+    }
+
+    .account-dashboard-header .account-button {
+        width: 100%;
+    }
+
+    .account-dashboard-sidebar {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-summary-card {
+        grid-column: auto;
+    }
+
+    .account-dashboard-card,
+    .orders-section,
+    .wishlist-section {
+        padding: 20px;
+        border-radius: 9px;
+    }
+
+    .orders-section-head,
+    .wishlist-section-head {
+        display: grid;
+        gap: 8px;
+    }
+
+    .orders-count,
+    .wishlist-section-head > span {
+        padding-top: 0;
+    }
+
+    .premium-order-head {
+        display: grid;
+        gap: 14px;
+    }
+
+    .premium-order-meta {
+        justify-content: flex-start;
+    }
+
+    .premium-order-meta > div {
+        width: 100%;
+        text-align: left;
+    }
+
+    .premium-order-items > li {
+        grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .premium-order-image {
+        width: 58px;
+        height: 72px;
+    }
+
+    .premium-order-line-total {
+        grid-column: 2;
+    }
+
+    .premium-order-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .premium-order-actions .account-text-link,
+    .premium-order-actions form,
+    .premium-order-actions .account-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .premium-wishlist-card {
+        grid-template-columns: 100px minmax(0, 1fr);
+    }
+
+    .premium-wishlist-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .premium-wishlist-actions .account-button,
+    .premium-wishlist-actions form,
+    .premium-wishlist-actions button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .account-form-grid,
+    .account-form-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .account-pagination {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 420px) {
+    .account-summary-list > div {
+        grid-template-columns: 66px minmax(0, 1fr);
+    }
+
+    .premium-order-meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .premium-order-meta > div {
+        grid-column: 1 / -1;
+    }
+
+    .premium-wishlist-card {
+        grid-template-columns: 1fr;
+    }
+
+    .premium-wishlist-image {
+        aspect-ratio: 4 / 3;
+        min-height: 0;
+    }
+}

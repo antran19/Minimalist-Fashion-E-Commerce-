@@ -1,329 +1,647 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <th:block th:insert="~{fragments/head :: head('Account | U-Minimalist', 'U-Minimalist customer account dashboard.')}"></th:block>
+    <th:block th:insert="~{fragments/head :: head('Account | U-Minimalist', 'Manage your U-Minimalist profile, shipping details, cart, orders, and saved products.')}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/account-stitch.css(v=1)}">
 </head>
-<body class="catalog-page">
+<body class="catalog-page account-dashboard-body">
 <th:block th:replace="~{fragments/navbar :: navbar('account', 'site-header catalog-header is-scrolled', '', false, true, false)}"></th:block>
 
-<main class="page-shell account-page">
-    <section class="cart-heading" aria-labelledby="account-title">
+<main class="page-shell account-dashboard-page">
+    <header class="account-dashboard-header" aria-labelledby="account-title">
         <div>
+            <p class="account-eyebrow">Customer dashboard</p>
             <h1 id="account-title">Customer account</h1>
-            <p>Manage your profile, shipping details, and order history.</p>
+            <p>Manage your profile, shipping details, orders, and saved products.</p>
         </div>
-        <a class="btn btn-outline-dark retail-btn outline" th:href="@{/products}">Continue shopping</a>
-    </section>
+        <a class="account-button account-button-secondary" th:href="@{/products}">Continue shopping</a>
+    </header>
 
-    <p class="cart-alert success" th:if="${accountMessage}" th:text="${accountMessage}">Order placed.</p>
-    <p class="cart-alert error" th:if="${accountError}" th:text="${accountError}">Account error.</p>
+    <p class="cart-alert success" th:if="${accountMessage}" th:text="${accountMessage}"></p>
+    <p class="cart-alert error" th:if="${accountError}" th:text="${accountError}"></p>
 
-    <section class="account-grid">
-        <article class="account-panel" id="profile">
-            <p class="panel-kicker">Profile</p>
+    <div class="account-dashboard-layout">
+        <aside class="account-dashboard-sidebar" aria-label="Customer summary">
+            <section class="account-dashboard-card profile-summary-card" id="profile">
+                <div id="profile-view">
+                    <div class="profile-summary-head">
+                        <div class="profile-avatar" aria-hidden="true"
+                             th:text="${account.fullName != null and !#strings.isEmpty(#strings.trim(account.fullName)) ? #strings.toUpperCase(#strings.substring(#strings.trim(account.fullName), 0, 1)) : ''}"></div>
+                        <div class="profile-summary-title">
+                            <h2 th:text="${account.fullName}"></h2>
+                            <p>Customer account</p>
+                        </div>
+                    </div>
 
-            <!-- Profile View Mode -->
-            <div id="profile-view">
-                <h2 th:text="${account.fullName}" style="margin-bottom: 12px;">Customer Name</h2>
-                <div class="account-list" style="margin-bottom: 20px;">
-                    <div>
-                        <dt>Email</dt>
-                        <dd th:text="${account.email}">customer@uminimalist.com</dd>
-                    </div>
-                    <div>
-                        <dt>Phone</dt>
-                        <dd th:text="${account.phone}">0987654321</dd>
-                    </div>
-                    <div>
-                        <dt>Status</dt>
-                        <dd th:text="${account.active ? 'Active' : 'Disabled'}">Active</dd>
-                    </div>
+                    <dl class="account-summary-list">
+                        <div>
+                            <dt>Email</dt>
+                            <dd th:text="${account.email}"></dd>
+                        </div>
+                        <div>
+                            <dt>Phone</dt>
+                            <dd th:text="${account.phone}"></dd>
+                        </div>
+                        <div>
+                            <dt>Status</dt>
+                            <dd>
+                                <span class="account-state-badge"
+                                      th:classappend="${account.active ? ' is-active' : ' is-disabled'}"
+                                      th:text="${account.active ? 'Active' : 'Disabled'}"></span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <button class="account-button account-button-secondary account-button-block"
+                            type="button"
+                            data-edit-toggle="profile"
+                            aria-controls="profile-edit"
+                            aria-expanded="false">
+                        Edit profile
+                    </button>
                 </div>
-                <button class="btn btn-outline-dark btn-sm outline retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" onclick="toggleEdit('profile')">Edit Profile</button>
-            </div>
 
-            <!-- Profile Edit Mode -->
-            <div id="profile-edit" class="d-none">
-                <h2 style="margin-bottom: 16px;">Edit Profile</h2>
-                <form class="profile-form auto-change-form" th:action="@{/account/profile}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <label>
-                        <span>Full name</span>
-                        <input name="fullName" type="text" th:value="${account.fullName}" th:data-initial="${account.fullName}" minlength="2" maxlength="120" required class="track-change-input">
-                    </label>
-                    <label>
-                        <span>Email</span>
-                        <input type="email" th:value="${account.email}" disabled>
-                    </label>
-                    <label>
-                        <span>Phone</span>
-                        <input
-                            name="phone"
-                            type="tel"
-                            th:value="${account.phone}"
-                            th:data-initial="${account.phone}"
-                            pattern="^(0|\+?84)(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$"
-                            minlength="10"
-                            maxlength="12"
-                            oninput="this.value = this.value.replace(/[\s.\-()]/g, '')"
-                            inputmode="tel"
-                            placeholder="0912345678"
-                            title="Enter a valid Vietnamese mobile number, for example 0912345678."
-                            required
-                            class="track-change-input">
-                    </label>
-                    <div class="profile-form-footer" style="margin-top: 10px;">
-                        <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('profile')">Cancel</button>
-                        <button class="btn btn-dark retail-btn btn-save-form" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit" disabled title="Modify values to enable save">Save profile</button>
+                <div id="profile-edit" hidden>
+                    <div class="account-card-title-row">
+                        <div>
+                            <p class="account-card-kicker">Profile</p>
+                            <h2>Edit profile</h2>
+                        </div>
                     </div>
-                </form>
-            </div>
-        </article>
 
-        <article class="account-panel">
-            <p class="panel-kicker">Current cart</p>
-            <h2 th:text="${cart.subtotalLabel}">$0.00</h2>
-            <p><span th:text="${cart.itemCount}">0</span> item(s) ready for checkout.</p>
-            <div class="account-actions">
-                <a class="btn btn-outline-dark retail-btn outline" th:href="@{/cart}">Review cart</a>
-                <a class="btn btn-primary retail-btn" th:if="${!cart.empty}" th:href="@{/cart}">Checkout</a>
-            </div>
-        </article>
+                    <form class="account-edit-form auto-change-form" th:action="@{/account/profile}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
-        <article class="account-panel wide" id="shipping">
-            <p class="panel-kicker">Shipping address</p>
-
-            <!-- Shipping View Mode -->
-            <div id="shipping-view">
-                <h2 style="margin-bottom: 12px;">Default delivery details</h2>
-                <div th:if="${shippingAddress.complete}" class="account-list" style="margin-bottom: 20px;">
-                    <div>
-                        <dt>Recipient</dt>
-                        <dd th:text="${shippingAddress.recipientName}">John Doe</dd>
-                    </div>
-                    <div>
-                        <dt>Phone</dt>
-                        <dd th:text="${shippingAddress.phone}">0987654321</dd>
-                    </div>
-                    <div>
-                        <dt>Address</dt>
-                        <dd th:text="${shippingAddress.addressLine + ', ' + shippingAddress.district + ', ' + shippingAddress.city}">123 Main St, District 1, Ho Chi Minh City</dd>
-                    </div>
-                </div>
-                <div th:if="${!shippingAddress.complete}" style="margin-bottom: 20px; color: var(--muted); font-weight: 600; font-size: 0.9rem;">
-                    No default shipping address saved. Add one to accelerate your checkout.
-                </div>
-                <button class="btn btn-outline-dark btn-sm outline retail-btn" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" onclick="toggleEdit('shipping')">
-                    <span th:text="${shippingAddress.complete ? 'Edit Address' : 'Add Address'}">Edit Address</span>
-                </button>
-            </div>
-
-            <!-- Shipping Edit Mode -->
-            <div id="shipping-edit" class="d-none">
-                <h2 style="margin-bottom: 16px;">Update Address</h2>
-                <form class="profile-form address-form auto-change-form" th:action="@{/account/address}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <div class="form-grid-two">
                         <label>
-                            <span>Recipient</span>
-                            <input name="recipientName" type="text" th:value="${shippingAddress.recipientName}" th:data-initial="${shippingAddress.recipientName}" minlength="2" maxlength="120" required class="track-change-input">
+                            <span>Full name</span>
+                            <input name="fullName"
+                                   type="text"
+                                   th:value="${account.fullName}"
+                                   th:data-initial="${account.fullName}"
+                                   minlength="2"
+                                   maxlength="120"
+                                   autocomplete="name"
+                                   required
+                                   class="track-change-input">
                         </label>
+
+                        <label>
+                            <span>Email</span>
+                            <input type="email" th:value="${account.email}" disabled>
+                        </label>
+
                         <label>
                             <span>Phone</span>
-                            <input
-                                name="shippingPhone"
-                                type="tel"
-                                th:value="${shippingAddress.phone}"
-                                th:data-initial="${shippingAddress.phone}"
-                                pattern="^(0|\+?84)(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$"
-                                minlength="10"
-                                maxlength="12"
-                                oninput="this.value = this.value.replace(/[\s.\-()]/g, '')"
-                                inputmode="tel"
-                                placeholder="0912345678"
-                                title="Enter a valid Vietnamese mobile number, for example 0912345678."
-                                required
-                                class="track-change-input">
+                            <input name="phone"
+                                   type="tel"
+                                   th:value="${account.phone}"
+                                   th:data-initial="${account.phone}"
+                                   pattern="^(0|\+?84)(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$"
+                                   minlength="10"
+                                   maxlength="12"
+                                   inputmode="tel"
+                                   autocomplete="tel"
+                                   placeholder="0912345678"
+                                   title="Enter a valid Vietnamese mobile number, for example 0912345678."
+                                   oninput="this.value = this.value.replace(/[\s.\-()]/g, '')"
+                                   required
+                                   class="track-change-input">
                         </label>
-                    </div>
-                    <label>
-                        <span>Address line</span>
-                        <input name="addressLine" type="text" th:value="${shippingAddress.addressLine}" th:data-initial="${shippingAddress.addressLine}" minlength="5" maxlength="255" placeholder="Street, building, apartment" required class="track-change-input">
-                    </label>
-                    <div class="form-grid-two">
-                        <label>
-                            <span>District</span>
-                            <input name="district" type="text" th:value="${shippingAddress.district}" th:data-initial="${shippingAddress.district}" minlength="2" maxlength="120" required class="track-change-input">
-                        </label>
-                        <label>
-                            <span>City</span>
-                            <input name="city" type="text" th:value="${shippingAddress.city}" th:data-initial="${shippingAddress.city}" minlength="2" maxlength="120" required class="track-change-input">
-                        </label>
-                    </div>
-                    <div class="profile-form-footer" style="margin-top: 10px;">
-                        <button class="btn btn-outline-dark retail-btn outline" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="button" onclick="toggleEdit('shipping')">Cancel</button>
-                        <button class="btn btn-dark retail-btn btn-save-form" style="padding: 8px 16px; min-width: auto; font-size: 0.85rem;" type="submit" disabled title="Modify values to enable save">Save address</button>
-                    </div>
-                </form>
-            </div>
-        </article>
 
-        <article class="account-panel wide" id="orders">
-            <p class="panel-kicker">Order activity</p>
-            <h2>Order history</h2>
+                        <div class="account-form-actions">
+                            <button class="account-button account-button-secondary"
+                                    type="button"
+                                    data-edit-toggle="profile">
+                                Cancel
+                            </button>
+                            <button class="account-button account-button-primary btn-save-form"
+                                    type="submit"
+                                    disabled
+                                    title="Modify values to enable save">
+                                Save profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
 
-            <!-- Order Filter Tabs -->
-            <div class="order-filter-tabs" style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
-                <a th:href="@{/account#orders(status='ALL')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'ALL' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">All Orders</a>
-                <a th:href="@{/account#orders(status='PENDING_PAYMENT')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'PENDING_PAYMENT' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Awaiting Payment</a>
-                <a th:href="@{/account#orders(status='PLACED')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'PLACED' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Placed</a>
-                <a th:href="@{/account#orders(status='PROCESSING')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'PROCESSING' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Processing</a>
-                <a th:href="@{/account#orders(status='SHIPPED')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'SHIPPED' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Shipped</a>
-                <a th:href="@{/account#orders(status='DELIVERED')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'DELIVERED' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Delivered</a>
-                <a th:href="@{/account#orders(status='CANCELLED')}"
-                   class="btn btn-sm"
-                   th:classappend="${paginatedOrders.selectedStatus == 'CANCELLED' ? 'btn-dark' : 'btn-outline-dark'}"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 6px 14px;">Cancelled</a>
-            </div>
-
-            <div class="order-empty" th:if="${#lists.isEmpty(paginatedOrders.orders)}">
-                <p style="margin: 0; color: var(--muted); font-weight: 600;">No order history found for this status.</p>
-            </div>
-
-            <div class="order-history" th:if="${!#lists.isEmpty(paginatedOrders.orders)}">
-                <article class="order-card" th:each="order : ${paginatedOrders.orders}">
-                    <div class="order-card-head">
+            <section class="account-dashboard-card shipping-summary-card" id="shipping">
+                <div id="shipping-view">
+                    <div class="account-card-title-row">
+                        <div class="account-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" role="img">
+                                <path d="M12 21s6-5.2 6-11A6 6 0 1 0 6 10c0 5.8 6 11 6 11Z"></path>
+                                <circle cx="12" cy="10" r="2.25"></circle>
+                            </svg>
+                        </div>
                         <div>
-                            <strong th:text="${order.orderCode}">UM-202607030001</strong>
-                            <span th:text="${order.placedAtLabel()}">03 Jul 2026, 10:30</span>
-                            <small style="display: block; color: var(--muted); font-weight: 600; font-size: 0.8rem; margin-top: 2px;" th:text="${order.paymentMethodLabel()}">Cash on Delivery (COD)</small>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="badge-role badge-customer" th:text="${order.statusLabel()}">Order Placed</span>
-                            <span th:class="${order.paymentStatusBadgeClass()}" th:text="${order.paymentStatusLabel()}" style="padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">Unpaid</span>
-                            <strong th:text="${order.totalLabel}">$69.80</strong>
+                            <p class="account-card-kicker">Shipping address</p>
+                            <h2>Default delivery details</h2>
                         </div>
                     </div>
-                    <ul class="order-lines">
-                        <li th:each="item : ${order.items}" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
-                                <span>
-                                    <strong th:text="${item.productName}">Air Cotton Tee</strong>
-                                    <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}" style="display: block; color: var(--muted); font-size: 0.8rem;">Cream / M / Qty 1</small>
-                                </span>
-                            </div>
-                            <span th:text="${item.lineTotalLabel}" style="font-weight: 700;">$19.90</span>
-                        </li>
-                    </ul>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-                        <a class="text-link order-detail-link" th:href="@{/account/orders/{orderCode}(orderCode=${order.orderCode})}">View details</a>
-                        <form th:if="${order.canPayAgain()}" th:action="@{/account/orders/{orderCode}/pay-again(orderCode=${order.orderCode})}" method="post" style="margin: 0;">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button class="btn btn-primary btn-sm retail-btn" type="submit" style="padding: 6px 14px; font-weight: 700;">Pay Again</button>
-                        </form>
+
+                    <div class="shipping-summary" th:if="${shippingAddress.complete}">
+                        <strong th:text="${shippingAddress.recipientName}"></strong>
+                        <span th:text="${shippingAddress.phone}"></span>
+                        <p th:text="${shippingAddress.fullAddress()}"></p>
                     </div>
-                </article>
-            </div>
 
-            <!-- Pagination Controls -->
-            <div class="pagination-container" th:if="${paginatedOrders.totalPages > 1}" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 20px;">
-                <a th:if="${paginatedOrders.hasPrevious()}"
-                   th:href="@{/account#orders(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage - 1})}"
-                   class="btn btn-outline-dark btn-sm outline"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 5px 12px;">Previous</a>
-                <span class="btn btn-sm disabled" style="font-weight: 700; color: var(--ink); border: 0;"
-                      th:text="${'Page ' + paginatedOrders.currentPage + ' of ' + paginatedOrders.totalPages}">Page 1 of 3</span>
-                <a th:if="${paginatedOrders.hasNext()}"
-                   th:href="@{/account#orders(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage + 1})}"
-                   class="btn btn-outline-dark btn-sm outline"
-                   style="font-weight: 700; border-radius: var(--radius); padding: 5px 12px;">Next</a>
-            </div>
-        </article>
+                    <div class="account-empty-compact" th:if="${!shippingAddress.complete}">
+                        <p>No default shipping address is saved yet.</p>
+                        <span>Add one to make checkout faster.</span>
+                    </div>
 
-        <article class="account-panel wide" id="wishlist">
-            <p class="panel-kicker">Wishlist</p>
-            <h2>Saved products</h2>
-            <div class="order-empty" th:if="${#lists.isEmpty(wishlist)}">
-                <p>No saved products yet. Save products from a product detail page.</p>
-            </div>
-            <div class="wishlist-grid" th:if="${!#lists.isEmpty(wishlist)}">
-                <article class="wishlist-card" th:each="item : ${wishlist}">
-                    <a class="wishlist-image product-image product-image-real" th:href="@{/products/{slug}(slug=${item.slug})}">
-                        <img th:src="@{${item.imagePath}}" th:alt="${item.name}">
+                    <button class="account-button account-button-secondary account-button-block"
+                            type="button"
+                            data-edit-toggle="shipping"
+                            aria-controls="shipping-edit"
+                            aria-expanded="false"
+                            th:text="${shippingAddress.complete ? 'Edit address' : 'Add address'}">
+                        Edit address
+                    </button>
+                </div>
+
+                <div id="shipping-edit" hidden>
+                    <div class="account-card-title-row">
+                        <div>
+                            <p class="account-card-kicker">Shipping address</p>
+                            <h2 th:text="${shippingAddress.complete ? 'Edit address' : 'Add address'}"></h2>
+                        </div>
+                    </div>
+
+                    <form class="account-edit-form auto-change-form" th:action="@{/account/address}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                        <div class="account-form-grid">
+                            <label>
+                                <span>Recipient</span>
+                                <input name="recipientName"
+                                       type="text"
+                                       th:value="${shippingAddress.recipientName}"
+                                       th:data-initial="${shippingAddress.recipientName}"
+                                       minlength="2"
+                                       maxlength="120"
+                                       autocomplete="name"
+                                       required
+                                       class="track-change-input">
+                            </label>
+
+                            <label>
+                                <span>Phone</span>
+                                <input name="shippingPhone"
+                                       type="tel"
+                                       th:value="${shippingAddress.phone}"
+                                       th:data-initial="${shippingAddress.phone}"
+                                       pattern="^(0|\+?84)(3[2-9]|5[25689]|7[06-9]|8[1-9]|9[0-46-9])[0-9]{7}$"
+                                       minlength="10"
+                                       maxlength="12"
+                                       inputmode="tel"
+                                       autocomplete="tel"
+                                       placeholder="0912345678"
+                                       title="Enter a valid Vietnamese mobile number, for example 0912345678."
+                                       oninput="this.value = this.value.replace(/[\s.\-()]/g, '')"
+                                       required
+                                       class="track-change-input">
+                            </label>
+                        </div>
+
+                        <label>
+                            <span>Address line</span>
+                            <input name="addressLine"
+                                   type="text"
+                                   th:value="${shippingAddress.addressLine}"
+                                   th:data-initial="${shippingAddress.addressLine}"
+                                   minlength="5"
+                                   maxlength="255"
+                                   autocomplete="street-address"
+                                   placeholder="Street, building, apartment"
+                                   required
+                                   class="track-change-input">
+                        </label>
+
+                        <div class="account-form-grid">
+                            <label>
+                                <span>District</span>
+                                <input name="district"
+                                       type="text"
+                                       th:value="${shippingAddress.district}"
+                                       th:data-initial="${shippingAddress.district}"
+                                       minlength="2"
+                                       maxlength="120"
+                                       required
+                                       class="track-change-input">
+                            </label>
+
+                            <label>
+                                <span>City</span>
+                                <input name="city"
+                                       type="text"
+                                       th:value="${shippingAddress.city}"
+                                       th:data-initial="${shippingAddress.city}"
+                                       minlength="2"
+                                       maxlength="120"
+                                       autocomplete="address-level2"
+                                       required
+                                       class="track-change-input">
+                            </label>
+                        </div>
+
+                        <div class="account-form-actions">
+                            <button class="account-button account-button-secondary"
+                                    type="button"
+                                    data-edit-toggle="shipping">
+                                Cancel
+                            </button>
+                            <button class="account-button account-button-primary btn-save-form"
+                                    type="submit"
+                                    disabled
+                                    title="Modify values to enable save">
+                                Save address
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section class="account-dashboard-card cart-summary-card">
+                <div class="cart-summary-head">
+                    <p class="account-card-kicker">Current cart</p>
+                    <span><strong th:text="${cart.itemCount}"></strong> items</span>
+                </div>
+                <p class="cart-summary-total" th:text="${cart.subtotalLabel}"></p>
+                <p class="cart-summary-copy"
+                   th:text="${cart.empty ? 'Your cart is currently empty.' : 'Review your items and choose which products to checkout.'}">
+                </p>
+
+                <ul class="cart-summary-warnings" th:if="${cart.hasWarnings()}">
+                    <li th:each="warning : ${cart.warnings}" th:text="${warning}"></li>
+                </ul>
+
+                <div class="cart-summary-actions">
+                    <a class="account-button account-button-primary account-button-block"
+                       th:if="${!cart.empty}"
+                       th:href="@{/cart}">
+                        Checkout now
                     </a>
+                    <a class="account-button account-button-secondary account-button-block"
+                       th:href="@{/cart}">
+                        Review cart
+                    </a>
+                </div>
+            </section>
+        </aside>
+
+        <div class="account-dashboard-main">
+            <section class="orders-section" id="orders" aria-labelledby="orders-heading">
+                <div class="orders-section-head">
                     <div>
-                        <p class="panel-kicker" th:text="${item.category}">T-shirt</p>
-                        <h3><a th:href="@{/products/{slug}(slug=${item.slug})}" th:text="${item.name}">Air Cotton Tee</a></h3>
-                        <strong th:text="${item.priceLabel}">$19.90</strong>
-                        <div class="wishlist-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-                            <a th:href="@{/products/{slug}(slug=${item.slug})}" class="btn btn-dark btn-sm retail-btn" style="width: 100%; min-width: 0; padding: 8px 12px; font-size: 0.85rem; text-align: center;">View Product</a>
-                            <form th:action="@{/wishlist/remove}" method="post" style="text-align: center; margin: 0;">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                                <input type="hidden" name="productSlug" th:value="${item.slug}">
-                                <button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.8rem; font-weight: 600; text-decoration: underline; padding: 0; cursor: pointer;">Remove</button>
-                            </form>
-                        </div>
+                        <p class="account-eyebrow">Order activity</p>
+                        <h2 id="orders-heading">Order history</h2>
+                        <p>Track payment, fulfilment, and delivery status for your purchases.</p>
                     </div>
-                </article>
-            </div>
-        </article>
-    </section>
+                    <span class="orders-count">
+                        <strong th:text="${paginatedOrders.totalItems}"></strong>
+                        <span th:text="${paginatedOrders.totalItems == 1 ? 'order' : 'orders'}"></span>
+                    </span>
+                </div>
+
+                <nav class="order-filter-tabs" aria-label="Filter order history by status">
+                    <a th:href="@{/account#orders(status='ALL', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'ALL' ? ' is-active' : ''}">All orders</a>
+                    <a th:href="@{/account#orders(status='PENDING_PAYMENT', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'PENDING_PAYMENT' ? ' is-active' : ''}">Awaiting payment</a>
+                    <a th:href="@{/account#orders(status='PLACED', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'PLACED' ? ' is-active' : ''}">Placed</a>
+                    <a th:href="@{/account#orders(status='PROCESSING', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'PROCESSING' ? ' is-active' : ''}">Processing</a>
+                    <a th:href="@{/account#orders(status='SHIPPED', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'SHIPPED' ? ' is-active' : ''}">Shipped</a>
+                    <a th:href="@{/account#orders(status='DELIVERED', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'DELIVERED' ? ' is-active' : ''}">Delivered</a>
+                    <a th:href="@{/account#orders(status='CANCELLED', page=1)}"
+                       th:classappend="${paginatedOrders.selectedStatus == 'CANCELLED' ? ' is-active' : ''}">Cancelled</a>
+                </nav>
+
+                <div class="account-empty-state order-empty-state" th:if="${#lists.isEmpty(paginatedOrders.orders)}">
+                    <div class="account-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 3h12l2 4v13H4V7l2-4Z"></path>
+                            <path d="M4 8h16M9 12h6"></path>
+                        </svg>
+                    </div>
+                    <h3>No orders found</h3>
+                    <p>No order history matches the selected status.</p>
+                    <a class="account-button account-button-primary" th:href="@{/products}">Browse products</a>
+                </div>
+
+                <div class="order-card-list" th:if="${!#lists.isEmpty(paginatedOrders.orders)}">
+                    <article class="premium-order-card" th:each="order : ${paginatedOrders.orders}">
+                        <header class="premium-order-head">
+                            <div class="premium-order-code">
+                                <span>Order #</span>
+                                <strong th:text="${order.orderCode}"></strong>
+                            </div>
+
+                            <div class="premium-order-meta">
+                                <div>
+                                    <span>Date</span>
+                                    <strong th:text="${order.placedAtLabel()}"></strong>
+                                </div>
+                                <span class="account-order-status"
+                                      th:classappend="${order.status != null ? ' status-' + #strings.toLowerCase(order.status) : ' status-unknown'}"
+                                      th:text="${order.statusLabel()}"></span>
+                                <span th:class="${order.paymentStatusBadgeClass()}"
+                                      th:text="${order.paymentStatusLabel()}"></span>
+                            </div>
+                        </header>
+
+                        <div class="premium-order-body">
+                            <ul class="premium-order-items">
+                                <li th:each="item : ${order.items}">
+                                    <a class="premium-order-image"
+                                       th:if="${item.productSlug != null and !#strings.isEmpty(item.productSlug)}"
+                                       th:href="@{/products/{slug}(slug=${item.productSlug})}"
+                                       th:attr="aria-label=${'View ' + item.productName}">
+                                        <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
+                                    </a>
+                                    <div class="premium-order-image"
+                                         th:unless="${item.productSlug != null and !#strings.isEmpty(item.productSlug)}">
+                                        <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
+                                    </div>
+
+                                    <div class="premium-order-product">
+                                        <h3>
+                                            <a th:if="${item.productSlug != null and !#strings.isEmpty(item.productSlug)}"
+                                               th:href="@{/products/{slug}(slug=${item.productSlug})}"
+                                               th:text="${item.productName}"></a>
+                                            <span th:unless="${item.productSlug != null and !#strings.isEmpty(item.productSlug)}"
+                                                  th:text="${item.productName}"></span>
+                                        </h3>
+                                        <p>
+                                            <span th:text="${item.color}"></span>
+                                            <span aria-hidden="true">/</span>
+                                            <span th:text="${item.size}"></span>
+                                            <span aria-hidden="true">·</span>
+                                            <span>Qty <strong th:text="${item.quantity}"></strong></span>
+                                        </p>
+                                        <small th:text="${order.paymentMethodLabel()}"></small>
+                                    </div>
+
+                                    <strong class="premium-order-line-total" th:text="${item.lineTotalLabel}"></strong>
+                                </li>
+                            </ul>
+
+                            <div class="premium-order-total">
+                                <span>Total</span>
+                                <strong th:text="${order.totalLabel}"></strong>
+                            </div>
+                        </div>
+
+                        <footer class="premium-order-actions">
+                            <a class="account-text-link"
+                               th:href="@{/account/orders/{orderCode}(orderCode=${order.orderCode})}">
+                                View details
+                            </a>
+
+                            <form th:if="${order.canPayAgain()}"
+                                  th:action="@{/account/orders/{orderCode}/pay-again(orderCode=${order.orderCode})}"
+                                  method="post">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <button class="account-button account-button-primary account-button-small" type="submit">
+                                    Pay again
+                                </button>
+                            </form>
+                        </footer>
+                    </article>
+                </div>
+
+                <nav class="account-pagination"
+                     th:if="${paginatedOrders.totalPages > 1}"
+                     aria-label="Order history pages">
+                    <a th:if="${paginatedOrders.hasPrevious()}"
+                       class="account-button account-button-secondary account-button-small"
+                       th:href="@{/account#orders(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage - 1})}">
+                        &laquo; Previous
+                    </a>
+                    <div class="account-pagination-numbers">
+                        <th:block th:each="p : ${#numbers.sequence(1, paginatedOrders.totalPages)}">
+                            <a th:href="@{/account#orders(status=${paginatedOrders.selectedStatus}, page=${p})}"
+                               class="account-pagination-num"
+                               th:classappend="${p == paginatedOrders.currentPage ? ' is-active' : ''}"
+                               th:text="${p}">1</a>
+                        </th:block>
+                    </div>
+                    <a th:if="${paginatedOrders.hasNext()}"
+                       class="account-button account-button-secondary account-button-small"
+                       th:href="@{/account#orders(status=${paginatedOrders.selectedStatus}, page=${paginatedOrders.currentPage + 1})}">
+                        Next &raquo;
+                    </a>
+                </nav>
+            </section>
+
+            <section class="wishlist-section" id="wishlist" aria-labelledby="wishlist-heading">
+                <div class="wishlist-section-head">
+                    <div>
+                        <p class="account-eyebrow">Wishlist</p>
+                        <h2 id="wishlist-heading">Saved products</h2>
+                    </div>
+                    <span th:if="${!#lists.isEmpty(wishlist)}">
+                        <strong th:text="${#lists.size(wishlist)}"></strong> saved
+                    </span>
+                </div>
+
+                <div class="account-empty-state wishlist-empty-state" th:if="${#lists.isEmpty(wishlist)}">
+                    <div class="account-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
+                        </svg>
+                    </div>
+                    <h3>No saved products yet</h3>
+                    <p>Save pieces you love from a product detail page and find them here later.</p>
+                    <a class="account-button account-button-primary" th:href="@{/products}">Browse products</a>
+                </div>
+
+                <div class="premium-wishlist-grid" id="wishlist-grid" th:if="${!#lists.isEmpty(wishlist)}">
+                    <article class="premium-wishlist-card" th:each="item : ${wishlist}">
+                        <a class="premium-wishlist-image" th:href="@{/products/{slug}(slug=${item.slug})}">
+                            <img th:src="@{${item.imagePath}}" th:alt="${item.name}">
+                        </a>
+                        <div class="premium-wishlist-content">
+                            <p th:text="${item.category}"></p>
+                            <h3>
+                                <a th:href="@{/products/{slug}(slug=${item.slug})}"
+                                   th:text="${item.name}"></a>
+                            </h3>
+                            <strong th:text="${item.priceLabel}"></strong>
+                            <div class="premium-wishlist-actions">
+                                <a class="account-button account-button-primary account-button-small"
+                                   th:href="@{/products/{slug}(slug=${item.slug})}">
+                                    View product
+                                </a>
+                                <form th:action="@{/wishlist/remove}" method="post">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                    <input type="hidden" name="productSlug" th:value="${item.slug}">
+                                    <input type="hidden" name="redirectTo" value="/account#wishlist">
+                                    <button class="account-text-link account-remove-link" type="submit">Remove</button>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <nav class="account-pagination wishlist-pagination"
+                     id="wishlist-pagination"
+                     aria-label="Wishlist pages"
+                     style="display: none;">
+                </nav>
+            </section>
+        </div>
+    </div>
 </main>
 
 <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 <script>
-    function toggleEdit(panelId) {
-        const viewDiv = document.getElementById(panelId + '-view');
-        const editDiv = document.getElementById(panelId + '-edit');
-        if (viewDiv && editDiv) {
-            viewDiv.classList.toggle('d-none');
-            editDiv.classList.toggle('d-none');
-        }
-    }
+    (function () {
+        function setEditMode(panelId, editing) {
+            const view = document.getElementById(panelId + '-view');
+            const edit = document.getElementById(panelId + '-edit');
+            const toggles = document.querySelectorAll('[data-edit-toggle="' + panelId + '"]');
 
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.auto-change-form').forEach(form => {
-            const inputs = form.querySelectorAll('.track-change-input');
-            const submitBtn = form.querySelector('.btn-save-form');
+            if (!view || !edit) return;
 
-            function checkFormChanges() {
-                let hasChanges = false;
-                inputs.forEach(input => {
-                    const initialVal = input.dataset.initial !== undefined ? input.dataset.initial : '';
-                    if (input.value.trim() !== initialVal.trim()) {
-                        hasChanges = true;
-                    }
-                });
-                if (submitBtn) {
-                    submitBtn.disabled = !hasChanges;
-                }
+            view.hidden = editing;
+            edit.hidden = !editing;
+            toggles.forEach(function (button) {
+                button.setAttribute('aria-expanded', editing ? 'true' : 'false');
+            });
+
+            if (editing) {
+                const firstInput = edit.querySelector('input:not([type="hidden"]):not(:disabled)');
+                if (firstInput) firstInput.focus();
             }
+        }
 
-            inputs.forEach(input => {
-                input.addEventListener('input', checkFormChanges);
-                input.addEventListener('change', checkFormChanges);
+        document.querySelectorAll('[data-edit-toggle]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const panelId = button.dataset.editToggle;
+                const edit = document.getElementById(panelId + '-edit');
+                setEditMode(panelId, !!edit && edit.hidden);
             });
         });
-    });
+
+        document.querySelectorAll('.auto-change-form').forEach(function (form) {
+            const inputs = form.querySelectorAll('.track-change-input');
+            const submitButton = form.querySelector('.btn-save-form');
+
+            function updateSaveState() {
+                let changed = false;
+
+                inputs.forEach(function (input) {
+                    const initialValue = input.dataset.initial == null ? '' : input.dataset.initial;
+                    if (input.value.trim() !== initialValue.trim()) changed = true;
+                });
+
+                if (submitButton) submitButton.disabled = !changed;
+            }
+
+            inputs.forEach(function (input) {
+                input.addEventListener('input', updateSaveState);
+                input.addEventListener('change', updateSaveState);
+            });
+
+            updateSaveState();
+        });
+
+        const hash = window.location.hash;
+        if (hash === '#profile' && document.querySelector('.cart-alert.error')) {
+            setEditMode('profile', true);
+        }
+        if (hash === '#shipping' && document.querySelector('.cart-alert.error')) {
+            setEditMode('shipping', true);
+        }
+
+        // Wishlist Client-Side Pagination
+        (function initWishlistPagination() {
+            const grid = document.getElementById('wishlist-grid');
+            const paginationNav = document.getElementById('wishlist-pagination');
+            if (!grid || !paginationNav) return;
+
+            const cards = Array.from(grid.querySelectorAll('.premium-wishlist-card'));
+            const itemsPerPage = 4;
+            const totalPages = Math.ceil(cards.length / itemsPerPage);
+
+            if (totalPages <= 1) {
+                paginationNav.style.display = 'none';
+                cards.forEach(card => card.style.display = '');
+                return;
+            }
+
+            let currentPage = 1;
+
+            function renderPage(page) {
+                currentPage = page;
+                const start = (page - 1) * itemsPerPage;
+                const end = start + itemsPerPage;
+
+                cards.forEach((card, index) => {
+                    card.style.display = (index >= start && index < end) ? '' : 'none';
+                });
+
+                renderControls();
+            }
+
+            function renderControls() {
+                paginationNav.innerHTML = '';
+                paginationNav.style.display = 'flex';
+
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'account-button account-button-secondary account-button-small';
+                prevBtn.type = 'button';
+                prevBtn.innerHTML = '&laquo; Previous';
+                prevBtn.disabled = currentPage === 1;
+                prevBtn.addEventListener('click', function() {
+                    if (currentPage > 1) {
+                        renderPage(currentPage - 1);
+                        document.getElementById('wishlist').scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+                paginationNav.appendChild(prevBtn);
+
+                const numsContainer = document.createElement('div');
+                numsContainer.className = 'account-pagination-numbers';
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const numBtn = document.createElement('button');
+                    numBtn.className = 'account-pagination-num' + (i === currentPage ? ' is-active' : '');
+                    numBtn.type = 'button';
+                    numBtn.textContent = i;
+                    numBtn.addEventListener('click', (function(pageIndex) {
+                        return function() {
+                            renderPage(pageIndex);
+                            document.getElementById('wishlist').scrollIntoView({ behavior: 'smooth' });
+                        };
+                    })(i));
+                    numsContainer.appendChild(numBtn);
+                }
+                paginationNav.appendChild(numsContainer);
+
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'account-button account-button-secondary account-button-small';
+                nextBtn.type = 'button';
+                nextBtn.innerHTML = 'Next &raquo;';
+                nextBtn.disabled = currentPage === totalPages;
+                nextBtn.addEventListener('click', function() {
+                    if (currentPage < totalPages) {
+                        renderPage(currentPage + 1);
+                        document.getElementById('wishlist').scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+                paginationNav.appendChild(nextBtn);
+            }
+
+            renderPage(1);
+        })();
+    })();
 </script>
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 </body>
