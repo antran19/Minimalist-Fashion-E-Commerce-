@@ -225,7 +225,7 @@
                     <ul class="order-lines">
                         <li th:each="item : ${order.items}" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                                <img th:src="${item.imagePath}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
                                 <span>
                                     <strong th:text="${item.productName}">Air Cotton Tee</strong>
                                     <small th:text="${item.color + ' / ' + item.size + ' / Qty ' + item.quantity}" style="display: block; color: var(--muted); font-size: 0.8rem;">Cream / M / Qty 1</small>
@@ -268,7 +268,7 @@
             <div class="wishlist-grid" th:if="${!#lists.isEmpty(wishlist)}">
                 <article class="wishlist-card" th:each="item : ${wishlist}">
                     <a class="wishlist-image product-image product-image-real" th:href="@{/products/{slug}(slug=${item.slug})}">
-                        <img th:src="@{${item.imagePath}}" th:alt="${item.name}">
+                        <img th:src="${item.imagePath}" th:alt="${item.name}">
                     </a>
                     <div>
                         <p class="panel-kicker" th:text="${item.category}">T-shirt</p>

@@ -21,6 +21,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import com.uminimalist.store.entity.ProductImage;
+import com.uminimalist.store.repository.ProductImageRepository;
+import org.springframework.web.multipart.MultipartFile;
+
 @Service
 public class AdminCatalogService {
 
@@ -29,17 +33,23 @@ public class AdminCatalogService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProductImageRepository productImageRepository;
+    private final CloudinaryService cloudinaryService;
 
     public AdminCatalogService(ProductRepository productRepository,
                                ProductVariantRepository productVariantRepository,
                                UserRepository userRepository,
                                CategoryRepository categoryRepository,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               ProductImageRepository productImageRepository,
+                               CloudinaryService cloudinaryService) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
+        this.productImageRepository = productImageRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Transactional(readOnly = true)
@@ -521,6 +531,76 @@ public class AdminCatalogService {
             if (password.length() < 8 || password.length() > 72) {
                 throw new IllegalArgumentException("Password must be between 8 and 72 characters.");
             }
+        }
+    }
+
+    @Transactional
+    public ProductImage uploadProductImage(Long productId, MultipartFile file, String color, boolean isPrimary) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        String folderPath = "uminimalist/products/" + product.getSlug();
+        CloudinaryService.UploadResult uploadResult = cloudinaryService.uploadImage(file, folderPath);
+
+        boolean setPrimary = isPrimary || product.getImages().isEmpty();
+        if (setPrimary) {
+            for (ProductImage existing : product.getImages()) {
+                existing.setPrimary(false);
+            }
+        }
+
+        ProductImage image = new ProductImage();
+        image.setProduct(product);
+        image.setImageUrl(uploadResult.secureUrl());
+        image.setPublicId(uploadResult.publicId());
+        image.setColor(color != null && !color.isBlank() ? color.trim() : null);
+        image.setPrimary(setPrimary);
+        image.setDisplayOrder(product.getImages().size() + 1);
+
+        return productImageRepository.save(image);
+    }
+
+    @Transactional
+    public void setPrimaryProductImage(Long productId, Long imageId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        boolean found = false;
+        for (ProductImage image : product.getImages()) {
+            if (image.getId().equals(imageId)) {
+                image.setPrimary(true);
+                found = true;
+            } else {
+                image.setPrimary(false);
+            }
+        }
+        if (!found) {
+            throw new IllegalArgumentException("Image not found for this product.");
+        }
+        productRepository.save(product);
+    }
+
+    @Transactional
+    public void deleteProductImage(Long imageId) {
+        ProductImage image = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("Image not found."));
+
+        if (image.getPublicId() != null && !image.getPublicId().isBlank()) {
+            try {
+                cloudinaryService.deleteImage(image.getPublicId());
+            } catch (Exception ignored) {
+            }
+        }
+
+        Product product = image.getProduct();
+        boolean wasPrimary = image.isPrimary();
+        product.getImages().remove(image);
+        productImageRepository.delete(image);
+
+        if (wasPrimary && !product.getImages().isEmpty()) {
+            ProductImage firstRemaining = product.getImages().iterator().next();
+            firstRemaining.setPrimary(true);
+            productImageRepository.save(firstRemaining);
         }
     }
 

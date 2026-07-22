@@ -95,7 +95,7 @@
                 <article class="product-card reveal-card" th:each="product : ${products}">
                     <div class="product-image product-image-real" th:classappend="${product.cropClass}">
                         <a th:href="@{/products/{slug}(slug=${product.slug})}">
-                            <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+                            <img th:src="${product.imagePath}" th:alt="${product.name}">
                         </a>
                         <span class="product-badge" th:if="${product.stock <= 0}" style="background: #e11b1e;">Out of Stock</span>
                         <span class="product-badge" th:if="${product.stock > 0 and product.isNew}">New Arrival</span>

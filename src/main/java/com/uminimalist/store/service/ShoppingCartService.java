@@ -217,9 +217,19 @@ public class ShoppingCartService {
             return new CartView(List.of(), 0, currencyFormat.format(0), List.of());
         }
 
-        Map<String, ProductVariant> activeVariantsBySku = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(cart.keySet())
-                .stream()
-                .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
+        Set<String> searchSkus = new HashSet<>();
+        for (String s : cart.keySet()) {
+            if (hasText(s)) {
+                searchSkus.add(s.trim());
+                searchSkus.add(s.trim().toUpperCase(Locale.ROOT));
+                searchSkus.add(s.trim().toLowerCase(Locale.ROOT));
+            }
+        }
+
+        Map<String, ProductVariant> activeVariantsBySku = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (ProductVariant v : productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(searchSkus)) {
+            activeVariantsBySku.put(v.getSku(), v);
+        }
 
         List<String> warnings = new java.util.ArrayList<>();
         List<String> removedSkus = new java.util.ArrayList<>();
@@ -276,9 +286,12 @@ public class ShoppingCartService {
         if (filterSkus == null || filterSkus.isEmpty()) {
             return fullCart;
         }
-        List<String> upperSkus = filterSkus.stream().map(String::trim).toList();
+        Set<String> upperSkus = filterSkus.stream()
+                .filter(this::hasText)
+                .map(s -> s.trim().toUpperCase(Locale.ROOT))
+                .collect(Collectors.toSet());
         List<CartItemView> filteredItems = fullCart.items().stream()
-                .filter(item -> upperSkus.contains(item.sku()))
+                .filter(item -> upperSkus.contains(item.sku().toUpperCase(Locale.ROOT)))
                 .toList();
 
         if (filteredItems.isEmpty()) {
@@ -319,22 +332,33 @@ public class ShoppingCartService {
             cartMap = readCart(session);
         }
 
+        Map<String, Integer> caseInsensitiveCartMap = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        caseInsensitiveCartMap.putAll(cartMap);
+
         for (String sku : uniqueSkus) {
-            if (!cartMap.containsKey(sku)) {
+            if (!caseInsensitiveCartMap.containsKey(sku)) {
                 throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
             }
         }
 
-        Map<String, ProductVariant> variantsBySku = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(uniqueSkus)
-                .stream()
-                .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
+        Set<String> searchSkus = new HashSet<>();
+        for (String s : uniqueSkus) {
+            searchSkus.add(s);
+            searchSkus.add(s.toUpperCase(Locale.ROOT));
+            searchSkus.add(s.toLowerCase(Locale.ROOT));
+        }
+
+        Map<String, ProductVariant> variantsBySku = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (ProductVariant v : productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(searchSkus)) {
+            variantsBySku.put(v.getSku(), v);
+        }
 
         for (String sku : uniqueSkus) {
             ProductVariant variant = variantsBySku.get(sku);
             if (variant == null || !variant.isActive() || !variant.getProduct().isActive()) {
                 throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
             }
-            int cartQty = cartMap.get(sku);
+            int cartQty = caseInsensitiveCartMap.get(sku);
             if (variant.getStockQuantity() <= 0) {
                 throw new IllegalArgumentException("Item '" + variant.getProduct().getName() + "' is out of stock.");
             }

@@ -1,7 +1,9 @@
 package com.uminimalist.store.controller;
 
+import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.repository.ProductVariantRepository;
 import com.uminimalist.store.repository.UserRepository;
 import com.uminimalist.store.service.CustomerAddressService;
 import com.uminimalist.store.service.OrderService;
@@ -28,6 +30,7 @@ import java.util.Enumeration;
 public class CustomerController {
 
     private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ShoppingCartService shoppingCartService;
     private final OrderService orderService;
     private final CustomerAddressService customerAddressService;
@@ -36,6 +39,7 @@ public class CustomerController {
     private final VNPayService vnPayService;
 
     public CustomerController(UserRepository userRepository,
+                              ProductVariantRepository productVariantRepository,
                               ShoppingCartService shoppingCartService,
                               OrderService orderService,
                               CustomerAddressService customerAddressService,
@@ -43,6 +47,7 @@ public class CustomerController {
                               ProductReviewService productReviewService,
                               VNPayService vnPayService) {
         this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
         this.shoppingCartService = shoppingCartService;
         this.orderService = orderService;
         this.customerAddressService = customerAddressService;
@@ -185,7 +190,9 @@ public class CustomerController {
             } catch (IllegalArgumentException ex) {
                 // If requested quantity exceeds stock, attempt to add available stock quantity
                 try {
-                    int availableStock = item.stockQuantity();
+                    int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
+                            .map(ProductVariant::getStockQuantity)
+                            .orElse(0);
                     if (availableStock > 0) {
                         shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
                         addedItems += availableStock;
@@ -260,6 +267,11 @@ public class CustomerController {
                                  HttpSession session,
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot place orders. Please log in as a customer account.");
+            return "redirect:/cart";
+        }
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
         try {
@@ -302,6 +314,11 @@ public class CustomerController {
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot place orders. Please log in as a customer account.");
+            return "redirect:/cart";
+        }
         @SuppressWarnings("unchecked")
         java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
         try {
@@ -445,5 +462,14 @@ public class CustomerController {
             redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
         }
         return "redirect:/products/" + slug;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

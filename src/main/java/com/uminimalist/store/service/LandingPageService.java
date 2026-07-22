@@ -4,6 +4,7 @@ import com.uminimalist.store.entity.Category;
 import com.uminimalist.store.entity.Product;
 import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.model.CategoryView;
+import com.uminimalist.store.model.ProductImageView;
 import com.uminimalist.store.model.ProductView;
 import com.uminimalist.store.repository.CategoryRepository;
 import com.uminimalist.store.repository.ProductRepository;
@@ -204,6 +205,26 @@ public class LandingPageService {
                 ? product.getDescription()
                 : "Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.";
 
+        List<ProductImageView> imageViews = product.getImages().stream()
+                .map(img -> new ProductImageView(
+                        img.getId(),
+                        img.getImageUrl(),
+                        img.getPublicId(),
+                        img.getColor(),
+                        img.isPrimary(),
+                        img.getDisplayOrder()
+                ))
+                .toList();
+
+        String resolvedImagePath = imageViews.stream()
+                .filter(ProductImageView::isPrimary)
+                .map(ProductImageView::imageUrl)
+                .findFirst()
+                .orElseGet(() -> imageViews.stream()
+                        .map(ProductImageView::imageUrl)
+                        .findFirst()
+                        .orElseGet(() -> imagePath(product.getSlug())));
+
         return new ProductView(
                 product.getSlug(),
                 product.getName(),
@@ -214,11 +235,13 @@ public class LandingPageService {
                 currencyFormat.format(price),
                 colors,
                 sizes,
-                imagePath(product.getSlug()),
+                resolvedImagePath,
                 product.getCropClass(),
                 stock,
                 product.isNewArrival(),
-                product.isBestSeller());
+                product.isBestSeller(),
+                imageViews
+        );
     }
 
     private Comparator<ProductView> productComparator(String sort) {

@@ -44,7 +44,7 @@
                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--ink);">
                 </div>
                 <a class="cart-item-image product-image product-image-real" th:href="@{/products/{slug}(slug=${item.productSlug})}" th:classappend="${item.cropClass}">
-                    <img th:src="@{${item.imagePath}}" th:alt="${item.productName}">
+                    <img th:src="${item.imagePath}" th:alt="${item.productName}">
                 </a>
                 <div class="cart-item-copy">
                     <p th:text="${item.category}">T-shirt</p>

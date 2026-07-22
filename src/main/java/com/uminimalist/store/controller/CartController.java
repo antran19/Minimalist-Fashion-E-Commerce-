@@ -37,6 +37,10 @@ public class CartController {
                             HttpSession session,
                             Authentication authentication,
                             RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot add items to cart or place orders.");
+            return "redirect:/products/" + productSlug;
+        }
         try {
             int finalQuantity = (quantity == null) ? 1 : quantity;
             shoppingCartService.addItem(session, customerEmail(authentication), productSlug, color, size, finalQuantity);
@@ -59,6 +63,10 @@ public class CartController {
                                        HttpSession session,
                                        Authentication authentication,
                                        RedirectAttributes redirectAttributes) {
+        if (isAdmin(authentication)) {
+            redirectAttributes.addFlashAttribute("cartError", "Administrators cannot place orders. Please log in as a customer account.");
+            return "redirect:/cart";
+        }
         try {
             shoppingCartService.validateAndPrepareCheckoutSkus(session, customerEmail(authentication), selectedSkus);
             session.setAttribute("checkoutSkus", selectedSkus);
@@ -106,5 +114,14 @@ public class CartController {
                 .stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_CUSTOMER"));
         return isCustomer ? authentication.getName() : null;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

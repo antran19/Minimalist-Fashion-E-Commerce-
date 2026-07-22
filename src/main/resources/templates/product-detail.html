@@ -9,8 +9,20 @@
 <main class="page-shell product-detail-page">
     <a class="back-link" th:href="@{/products}">Back to products</a>
     <section class="product-detail" aria-labelledby="product-title">
-        <div class="detail-image product-image product-image-real" th:classappend="${product.cropClass}">
-            <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+        <div class="detail-gallery-container" style="flex: 1; max-width: 520px;">
+            <div class="detail-image product-image product-image-real" th:classappend="${product.cropClass}">
+                <img id="main-product-image" th:src="${product.imagePath}" th:alt="${product.name}">
+            </div>
+            <!-- Multi-Image Thumbnail Gallery Bar -->
+            <div id="product-thumbnails-bar" class="detail-thumbnails-grid" th:if="${product.images != null and !product.images.empty}" style="display: flex; gap: 10px; margin-top: 14px; overflow-x: auto; padding-bottom: 6px;">
+                <div th:each="img, iter : ${product.images}"
+                     class="thumb-item"
+                     th:data-url="${img.imageUrl}"
+                     th:data-color="${img.color}"
+                     th:style="'width: 64px; height: 64px; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid ' + (${iter.first} ? 'var(--ink, #000)' : 'transparent') + '; transition: all 0.2s ease; flex-shrink: 0;'">
+                    <img th:src="${img.imageUrl}" th:alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            </div>
         </div>
         <div class="detail-panel">
             <form class="detail-cart-form" th:action="@{/cart}" method="post">
@@ -168,7 +180,7 @@
             <article class="product-card reveal-card" th:each="relProduct : ${relatedProducts}">
                 <div class="product-image product-image-real" th:classappend="${relProduct.cropClass}">
                     <a th:href="@{/products/{slug}(slug=${relProduct.slug})}">
-                        <img th:src="@{${relProduct.imagePath}}" th:alt="${relProduct.name}">
+                        <img th:src="${relProduct.imagePath}" th:alt="${relProduct.name}">
                     </a>
                     <span class="product-badge" th:if="${relProduct.stock <= 0}" style="background: #e11b1e;">Out of Stock</span>
                     <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
@@ -411,9 +423,43 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+        // Gallery Thumbnail & Color Switcher Logic
+        const mainImg = document.getElementById('main-product-image');
+        const thumbs = document.querySelectorAll('.thumb-item');
+
+        function setActiveThumb(selectedThumb) {
+            thumbs.forEach(t => t.style.borderColor = 'transparent');
+            if (selectedThumb) {
+                selectedThumb.style.borderColor = 'var(--ink, #000)';
+                if (mainImg) mainImg.src = selectedThumb.dataset.url;
+            }
+        }
+
+        thumbs.forEach(t => {
+            t.addEventListener('click', function() {
+                setActiveThumb(this);
+            });
+        });
+
         document.querySelectorAll('input[name="color"]').forEach(input => {
             input.addEventListener('change', function() {
+                const selectedColor = (this.value || '').trim().toLowerCase();
+                let matchedThumb = null;
+                thumbs.forEach(t => {
+                    const thumbColor = (t.dataset.color || '').trim().toLowerCase();
+                    if (thumbColor === selectedColor) {
+                        t.style.display = 'block';
+                        if (!matchedThumb) matchedThumb = t;
+                    } else if (thumbColor && thumbColor !== 'general') {
+                        t.style.display = 'none';
+                    } else {
+                        t.style.display = 'block';
+                        if (!matchedThumb) matchedThumb = t;
+                    }
+                });
+                if (matchedThumb) {
+                    setActiveThumb(matchedThumb);
+                }
                 updateAvailableSizes();
                 updateVariantStock();
             });
@@ -425,6 +471,12 @@
         updateAvailableColors();
         updateAvailableSizes();
         updateVariantStock();
+
+        // Initial thumbnail sync
+        const initialCheckedColor = document.querySelector('input[name="color"]:checked');
+        if (initialCheckedColor) {
+            initialCheckedColor.dispatchEvent(new Event('change'));
+        }
     });
     /*]]>*/
 </script>

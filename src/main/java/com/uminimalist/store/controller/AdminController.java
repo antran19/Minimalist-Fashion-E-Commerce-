@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.web.multipart.MultipartFile;
+
 @Controller
 public class AdminController {
 
@@ -258,6 +260,45 @@ public class AdminController {
             adminCatalogService.deleteVariant(id);
             redirectAttributes.addFlashAttribute("adminMessage", "Variant deleted successfully.");
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/{id}/images/upload")
+    public String uploadProductImage(@PathVariable Long id,
+                                     @RequestParam("imageFile") MultipartFile imageFile,
+                                     @RequestParam(required = false) String color,
+                                     @RequestParam(required = false, defaultValue = "false") boolean isPrimary,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.uploadProductImage(id, imageFile, color, isPrimary);
+            redirectAttributes.addFlashAttribute("adminMessage", "Product image uploaded successfully to Cloudinary.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/{productId}/images/{imageId}/primary")
+    public String setPrimaryProductImage(@PathVariable Long productId,
+                                         @PathVariable Long imageId,
+                                         RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.setPrimaryProductImage(productId, imageId);
+            redirectAttributes.addFlashAttribute("adminMessage", "Primary product image updated.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/images/{imageId}/delete")
+    public String deleteProductImage(@PathVariable Long imageId, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.deleteProductImage(imageId);
+            redirectAttributes.addFlashAttribute("adminMessage", "Product image deleted successfully.");
+        } catch (Exception exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
         }
         return "redirect:/admin/dashboard#catalog";
