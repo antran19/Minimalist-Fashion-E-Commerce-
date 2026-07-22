@@ -177,9 +177,11 @@
                 <button id="checkout-submit-btn"
                         form="cart-checkout-form"
                         type="submit"
-                        class="cart-stitch-button cart-stitch-button-primary cart-stitch-checkout-button">
+                        class="cart-stitch-button cart-stitch-button-primary cart-stitch-checkout-button"
+                        sec:authorize="!hasRole('ADMIN')">
                     Checkout
                 </button>
+                <p class="cart-stitch-summary-copy" sec:authorize="hasRole('ADMIN')">Administrator accounts cannot place orders.</p>
         </aside>
     </section>
 
