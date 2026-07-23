@@ -89,9 +89,15 @@
             <article class="product-card reveal-card" th:each="product : ${newArrivals}">
                 <div class="product-image product-image-real" th:classappend="${product.cropClass}">
                     <a th:href="@{/products/{slug}(slug=${product.slug})}">
-                        <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+                        <img th:src="${product.imagePath}" th:alt="${product.name}">
                     </a>
-                    <span class="product-badge" th:if="${product.isNew}">New Arrival</span>
+                    <div class="product-badges">
+                        <div class="product-badges-row" th:if="${product.isNew or product.bestSeller}">
+                            <span class="product-badge is-new" th:if="${product.isNew}">New arrival</span>
+                            <span class="product-badge is-best" th:if="${product.bestSeller}">Best Seller</span>
+                        </div>
+                        <span class="product-badge is-sale" th:if="${product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
+                    </div>
                     <div class="product-actions">
                         <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
@@ -105,7 +111,9 @@
                     <p th:text="${product.category}">U-MINIMALIST</p>
                     <h3><a th:href="@{/products/{slug}(slug=${product.slug})}" th:text="${product.name}">Air Cotton Tee</a></h3>
                     <div class="product-price-row">
-                        <span class="price-current" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:if="${product.onSale}" class="price-current" style="color: #dc2626;" th:text="${product.salePriceLabel}">$15.90</span>
+                        <span th:if="${product.onSale}" class="price-original text-muted text-decoration-line-through" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:unless="${product.onSale}" class="price-current" th:text="${product.priceLabel}">$19.90</span>
                     </div>
                     <div class="product-swatches" th:if="${!#lists.isEmpty(product.colors)}">
                         <span th:each="color : ${product.colors}"
@@ -120,9 +128,15 @@
             <article class="product-card reveal-card" th:each="product : ${newArrivals}" aria-hidden="true">
                 <div class="product-image product-image-real" th:classappend="${product.cropClass}">
                     <a th:href="@{/products/{slug}(slug=${product.slug})}">
-                        <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+                        <img th:src="${product.imagePath}" th:alt="${product.name}">
                     </a>
-                    <span class="product-badge" th:if="${product.isNew}">New Arrival</span>
+                    <div class="product-badges">
+                        <div class="product-badges-row" th:if="${product.isNew or product.bestSeller}">
+                            <span class="product-badge is-new" th:if="${product.isNew}">New arrival</span>
+                            <span class="product-badge is-best" th:if="${product.bestSeller}">Best Seller</span>
+                        </div>
+                        <span class="product-badge is-sale" th:if="${product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
+                    </div>
                     <div class="product-actions">
                         <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
@@ -136,7 +150,9 @@
                     <p th:text="${product.category}">U-MINIMALIST</p>
                     <h3><a th:href="@{/products/{slug}(slug=${product.slug})}" th:text="${product.name}">Air Cotton Tee</a></h3>
                     <div class="product-price-row">
-                        <span class="price-current" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:if="${product.onSale}" class="price-current" style="color: #dc2626;" th:text="${product.salePriceLabel}">$15.90</span>
+                        <span th:if="${product.onSale}" class="price-original text-muted text-decoration-line-through" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:unless="${product.onSale}" class="price-current" th:text="${product.priceLabel}">$19.90</span>
                     </div>
                     <div class="product-swatches" th:if="${!#lists.isEmpty(product.colors)}">
                         <span th:each="color : ${product.colors}"

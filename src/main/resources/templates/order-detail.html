@@ -41,7 +41,7 @@
                     <tbody>
                     <tr th:each="item : ${order.items}">
                         <td style="vertical-align: middle;">
-                            <img th:src="@{${item.imagePath}}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                            <img th:src="${item.imagePath}" th:alt="${item.productName}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
                         </td>
                         <td style="vertical-align: middle;">
                             <a th:if="${item.productSlug != null}" th:href="@{/products/{slug}(slug=${item.productSlug})}" th:text="${item.productName}" style="font-weight: 700; color: var(--ink); text-decoration: none;">Air Cotton Tee</a>

@@ -570,10 +570,16 @@
     top: 12px;
     left: 12px;
     display: flex;
+    flex-direction: column;
     max-width: calc(100% - 24px);
     align-items: flex-start;
     gap: 6px;
-    flex-wrap: wrap;
+}
+
+.catalog-card-badges-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
 }
 
 .catalog-card-badge,
@@ -581,27 +587,42 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    font-size: 0.66rem;
-    font-weight: 800;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 
 .catalog-card-badge {
-    min-height: 26px;
-    padding: 5px 9px;
+    min-height: 24px;
+    padding: 4px 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .catalog-card-badge.is-new {
-    background: #b42318;
+    background: #e11b1e;
     color: #ffffff;
+    box-shadow: 0 2px 4px rgba(225, 27, 30, 0.2);
+}
+
+.catalog-card-badge.is-new::before {
+    content: "🔥 ";
 }
 
 .catalog-card-badge.is-best {
-    background: #111111;
+    background: #ff4d85; /* Bright Pink */
     color: #ffffff;
+    box-shadow: 0 2px 4px rgba(255, 77, 133, 0.2);
+}
+
+.catalog-card-badge.is-sale {
+    background: #facc15;
+    color: #451a03;
+    box-shadow: 0 2px 4px rgba(250, 204, 21, 0.2);
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 6px 14px;
 }
 
 .catalog-card-badge.is-sold-out {

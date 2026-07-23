@@ -14,19 +14,19 @@
                 <div th:class="'collapse navbar-collapse' + (${collapseShow} ? ' show' : '')" id="mainNav">
                     <ul class="navbar-nav mx-auto">
                         <li class="nav-item">
-                            <a class="nav-link" th:href="@{/products(collection='men')}">Men</a>
+                            <a class="nav-link" th:href="@{/products(collection='men')}" th:classappend="${activePage == 'products' and selectedCollection == 'men'} ? 'active' : ''">Men</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" th:href="@{/products(collection='women')}">Women</a>
+                            <a class="nav-link" th:href="@{/products(collection='women')}" th:classappend="${activePage == 'products' and selectedCollection == 'women'} ? 'active' : ''">Women</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a>
+                            <a class="nav-link" th:href="@{/products(collection='kids')}" th:classappend="${activePage == 'products' and selectedCollection == 'kids'} ? 'active' : ''">Kids</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a>
+                            <a class="nav-link" th:href="@{/products(sort='new')}" th:classappend="${activePage == 'products' and selectedSort == 'new'} ? 'active' : ''">New arrivals</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a>
+                            <a class="nav-link" th:href="@{/products(sort='best')}" th:classappend="${activePage == 'products' and selectedSort == 'best'} ? 'active' : ''">Best sellers</a>
                         </li>
                         <!-- Checkout link (only shown on checkout page) -->
                         <li class="nav-item" th:if="${activePage == 'checkout'}">
@@ -35,8 +35,8 @@
                         <!-- Search link -->
                         <li class="nav-item" th:if="${showSearch}">
                             <a class="nav-link" th:href="@{/products}"
-                               th:classappend="${activePage == 'products'} ? 'active'"
-                               th:attr="aria-current=${activePage == 'products' ? 'page' : ''}"
+                               th:classappend="${activePage == 'products' and selectedCollection == null and selectedSort == null} ? 'active'"
+                               th:attr="aria-current=${activePage == 'products' and selectedCollection == null and selectedSort == null ? 'page' : ''}"
                                aria-label="Search products">Search</a>
                         </li>
                         <!-- Cart (hidden for admins - they cannot place orders) -->
@@ -54,12 +54,12 @@
                         </li>
                         <!-- Authenticated Customer Account -->
                         <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                            <a class="nav-link" th:href="@{/account}"
+                            <a class="nav-link" th:href="@{/account}" aria-label="Account"
                                th:classappend="${activePage == 'account'} ? 'active'">Account</a>
                         </li>
                         <!-- Admin -->
                         <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                            <a class="nav-link" th:href="@{/admin/dashboard}"
+                            <a class="nav-link" th:href="@{/admin/dashboard}" aria-label="Admin Dashboard"
                                th:classappend="${activePage == 'admin'} ? 'active'">Admin</a>
                         </li>
                     </ul>

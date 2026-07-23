@@ -1,8 +1,17 @@
 USE UMinimalistDB;
 
-DELETE FROM dbo.product_variants;
-DELETE FROM dbo.products;
-DELETE FROM dbo.categories;
+-- Disable all constraints temporarily to allow clean reset
+EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT ALL";
+
+IF OBJECT_ID(N'dbo.order_items', N'U') IS NOT NULL DELETE FROM dbo.order_items;
+IF OBJECT_ID(N'dbo.orders', N'U') IS NOT NULL DELETE FROM dbo.orders;
+IF OBJECT_ID(N'dbo.customer_cart_items', N'U') IS NOT NULL DELETE FROM dbo.customer_cart_items;
+IF OBJECT_ID(N'dbo.product_reviews', N'U') IS NOT NULL DELETE FROM dbo.product_reviews;
+IF OBJECT_ID(N'dbo.customer_wishlist_items', N'U') IS NOT NULL DELETE FROM dbo.customer_wishlist_items;
+IF OBJECT_ID(N'dbo.product_images', N'U') IS NOT NULL DELETE FROM dbo.product_images;
+IF OBJECT_ID(N'dbo.product_variants', N'U') IS NOT NULL DELETE FROM dbo.product_variants;
+IF OBJECT_ID(N'dbo.products', N'U') IS NOT NULL DELETE FROM dbo.products;
+IF OBJECT_ID(N'dbo.categories', N'U') IS NOT NULL DELETE FROM dbo.categories;
 
 INSERT INTO dbo.categories (slug, name, description, display_order)
 VALUES
@@ -23,109 +32,135 @@ VALUES
     ((SELECT id FROM dbo.categories WHERE slug = N'kids'), N'school-day-cardigan', N'School Day Cardigan', N'Knitwear', N'Soft cardigan for school and weekends.', 29.90, N'product-kids-cardigan', 1, 0),
     ((SELECT id FROM dbo.categories WHERE slug = N'kids'), N'easy-cotton-shorts', N'Easy Cotton Shorts', N'Shorts', N'Cotton shorts for warm days and active routines.', 16.90, N'product-kids-shorts', 0, 1);
 
+-- 1. Air Cotton Tee (Cream, Light Blue, Pink)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
     (N'AIR-COTTON-TEE-CREAM-S', N'Cream', N'S', 12),
     (N'AIR-COTTON-TEE-CREAM-M', N'Cream', N'M', 13),
-    (N'AIR-COTTON-TEE-WHITE-L', N'White', N'L', 11),
-    (N'AIR-COTTON-TEE-WHITE-XL', N'White', N'XL', 12)
+    (N'AIR-COTTON-TEE-LIGHTBLUE-S', N'Light Blue', N'S', 10),
+    (N'AIR-COTTON-TEE-LIGHTBLUE-M', N'Light Blue', N'M', 14),
+    (N'AIR-COTTON-TEE-PINK-S', N'Pink', N'S', 11),
+    (N'AIR-COTTON-TEE-PINK-M', N'Pink', N'M', 12)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'air-cotton-tee';
 
+-- 2. Light Utility Jacket (Gray, Navy)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
+    (N'LIGHT-UTILITY-JACKET-GRAY-S', N'Gray', N'S', 6),
+    (N'LIGHT-UTILITY-JACKET-GRAY-M', N'Gray', N'M', 8),
     (N'LIGHT-UTILITY-JACKET-NAVY-S', N'Navy', N'S', 6),
-    (N'LIGHT-UTILITY-JACKET-NAVY-M', N'Navy', N'M', 7),
-    (N'LIGHT-UTILITY-JACKET-NAVY-L', N'Navy', N'L', 5)
+    (N'LIGHT-UTILITY-JACKET-NAVY-M', N'Navy', N'M', 7)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'light-utility-jacket';
 
+-- 3. Oxford Shirt (Brown, Light Blue, White)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'OXFORD-SHIRT-WHITE-S', N'White', N'S', 7),
-    (N'OXFORD-SHIRT-WHITE-M', N'White', N'M', 8),
-    (N'OXFORD-SHIRT-WHITE-L', N'White', N'L', 8),
-    (N'OXFORD-SHIRT-WHITE-XL', N'White', N'XL', 8)
+    (N'OXFORD-SHIRT-BROWN-S', N'Brown', N'S', 7),
+    (N'OXFORD-SHIRT-BROWN-M', N'Brown', N'M', 8),
+    (N'OXFORD-SHIRT-LIGHTBLUE-S', N'Light Blue', N'S', 10),
+    (N'OXFORD-SHIRT-LIGHTBLUE-M', N'Light Blue', N'M', 12),
+    (N'OXFORD-SHIRT-WHITE-S', N'White', N'S', 9),
+    (N'OXFORD-SHIRT-WHITE-M', N'White', N'M', 15)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'oxford-shirt';
 
+-- 4. Soft Jersey Tee (Brown, Red, White)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'SOFT-JERSEY-TEE-SAGE-XS', N'Sage', N'XS', 10),
-    (N'SOFT-JERSEY-TEE-SAGE-S', N'Sage', N'S', 11),
-    (N'SOFT-JERSEY-TEE-SAGE-M', N'Sage', N'M', 12),
-    (N'SOFT-JERSEY-TEE-SAGE-L', N'Sage', N'L', 9)
+    (N'SOFT-JERSEY-TEE-BROWN-XS', N'Brown', N'XS', 10),
+    (N'SOFT-JERSEY-TEE-BROWN-S', N'Brown', N'S', 11),
+    (N'SOFT-JERSEY-TEE-RED-S', N'Red', N'S', 10),
+    (N'SOFT-JERSEY-TEE-RED-M', N'Red', N'M', 14),
+    (N'SOFT-JERSEY-TEE-WHITE-S', N'White', N'S', 8),
+    (N'SOFT-JERSEY-TEE-WHITE-M', N'White', N'M', 12)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'soft-jersey-tee';
 
+-- 5. Smart Ankle Pants (Black, Brown, White)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
     (N'SMART-ANKLE-PANTS-BLACK-XS', N'Black', N'XS', 5),
     (N'SMART-ANKLE-PANTS-BLACK-S', N'Black', N'S', 5),
-    (N'SMART-ANKLE-PANTS-BLACK-M', N'Black', N'M', 6),
-    (N'SMART-ANKLE-PANTS-BLACK-L', N'Black', N'L', 5),
-    (N'SMART-ANKLE-PANTS-BLACK-XL', N'Black', N'XL', 5)
+    (N'SMART-ANKLE-PANTS-BROWN-S', N'Brown', N'S', 6),
+    (N'SMART-ANKLE-PANTS-BROWN-M', N'Brown', N'M', 8),
+    (N'SMART-ANKLE-PANTS-WHITE-S', N'White', N'S', 7),
+    (N'SMART-ANKLE-PANTS-WHITE-M', N'White', N'M', 9)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'smart-ankle-pants';
 
+-- 6. Everyday Zip Hoodie (Black, Cream, Red)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'EVERYDAY-ZIP-HOODIE-GREY-S', N'Grey', N'S', 4),
-    (N'EVERYDAY-ZIP-HOODIE-GREY-M', N'Grey', N'M', 4),
-    (N'EVERYDAY-ZIP-HOODIE-GREY-L', N'Grey', N'L', 4),
-    (N'EVERYDAY-ZIP-HOODIE-GREY-XL', N'Grey', N'XL', 3)
+    (N'EVERYDAY-ZIP-HOODIE-BLACK-S', N'Black', N'S', 8),
+    (N'EVERYDAY-ZIP-HOODIE-BLACK-M', N'Black', N'M', 10),
+    (N'EVERYDAY-ZIP-HOODIE-CREAM-S', N'Cream', N'S', 8),
+    (N'EVERYDAY-ZIP-HOODIE-CREAM-M', N'Cream', N'M', 10),
+    (N'EVERYDAY-ZIP-HOODIE-RED-S', N'Red', N'S', 7),
+    (N'EVERYDAY-ZIP-HOODIE-RED-M', N'Red', N'M', 9)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'everyday-zip-hoodie';
 
+
+-- 7. Linen Blend Shirt (Cream, Orange, White)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'LINEN-BLEND-SHIRT-NATURAL-S', N'Natural', N'S', 5),
-    (N'LINEN-BLEND-SHIRT-NATURAL-M', N'Natural', N'M', 6),
-    (N'LINEN-BLEND-SHIRT-NATURAL-L', N'Natural', N'L', 6),
-    (N'LINEN-BLEND-SHIRT-NATURAL-XL', N'Natural', N'XL', 5)
+    (N'LINEN-BLEND-SHIRT-CREAM-S', N'Cream', N'S', 5),
+    (N'LINEN-BLEND-SHIRT-CREAM-M', N'Cream', N'M', 8),
+    (N'LINEN-BLEND-SHIRT-ORANGE-S', N'Orange', N'S', 6),
+    (N'LINEN-BLEND-SHIRT-ORANGE-M', N'Orange', N'M', 9),
+    (N'LINEN-BLEND-SHIRT-WHITE-S', N'White', N'S', 11),
+    (N'LINEN-BLEND-SHIRT-WHITE-M', N'White', N'M', 14)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'linen-blend-shirt';
 
+-- 8. Utility Tote (Pink, Red, Yellow)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'UTILITY-TOTE-RED-ONE-SIZE', N'Red', N'One size', 64)
+    (N'UTILITY-TOTE-PINK-ONE-SIZE', N'Pink', N'One size', 25),
+    (N'UTILITY-TOTE-RED-ONE-SIZE', N'Red', N'One size', 30),
+    (N'UTILITY-TOTE-YELLOW-ONE-SIZE', N'Yellow', N'One size', 20)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'utility-tote';
 
+-- 9. School Day Cardigan (Black, Dark Green, Navy)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'SCHOOL-DAY-CARDIGAN-BLUE-110', N'Blue', N'110', 8),
-    (N'SCHOOL-DAY-CARDIGAN-BLUE-120', N'Blue', N'120', 9),
-    (N'SCHOOL-DAY-CARDIGAN-GREY-130', N'Grey', N'130', 9),
-    (N'SCHOOL-DAY-CARDIGAN-GREY-140', N'Grey', N'140', 8)
+    (N'SCHOOL-DAY-CARDIGAN-BLACK-110', N'Black', N'110', 8),
+    (N'SCHOOL-DAY-CARDIGAN-BLACK-120', N'Black', N'120', 10),
+    (N'SCHOOL-DAY-CARDIGAN-DARKGREEN-110', N'Dark Green', N'110', 7),
+    (N'SCHOOL-DAY-CARDIGAN-NAVY-120', N'Navy', N'120', 9)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'school-day-cardigan';
 
+-- 10. Easy Cotton Shorts (Blue, Gray)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
-    (N'EASY-COTTON-SHORTS-KHAKI-110', N'Khaki', N'110', 7),
-    (N'EASY-COTTON-SHORTS-KHAKI-120', N'Khaki', N'120', 7),
-    (N'EASY-COTTON-SHORTS-KHAKI-130', N'Khaki', N'130', 7),
-    (N'EASY-COTTON-SHORTS-KHAKI-140', N'Khaki', N'140', 7)
+    (N'EASY-COTTON-SHORTS-BLUE-110', N'Blue', N'110', 10),
+    (N'EASY-COTTON-SHORTS-GRAY-120', N'Gray', N'120', 12)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'easy-cotton-shorts';
+
+-- Re-enable all constraints
+EXEC sp_MSforeachtable "ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL";

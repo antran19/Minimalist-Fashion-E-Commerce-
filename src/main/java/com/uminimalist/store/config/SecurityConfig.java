@@ -1,5 +1,6 @@
 package com.uminimalist.store.config;
 
+import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,13 +24,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public HttpSessionEventPublisher httpSessionEventPublisher() {
-        return new HttpSessionEventPublisher();
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
     }
 
     @Bean
-    public SessionRegistry sessionRegistry() {
-        return new SessionRegistryImpl();
+    public ServletListenerRegistrationBean<HttpSessionEventPublisher> httpSessionEventPublisher() {
+        return new ServletListenerRegistrationBean<>(new HttpSessionEventPublisher());
     }
 
     @Bean
@@ -40,13 +41,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/products/*/reviews").hasRole("CUSTOMER")
                 .requestMatchers("/cart", "/cart/**", "/checkout", "/checkout/**", "/account", "/account/**", "/wishlist", "/wishlist/**").hasRole("CUSTOMER")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/", "/products", "/products/**", "/login", "/register", "/error").permitAll()
+                .requestMatchers("/", "/products", "/products/**", "/login", "/register", "/error", "/paypal/**").permitAll()
                 .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .maximumSessions(1)
-                .maxSessionsPreventsLogin(true)
-                .sessionRegistry(sessionRegistry)
             )
             .formLogin(form -> form
                 .loginPage("/login")
@@ -78,6 +74,12 @@ public class SecurityConfig {
                 .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")
                 .permitAll()
+            )
+            .sessionManagement(session -> session
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(true)
+                .sessionRegistry(sessionRegistry)
+                .expiredUrl("/login?expired=true")
             );
 
         return http.build();

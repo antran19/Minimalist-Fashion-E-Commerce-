@@ -63,12 +63,12 @@ public record OrderSummaryView(
     public boolean canPayAgain() {
         return "PENDING_PAYMENT".equalsIgnoreCase(status)
                 && !"PAID".equalsIgnoreCase(paymentStatus)
-                && "VNPAY".equalsIgnoreCase(paymentMethod);
+                && "PAYPAL".equalsIgnoreCase(paymentMethod);
     }
 
     public String paymentMethodLabel() {
-        if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
-            return "VNPay Demo";
+        if ("PAYPAL".equalsIgnoreCase(paymentMethod)) {
+            return "PayPal";
         }
         return "Cash on Delivery (COD)";
     }

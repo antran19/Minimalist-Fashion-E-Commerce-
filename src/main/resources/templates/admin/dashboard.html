@@ -285,6 +285,8 @@
                                   th:data-price="${product.basePrice}"
                                   th:data-type="${product.productType}"
                                   th:data-description="${product.description}"
+                                  th:data-on-sale="${product.onSale}"
+                                  th:data-discount="${product.discountPercentage}"
                                   onclick="openEditProductModal(this)">Edit</button>
                           <form th:action="@{/admin/products/{id}/toggle(id=${product.id})}" method="post" style="display: inline; margin: 0;">
                               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -309,6 +311,7 @@
                      <table class="table-custom compact">
                          <thead>
                          <tr>
+                             <th>Image</th>
                              <th>SKU</th>
                              <th>Color</th>
                              <th>Size</th>
@@ -319,6 +322,10 @@
                          </thead>
                          <tbody>
                          <tr th:each="variant : ${product.variants}" th:classappend="${variant.stockQuantity <= 5 ? 'low-stock-row' : ''}">
+                             <td>
+                                 <img th:if="${variant.imageUrl != null}" th:src="${variant.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line);" th:alt="${variant.sku}">
+                                 <span th:unless="${variant.imageUrl != null}" style="color: var(--muted); font-size: 0.8rem;">—</span>
+                             </td>
                              <td th:text="${variant.sku}">SKU</td>
                              <td th:text="${variant.color}">Cream</td>
                              <td th:text="${variant.size}">M</td>
@@ -337,7 +344,7 @@
                              <td>
                                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                      <button type="button" class="admin-action-btn admin-btn-outline"
-                                             th:onclick="openEditVariantModal([[${variant.id}]], [[${variant.color}]], [[${variant.size}]], [[${variant.sku}]], [[${variant.stockQuantity}]])">
+                                             th:onclick="openEditVariantModal([[${variant.id}]], [[${variant.color}]], [[${variant.size}]], [[${variant.sku}]], [[${variant.stockQuantity}]], [[${variant.imageUrl != null ? variant.imageUrl : ''}]])">
                                          Edit
                                      </button>
                                      <form th:action="@{/admin/variants/{id}/toggle(id=${variant.id})}" method="post" style="display: inline; margin: 0;">
@@ -355,7 +362,7 @@
                          </tr>
                          </tbody>
                       </table>
-                </div>
+                 </div>
             </article>
         </div>
 
@@ -501,6 +508,7 @@
                     <th>Items</th>
                     <th>Total</th>
                     <th>Status</th>
+                    <th>Detail</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -533,6 +541,12 @@
                                 <option value="CANCELLED" th:selected="${order.status == 'CANCELLED'}">CANCELLED</option>
                             </select>
                         </form>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <a th:href="@{/admin/orders/{orderCode}(orderCode=${order.orderCode})}"
+                           class="admin-action-btn admin-btn-outline" style="text-decoration: none; white-space: nowrap;">
+                            View
+                        </a>
                     </td>
                 </tr>
                 </tbody>
@@ -671,6 +685,8 @@
         const price = btn.getAttribute('data-price');
         const productType = btn.getAttribute('data-type');
         const description = btn.getAttribute('data-description');
+        const onSale = btn.getAttribute('data-on-sale') === 'true';
+        const discountPercentage = btn.getAttribute('data-discount');
 
         const form = document.getElementById('editProductForm');
         form.action = '/admin/products/' + productId + '/edit';
@@ -681,6 +697,16 @@
         formatLivePrice(priceInput);
         document.getElementById('editProductType').value = productType;
         document.getElementById('editProductDescription').value = description || '';
+
+        const onSaleCheckbox = document.getElementById('editOnSale');
+        if (onSaleCheckbox) {
+            onSaleCheckbox.checked = onSale;
+            toggleDiscountField('editDiscountDiv', onSale);
+        }
+        const discountInput = document.getElementById('editDiscountPercentage');
+        if (discountInput) {
+            discountInput.value = discountPercentage || '';
+        }
 
         const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
         modal.show();
@@ -711,13 +737,38 @@
         modal.show();
     }
 
-    function openEditVariantModal(id, color, size, sku, stockQuantity) {
+    function openEditVariantModal(id, color, size, sku, stockQuantity, imageUrl) {
+        editingVariantId = id;
         const form = document.getElementById('editVariantForm');
         form.action = '/admin/variants/' + id + '/edit';
         document.getElementById('editVariantColor').value = color;
         document.getElementById('editVariantSize').value = size;
         document.getElementById('editVariantSku').value = sku;
         document.getElementById('editVariantStockQuantity').value = stockQuantity;
+
+        // Show current variant image if available
+        const currentImageDiv = document.getElementById('editVariantCurrentImage');
+        const currentImageImg = document.getElementById('editVariantCurrentImageImg');
+        const noImageEl = document.getElementById('editVariantNoImage');
+        const newImagePreview = document.getElementById('editVariantImagePreview');
+        const fileInput = document.getElementById('editVariantImageFile');
+        const uploadBtn = document.getElementById('editVariantImageBtn');
+        const statusEl = document.getElementById('editVariantImageStatus');
+
+        // Reset new image preview and file input
+        if (newImagePreview) newImagePreview.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+        if (uploadBtn) uploadBtn.disabled = true;
+        if (statusEl) statusEl.style.display = 'none';
+
+        if (imageUrl && imageUrl.trim() !== '') {
+            currentImageImg.src = imageUrl;
+            currentImageDiv.style.display = 'block';
+            if (noImageEl) noImageEl.style.display = 'none';
+        } else {
+            currentImageDiv.style.display = 'none';
+            if (noImageEl) noImageEl.style.display = 'block';
+        }
 
         const modal = new bootstrap.Modal(document.getElementById('editVariantModal'));
         modal.show();
@@ -874,9 +925,8 @@
         }, 550);
     }
 
-    // Save scroll position and open variant tables before page unload or form submit
+    // Save open variant tables before page unload
     window.addEventListener('beforeunload', () => {
-        sessionStorage.setItem('admin_scroll_y', window.scrollY.toString());
         saveOpenVariantTables();
     });
 
@@ -914,17 +964,6 @@
             console.error('Error restoring open variant tables:', e);
         }
 
-        // Restore scroll position
-        const savedScrollY = sessionStorage.getItem('admin_scroll_y');
-        if (savedScrollY !== null) {
-            setTimeout(() => {
-                window.scrollTo({
-                    top: parseInt(savedScrollY, 10),
-                    behavior: 'instant'
-                });
-                sessionStorage.removeItem('admin_scroll_y');
-            }, 30);
-        }
     });
 </script>
 
