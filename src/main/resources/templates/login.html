@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
-    <th:block th:insert="~{fragments/head :: head('Sign In | U-Minimalist', 'Sign in to your U-Minimalist account.')}"></th:block>
+    <th:block th:insert="~{fragments/head :: head('Sign In | U-Minimalist', 'Sign in to your U-Minimalist account.')}">
+    </th:block>
     <style>
         .auth-container {
             min-height: calc(100vh - 72px - 240px);
@@ -11,6 +13,7 @@
             padding-block: 120px 60px;
             background-color: var(--page);
         }
+
         .auth-card {
             width: 100%;
             max-width: 440px;
@@ -20,20 +23,24 @@
             background: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
         }
+
         .auth-card h1 {
             font-size: 2.2rem;
             font-weight: 800;
             letter-spacing: -0.04em;
             margin-bottom: 8px;
         }
+
         .auth-card p.subtitle {
             color: var(--muted);
             font-size: 0.95rem;
             margin-bottom: 32px;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -43,6 +50,7 @@
             text-transform: uppercase;
             color: var(--ink);
         }
+
         .form-control-custom {
             width: 100%;
             min-height: 46px;
@@ -55,10 +63,12 @@
             background-color: #ffffff;
             transition: border-color 150ms ease;
         }
+
         .form-control-custom:focus {
             outline: none;
             border-color: var(--ink);
         }
+
         .auth-btn {
             width: 100%;
             min-height: 48px;
@@ -72,13 +82,16 @@
             margin-top: 10px;
             transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
         }
+
         .auth-btn:hover {
             background: var(--accent);
             border-color: var(--accent);
         }
+
         .auth-btn:active {
             transform: scale(0.98);
         }
+
         .auth-alert {
             padding: 12px 16px;
             border-radius: var(--radius);
@@ -86,16 +99,19 @@
             font-weight: 600;
             margin-bottom: 24px;
         }
+
         .alert-error {
             background-color: #fff5f5;
             border: 1px solid #ffc9c9;
             color: var(--accent);
         }
+
         .alert-success {
             background-color: #f4fbf7;
             border: 1px solid #c3ebd6;
             color: #1b854d;
         }
+
         .auth-switch {
             text-align: center;
             margin-top: 24px;
@@ -103,48 +119,69 @@
             color: var(--muted);
             font-weight: 500;
         }
+
         .auth-switch a {
             color: var(--ink);
             font-weight: 700;
             border-bottom: 1px solid var(--ink);
         }
+
         .auth-switch a:hover {
             color: var(--accent);
             border-color: var(--accent);
         }
     </style>
 </head>
+
 <body>
-<th:block th:replace="~{fragments/navbar :: navbar('login', 'site-header is-scrolled', '', true, false, true)}"></th:block>
+    <th:block th:replace="~{fragments/navbar :: navbar('login', 'site-header is-scrolled', '', true, false, true)}">
+    </th:block>
 
-<main class="auth-container">
-    <div class="auth-card">
-        <h1>Welcome Back</h1>
-        <p class="subtitle">Please enter your details to sign in.</p>
+    <main class="auth-container">
+        <div class="auth-card">
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Please enter your details to sign in.</p>
 
-        <div th:if="${errorMessage}" class="auth-alert alert-error" th:text="${errorMessage}"></div>
-        <div th:if="${successMessage}" class="auth-alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="auth-alert alert-error" th:text="${errorMessage}"></div>
+            <div th:if="${successMessage}" class="auth-alert alert-success" th:text="${successMessage}"></div>
 
-        <form th:action="@{/login}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" class="form-control-custom" placeholder="name@domain.com" required autofocus>
+            <form th:action="@{/login}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control-custom"
+                        placeholder="name@domain.com" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control-custom"
+                        placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+
+            <div class="auth-switch">
+                Don't have an account? <a th:href="@{/register}">Create account</a>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-control-custom" placeholder="••••••••" required>
-            </div>
-            <button type="submit" class="auth-btn">Sign In</button>
-        </form>
 
-        <div class="auth-switch">
-            Don't have an account? <a th:href="@{/register}">Create account</a>
+            <!-- Quick Login Buttons for Testing -->
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                <button type="button" onclick="fillLogin('admin@uminimalist.com', 'admin123')"
+                    style="flex: 1; padding: 8px; border: 1px solid var(--line); background: #f9f9f9; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Admin</button>
+                <button type="button" onclick="fillLogin('customer@uminimalist.com', 'customer123')"
+                    style="flex: 1; padding: 8px; border: 1px solid var(--line); background: #f9f9f9; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Customer</button>
+            </div>
+            <script>
+                function fillLogin(email, password) {
+                    document.getElementById('email').value = email;
+                    document.getElementById('password').value = password;
+                }
+            </script>
         </div>
-    </div>
-</main>
+    </main>
 
-<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
-<th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
+    <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+    <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 </body>
+
 </html>
