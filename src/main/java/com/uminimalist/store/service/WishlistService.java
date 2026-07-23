@@ -93,7 +93,7 @@ public class WishlistService {
         User user = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
         return jdbcTemplate.query("""
-                        SELECT p.slug, p.name, p.product_type, p.base_price,
+                        SELECT p.slug, p.name, p.product_type, p.base_price, p.on_sale, p.discount_percentage,
                                (SELECT TOP 1 pv.image_url
                                 FROM dbo.product_variants pv
                                 WHERE pv.product_id = p.id AND pv.active = 1 AND pv.image_url IS NOT NULL
@@ -111,12 +111,27 @@ public class WishlistService {
                     } else {
                         imgPath = imagePath(rs.getString("slug"));
                     }
+                    
+                    boolean onSale = rs.getBoolean("on_sale");
+                    int discountPercentage = rs.getInt("discount_percentage");
+                    BigDecimal basePrice = rs.getBigDecimal("base_price");
+                    if (basePrice == null) basePrice = BigDecimal.ZERO;
+                    
+                    BigDecimal salePrice = basePrice;
+                    if (onSale && discountPercentage > 0) {
+                        salePrice = basePrice.multiply(BigDecimal.valueOf(100 - discountPercentage))
+                                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                    }
+                    
                     return new WishlistItemView(
                             rs.getString("slug"),
                             rs.getString("name"),
                             rs.getString("product_type"),
-                            currencyFormat.format(rs.getBigDecimal("base_price") == null ? BigDecimal.ZERO : rs.getBigDecimal("base_price")),
-                            imgPath);
+                            currencyFormat.format(basePrice),
+                            imgPath,
+                            onSale,
+                            discountPercentage,
+                            currencyFormat.format(salePrice));
                 },
                 user.getId());
     }

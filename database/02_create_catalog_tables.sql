@@ -35,6 +35,8 @@ CREATE TABLE dbo.products (
     crop_class NVARCHAR(80) NOT NULL,
     new_arrival BIT NOT NULL DEFAULT 0,
     best_seller BIT NOT NULL DEFAULT 0,
+    on_sale BIT NOT NULL DEFAULT 0,
+    discount_percentage INT NULL,
     active BIT NOT NULL DEFAULT 1,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT fk_products_category

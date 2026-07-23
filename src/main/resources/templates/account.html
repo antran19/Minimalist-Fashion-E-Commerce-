@@ -471,7 +471,11 @@
                                 <a th:href="@{/products/{slug}(slug=${item.slug})}"
                                    th:text="${item.name}"></a>
                             </h3>
-                            <strong th:text="${item.priceLabel}"></strong>
+                            <div class="premium-wishlist-price">
+                                <strong th:if="${item.onSale}" style="color: #dc2626;" th:text="${item.salePriceLabel}"></strong>
+                                <span th:if="${item.onSale}" class="text-muted text-decoration-line-through" style="font-size: 0.85rem; margin-left: 6px; opacity: 0.7;" th:text="${item.priceLabel}"></span>
+                                <strong th:unless="${item.onSale}" th:text="${item.priceLabel}"></strong>
+                            </div>
                             <div class="premium-wishlist-actions">
                                 <a class="account-button account-button-primary account-button-small"
                                    th:href="@{/products/{slug}(slug=${item.slug})}">

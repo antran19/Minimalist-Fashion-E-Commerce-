@@ -36,7 +36,10 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/vendor/**").permitAll()
-                .requestMatchers("/", "/products/**", "/cart/**", "/login", "/register").permitAll()
+                .requestMatchers("/", "/login", "/register").permitAll()
+                .requestMatchers("/cart/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/products/*/reviews", "/products/*/reviews/*/edit", "/products/*/reviews/*/delete").authenticated()
+                .requestMatchers("/products/**").permitAll()
                 .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

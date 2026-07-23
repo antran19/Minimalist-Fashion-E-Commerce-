@@ -88,16 +88,19 @@ public class HomeController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         model.addAttribute("product", product);
         model.addAttribute("variantStocks", landingPageService.getVariantStockMap(slug));
-        boolean authenticated = authentication != null
-                && authentication.isAuthenticated()
-                && authentication.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
-        model.addAttribute("inWishlist", authenticated && wishlistService.contains(authentication.getName(), slug));
         
-        String email = authenticated ? authentication.getName() : null;
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isAdmin = isAuthenticated && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        boolean isCustomer = isAuthenticated && !isAdmin;
+        
+        model.addAttribute("inWishlist", isCustomer && wishlistService.contains(authentication.getName(), slug));
+        
+        model.addAttribute("currentUserEmail", isAuthenticated ? authentication.getName() : null);
+        model.addAttribute("isAdmin", isAdmin);
+        
         model.addAttribute("reviews", productReviewService.findReviewsForProduct(slug));
         model.addAttribute("ratingStats", productReviewService.getStatsForProduct(slug));
-        model.addAttribute("canReview", authenticated && productReviewService.canUserReview(email, slug));
-        model.addAttribute("reviewStatus", productReviewService.getReviewEligibilityStatus(email, slug));
         model.addAttribute("relatedProducts", landingPageService.getRelatedProducts(product.slug(), product.collection(), 4));
         
         return "product-detail";

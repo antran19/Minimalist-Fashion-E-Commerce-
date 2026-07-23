@@ -5,6 +5,9 @@ public record WishlistItemView(
         String name,
         String category,
         String priceLabel,
-        String imagePath
+        String imagePath,
+        boolean onSale,
+        int discountPercentage,
+        String salePriceLabel
 ) {
 }

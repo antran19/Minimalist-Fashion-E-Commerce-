@@ -162,7 +162,8 @@
                         <strong id="summary-selected-subtotal" th:text="${cart.subtotalLabel}"></strong>
                     </div>
 
-                    <p class="cart-stitch-summary-copy">Review shipping details and confirm the order on the next step
+                    <p class="cart-stitch-summary-copy">Review shipping details and confirm the order on the next
+                        step
                         before stock is reserved.</p>
                     <p id="cart-summary-notice" class="cart-stitch-summary-notice" aria-live="polite" hidden></p>
 
@@ -171,11 +172,11 @@
                         sec:authorize="!hasRole('ADMIN')">
                         Checkout
                     </button>
-                    <p class="cart-stitch-summary-copy" sec:authorize="hasRole('ADMIN')">Administrator accounts cannot
-                        place orders.</p>
+                    <p class="cart-stitch-summary-copy" sec:authorize="hasRole('ADMIN')">Administrator accounts cannot place orders.</p>
                 </div>
             </aside>
         </section>
+
 
         <section class="cart-stitch-empty" th:if="${cart.empty}" aria-labelledby="empty-cart-title">
             <div class="cart-stitch-empty-icon" aria-hidden="true">
