@@ -353,11 +353,12 @@ public class AdminCatalogService {
 
         // Upload variant image to Cloudinary if provided
         if (imageFile != null && !imageFile.isEmpty()) {
-            String folderPath = "uminimalist/products/" + product.getSlug() + "/" + cleanSku.toLowerCase(Locale.ROOT);
+            String folderPath = "uminimalist/products/" + product.getSlug();
             CloudinaryService.UploadResult result = cloudinaryService.uploadImage(imageFile, folderPath);
             variant.setImageUrl(result.secureUrl());
             variant.setImagePublicId(result.publicId());
         }
+
 
         productVariantRepository.save(variant);
     }
@@ -599,8 +600,9 @@ public class AdminCatalogService {
         }
 
         // Upload new image
-        String folderPath = "uminimalist/products/" + variant.getProduct().getSlug() + "/" + variant.getSku().toLowerCase(Locale.ROOT);
+        String folderPath = "uminimalist/products/" + variant.getProduct().getSlug();
         CloudinaryService.UploadResult result = cloudinaryService.uploadImage(imageFile, folderPath);
+
         variant.setImageUrl(result.secureUrl());
         variant.setImagePublicId(result.publicId());
 

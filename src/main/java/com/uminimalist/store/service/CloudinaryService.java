@@ -63,9 +63,11 @@ public class CloudinaryService {
 
             Map<String, Object> params = ObjectUtils.asMap(
                     "folder", sanitizedFolder,
+                    "asset_folder", sanitizedFolder,
                     "overwrite", true,
                     "resource_type", "image"
             );
+
 
             Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
 

@@ -100,17 +100,20 @@ CROSS APPLY (VALUES
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'smart-ankle-pants';
 
--- 6. Everyday Zip Hoodie (Cream, Red)
+-- 6. Everyday Zip Hoodie (Black, Cream, Red)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
 SELECT p.id, v.sku, v.color, v.size, v.stock_quantity
 FROM dbo.products p
 CROSS APPLY (VALUES
+    (N'EVERYDAY-ZIP-HOODIE-BLACK-S', N'Black', N'S', 8),
+    (N'EVERYDAY-ZIP-HOODIE-BLACK-M', N'Black', N'M', 10),
     (N'EVERYDAY-ZIP-HOODIE-CREAM-S', N'Cream', N'S', 8),
     (N'EVERYDAY-ZIP-HOODIE-CREAM-M', N'Cream', N'M', 10),
     (N'EVERYDAY-ZIP-HOODIE-RED-S', N'Red', N'S', 7),
     (N'EVERYDAY-ZIP-HOODIE-RED-M', N'Red', N'M', 9)
 ) v(sku, color, size, stock_quantity)
 WHERE p.slug = N'everyday-zip-hoodie';
+
 
 -- 7. Linen Blend Shirt (Cream, Orange, White)
 INSERT INTO dbo.product_variants (product_id, sku, color, size, stock_quantity)
