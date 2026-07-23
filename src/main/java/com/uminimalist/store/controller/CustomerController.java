@@ -1,14 +1,18 @@
 package com.uminimalist.store.controller;
 
+import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.model.ReviewView;
+import com.uminimalist.store.repository.ProductVariantRepository;
 import com.uminimalist.store.repository.UserRepository;
 import com.uminimalist.store.service.CustomerAddressService;
 import com.uminimalist.store.service.OrderService;
 import com.uminimalist.store.service.ShoppingCartService;
 import com.uminimalist.store.service.WishlistService;
 import com.uminimalist.store.service.ProductReviewService;
-import com.uminimalist.store.service.VNPayService;
+import com.uminimalist.store.service.PayPalService;
+import com.uminimalist.store.util.PhoneValidator;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
@@ -27,42 +31,45 @@ import java.util.Enumeration;
 public class CustomerController {
 
     private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ShoppingCartService shoppingCartService;
     private final OrderService orderService;
     private final CustomerAddressService customerAddressService;
     private final WishlistService wishlistService;
     private final ProductReviewService productReviewService;
-    private final VNPayService vnPayService;
+    private final PayPalService payPalService;
 
     public CustomerController(UserRepository userRepository,
-                              ShoppingCartService shoppingCartService,
-                              OrderService orderService,
-                              CustomerAddressService customerAddressService,
-                              WishlistService wishlistService,
-                              ProductReviewService productReviewService,
-                              VNPayService vnPayService) {
+            ProductVariantRepository productVariantRepository,
+            ShoppingCartService shoppingCartService,
+            OrderService orderService,
+            CustomerAddressService customerAddressService,
+            WishlistService wishlistService,
+            ProductReviewService productReviewService,
+            PayPalService payPalService) {
         this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
         this.shoppingCartService = shoppingCartService;
         this.orderService = orderService;
         this.customerAddressService = customerAddressService;
         this.wishlistService = wishlistService;
         this.productReviewService = productReviewService;
-        this.vnPayService = vnPayService;
+        this.payPalService = payPalService;
     }
 
     @GetMapping("/account")
     public String account(Authentication authentication,
-                          HttpSession session,
-                          @RequestParam(defaultValue = "ALL") String status,
-                          @RequestParam(defaultValue = "1") int page,
-                          Model model) {
+            HttpSession session,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "1") int page,
+            Model model) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
         model.addAttribute("account", user);
         model.addAttribute("cart", shoppingCartService.getCart(session, authentication.getName()));
         model.addAttribute("shippingAddress", customerAddressService.findDefaultAddress(authentication.getName()));
         model.addAttribute("wishlist", wishlistService.findForCustomer(authentication.getName()));
-        
+
         var paginatedOrders = orderService.findOrdersForCustomerPaginated(authentication.getName(), status, page, 5);
         model.addAttribute("paginatedOrders", paginatedOrders);
         model.addAttribute("recentOrders", paginatedOrders.orders());
@@ -71,41 +78,59 @@ public class CustomerController {
 
     @PostMapping("/account/profile")
     public String updateProfile(Authentication authentication,
-                                @RequestParam String fullName,
-                                @RequestParam String phone,
-                                RedirectAttributes redirectAttributes) {
-        String normalizedName = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
-        String normalizedPhone = phone == null ? "" : phone.trim();
+            @RequestParam String fullName,
+            @RequestParam String phone,
+            RedirectAttributes redirectAttributes) {
 
-        if (normalizedName.length() < 2 || normalizedName.length() > 120) {
-            redirectAttributes.addFlashAttribute("accountError", "Full name must be between 2 and 120 characters.");
+        String normalizedName = fullName == null
+                ? ""
+                : fullName.trim().replaceAll("\\s+", " ");
+
+        if (normalizedName.length() < 2 || normalizedName.length() > 120 || !normalizedName.matches(".*\\p{L}.*")) {
+            redirectAttributes.addFlashAttribute(
+                    "accountError",
+                    "Full name must be between 2 and 120 characters and contain at least one letter.");
+
             return "redirect:/account#profile";
         }
-        if (normalizedPhone.length() < 8 || normalizedPhone.length() > 20) {
-            redirectAttributes.addFlashAttribute("accountError", "Phone number must be between 8 and 20 characters.");
+
+        String normalizedPhone;
+
+        try {
+            normalizedPhone = PhoneValidator.normalizeVietnameseMobile(phone);
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "accountError",
+                    exception.getMessage());
+
             return "redirect:/account#profile";
         }
 
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
+
         user.setFullName(normalizedName);
         user.setPhone(normalizedPhone);
         userRepository.save(user);
 
-        redirectAttributes.addFlashAttribute("accountMessage", "Profile updated.");
+        redirectAttributes.addFlashAttribute(
+                "accountMessage",
+                "Profile updated.");
+
         return "redirect:/account#profile";
     }
 
     @PostMapping("/account/address")
     public String updateAddress(Authentication authentication,
-                                @RequestParam String recipientName,
-                                @RequestParam String shippingPhone,
-                                @RequestParam String addressLine,
-                                @RequestParam String district,
-                                @RequestParam String city,
-                                RedirectAttributes redirectAttributes) {
+            @RequestParam String recipientName,
+            @RequestParam String shippingPhone,
+            @RequestParam String addressLine,
+            @RequestParam String district,
+            @RequestParam String city,
+            RedirectAttributes redirectAttributes) {
         try {
-            customerAddressService.saveDefaultAddress(authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
+            customerAddressService.saveDefaultAddress(authentication.getName(), recipientName, shippingPhone,
+                    addressLine, district, city);
             redirectAttributes.addFlashAttribute("accountMessage", "Shipping address saved.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
@@ -115,25 +140,38 @@ public class CustomerController {
 
     @GetMapping("/account/orders/{orderCode}")
     public String orderDetail(@PathVariable String orderCode,
-                              Authentication authentication,
-                              Model model,
-                              RedirectAttributes redirectAttributes) {
+            Authentication authentication,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
-        var order = orderService.findOrderForCustomer(authentication.getName(), orderCode);
-        if (order.isEmpty()) {
+        var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
+        if (orderOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("accountError", "Order not found.");
             return "redirect:/account#orders";
         }
+        var order = orderOpt.get();
+
+        java.util.Map<String, ReviewView> existingReviews = new java.util.HashMap<>();
+        if ("DELIVERED".equalsIgnoreCase(order.status())) {
+            for (var item : order.items()) {
+                if (item.productSlug() != null) {
+                    productReviewService.getUserReviewForProduct(authentication.getName(), item.productSlug())
+                            .ifPresent(review -> existingReviews.put(item.productSlug(), review));
+                }
+            }
+        }
+
         model.addAttribute("account", user);
-        model.addAttribute("order", order.get());
+        model.addAttribute("order", order);
+        model.addAttribute("existingReviews", existingReviews);
         return "order-detail";
     }
 
     @PostMapping("/account/orders/{orderCode}/cancel")
     public String cancelOrder(@PathVariable String orderCode,
-                              Authentication authentication,
-                              RedirectAttributes redirectAttributes) {
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
         try {
             orderService.cancelOrderForCustomer(authentication.getName(), orderCode);
             redirectAttributes.addFlashAttribute("accountMessage", "Order " + orderCode + " cancelled.");
@@ -155,12 +193,31 @@ public class CustomerController {
         }
 
         int addedItems = 0;
+        java.util.List<String> warnings = new java.util.ArrayList<>();
         for (var item : order.get().items()) {
             try {
                 shoppingCartService.addSku(session, authentication.getName(), item.sku(), item.quantity());
                 addedItems += item.quantity();
-            } catch (IllegalArgumentException ignored) {
-                // Skip unavailable variants so one discontinued item does not block the rest of the reorder.
+            } catch (IllegalArgumentException ex) {
+                // If requested quantity exceeds stock, attempt to add available stock quantity
+                int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
+                        .map(ProductVariant::getStockQuantity)
+                        .orElse(0);
+                if (availableStock > 0) {
+<<<<<<< HEAD
+                    try {
+                        shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
+                        addedItems += availableStock;
+                        warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
+                    } catch (IllegalArgumentException ignored) {
+                        // Skip completely unavailable or out-of-stock variants
+                    }
+=======
+                    shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
+                    addedItems += availableStock;
+                    warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
+>>>>>>> 6018660c20a9cc98f32dd2c7dc2b8292c299d5f2
+                }
             }
         }
 
@@ -169,7 +226,11 @@ public class CustomerController {
             return "redirect:/account/orders/" + orderCode;
         }
 
-        redirectAttributes.addFlashAttribute("cartMessage", "Added " + addedItems + " item(s) from " + orderCode + " to cart.");
+        String msg = "Added " + addedItems + " item(s) from " + orderCode + " to cart.";
+        if (!warnings.isEmpty()) {
+            msg += " " + String.join(" ", warnings);
+        }
+        redirectAttributes.addFlashAttribute("cartMessage", msg);
         return "redirect:/cart";
     }
 
@@ -177,8 +238,14 @@ public class CustomerController {
     public String addWishlist(@RequestParam String productSlug,
                               Authentication authentication,
                               RedirectAttributes redirectAttributes) {
-        wishlistService.add(authentication.getName(), productSlug);
-        redirectAttributes.addFlashAttribute("cartMessage", "Saved to wishlist.");
+        try {
+            wishlistService.add(authentication.getName(), productSlug);
+            redirectAttributes.addFlashAttribute("cartMessage", "Saved to wishlist.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("cartError", ex.getMessage());
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("cartError", "This product is no longer available.");
+        }
         return "redirect:/products/" + productSlug;
     }
 
@@ -187,9 +254,29 @@ public class CustomerController {
                                  @RequestParam(defaultValue = "/account#wishlist") String redirectTo,
                                  Authentication authentication,
                                  RedirectAttributes redirectAttributes) {
-        wishlistService.remove(authentication.getName(), productSlug);
-        redirectAttributes.addFlashAttribute("accountMessage", "Removed from wishlist.");
-        return "redirect:" + redirectTo;
+        try {
+            wishlistService.remove(authentication.getName(), productSlug);
+            redirectAttributes.addFlashAttribute("accountMessage", "Removed from wishlist.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("accountError", ex.getMessage());
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("accountError", "This product is no longer available.");
+        }
+        String safeRedirect = sanitizeInternalRedirect(redirectTo, "/account#wishlist");
+        return "redirect:" + safeRedirect;
+    }
+
+    private String sanitizeInternalRedirect(String redirectTo, String fallback) {
+        if (redirectTo == null || !redirectTo.startsWith("/")) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("//") || redirectTo.startsWith("/\\")) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("/account") || redirectTo.startsWith("/products") || redirectTo.equals("/cart") || redirectTo.equals("/")) {
+            return redirectTo;
+        }
+        return fallback;
     }
 
     @GetMapping("/checkout")
@@ -197,9 +284,25 @@ public class CustomerController {
                                  HttpSession session,
                                  Model model,
                                  RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
+        if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
+            return "redirect:/cart";
+        }
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        try {
+            shoppingCartService.validateAndPrepareCheckoutSkus(session, authentication.getName(), checkoutSkus);
+        } catch (IllegalArgumentException exception) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            return "redirect:/cart";
+        }
+
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
         if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "No items selected for checkout.");
             return "redirect:/cart";
         }
 
@@ -224,64 +327,139 @@ public class CustomerController {
                              @RequestParam String addressLine,
                              @RequestParam String district,
                              @RequestParam String city,
+                             @RequestParam(required = false) String notes,
                              @RequestParam(defaultValue = "COD") String paymentMethod,
                              HttpServletRequest request,
                              RedirectAttributes redirectAttributes) {
-        CartView cart = shoppingCartService.getCart(session, authentication.getName());
-        if (cart.isEmpty()) {
-            redirectAttributes.addFlashAttribute("accountError", "Your cart is empty.");
+        if (isAdmin(authentication)) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "Administrator accounts cannot place orders. Please sign in with a customer account to shop.");
             return "redirect:/cart";
+        }
+        @SuppressWarnings("unchecked")
+        java.util.List<String> checkoutSkus = (java.util.List<String>) session.getAttribute("checkoutSkus");
+        try {
+            shoppingCartService.validateAndPrepareCheckoutSkus(session, authentication.getName(), checkoutSkus);
+        } catch (IllegalArgumentException exception) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            return "redirect:/cart";
+        }
+
+        CartView cart = shoppingCartService.getCartFiltered(session, authentication.getName(), checkoutSkus);
+        if (cart.isEmpty()) {
+            session.removeAttribute("checkoutSkus");
+            redirectAttributes.addFlashAttribute("cartError", "No items selected for checkout.");
+            return "redirect:/cart";
+        }
+
+        String normalizedPaymentMethod = paymentMethod == null ? "COD" : paymentMethod.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"COD".equals(normalizedPaymentMethod) && !"PAYPAL".equals(normalizedPaymentMethod)) {
+            redirectAttributes.addFlashAttribute("accountError", "Invalid payment method selected. Please choose Cash on Delivery (COD) or PayPal.");
+            return "redirect:/checkout";
         }
 
         try {
             var shippingAddress = customerAddressService.saveDefaultAddress(
                     authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
-            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress);
-            shoppingCartService.clearCart(session, authentication.getName());
-
-            if ("VNPAY".equalsIgnoreCase(paymentMethod)) {
-                double usdAmount = Double.parseDouble(order.totalLabel().replaceAll("[^0-9.]", ""));
-                String paymentUrl = vnPayService.createPaymentUrl(order.orderCode(), usdAmount, request);
-                return "redirect:" + paymentUrl;
+            if ("PAYPAL".equalsIgnoreCase(normalizedPaymentMethod)) {
+                var pendingOrder = orderService.placePendingOrder(authentication.getName(), cart, shippingAddress, notes);
+                double usdAmount = Double.parseDouble(pendingOrder.totalLabel().replaceAll("[^0-9.]", ""));
+                
+                try {
+                    com.paypal.api.payments.Payment payment = payPalService.createPayment(
+                            usdAmount * 25000, // Pass VND amount since createPayment handles conversion
+                            "sale",
+                            "Order " + pendingOrder.orderCode(),
+                            "http://localhost:9090/paypal/cancel",
+                            "http://localhost:9090/paypal/success"
+                    );
+                    for (com.paypal.api.payments.Links link : payment.getLinks()) {
+                        if (link.getRel().equals("approval_url")) {
+                            return "redirect:" + link.getHref();
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Error redirecting to PayPal: " + e.getMessage());
+                }
             }
 
-            redirectAttributes.addFlashAttribute("accountMessage",
-                    "Order " + order.orderCode() + " placed successfully.");
+            var order = orderService.placeOrder(authentication.getName(), cart, shippingAddress, normalizedPaymentMethod, notes);
+            
+            // Clear only purchased items from the shopping cart
+            java.util.List<String> purchasedSkus = cart.items().stream().map(com.uminimalist.store.model.CartItemView::sku).toList();
+            shoppingCartService.removeItems(session, authentication.getName(), purchasedSkus);
+            session.removeAttribute("checkoutSkus");
+
+            return "redirect:/checkout/success?orderCode=" + order.orderCode();
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             return "redirect:/checkout";
         }
-        return "redirect:/account";
     }
 
-    @GetMapping("/checkout/payment-return")
-    public String paymentReturn(HttpServletRequest request, Model model, RedirectAttributes redirectAttributes) {
-        Map<String, String> fields = new HashMap<>();
-        for (Enumeration<String> names = request.getParameterNames(); names.hasMoreElements();) {
-            String name = names.nextElement();
-            fields.put(name, request.getParameter(name));
+    @GetMapping("/checkout/success")
+    public String checkoutSuccess(@RequestParam String orderCode,
+                                 Authentication authentication,
+                                 Model model,
+                                 RedirectAttributes redirectAttributes) {
+        var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
+        if (orderOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("accountError", "Order not found.");
+            return "redirect:/account";
         }
+        model.addAttribute("order", orderOpt.get());
+        return "checkout-success";
+    }
 
-        String orderCode = fields.get("vnp_TxnRef");
-        String responseCode = fields.get("vnp_ResponseCode");
+    @GetMapping("/paypal/success")
+    public String paypalSuccess(@RequestParam("paymentId") String paymentId,
+                                @RequestParam("PayerID") String payerId,
+                                Authentication authentication,
+                                HttpSession session,
+                                Model model,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            com.paypal.api.payments.Payment payment = payPalService.executePayment(paymentId, payerId);
+            if (payment.getState().equals("approved")) {
+                String description = payment.getTransactions().get(0).getDescription();
+                String orderCode = description.replace("Order ", "");
 
-        boolean verified = vnPayService.verifyCallback(fields);
-        if (verified && "00".equals(responseCode)) {
-            try {
-                var order = orderService.findOrderForCustomer(request.getUserPrincipal().getName(), orderCode)
-                        .orElseThrow(() -> new IllegalArgumentException("Order not found."));
-                orderService.updateOrderStatus(order.id(), "PROCESSING");
+                String username = authentication != null ? authentication.getName() : null;
+                var order = orderService.confirmPaidOrder(username, orderCode);
+                
+                java.util.List<String> orderSkus = orderService.getOrderSkus(orderCode);
+                shoppingCartService.removeItems(session, username, orderSkus);
+                session.removeAttribute("checkoutSkus");
+
+                model.addAttribute("cartCount", shoppingCartService.getItemCount(session, username));
                 model.addAttribute("order", order);
-                model.addAttribute("cartCount", 0); // Cart is cleared upon order placement
                 return "checkout-success";
-            } catch (Exception e) {
-                redirectAttributes.addFlashAttribute("accountError", "Error updating order status: " + e.getMessage());
             }
-        } else {
-            redirectAttributes.addFlashAttribute("accountError", "Payment failed or canceled for Order " + orderCode);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("accountError", "Payment failed: " + e.getMessage());
         }
+        return "redirect:/account#orders";
+    }
 
-        return "redirect:/account";
+    @GetMapping("/paypal/cancel")
+    public String paypalCancel(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute("accountError", "Payment was canceled.");
+        return "redirect:/account#orders";
+    }
+
+    @PostMapping("/account/orders/{orderCode}/pay-again")
+    public String payAgain(@PathVariable String orderCode,
+                           Authentication authentication,
+                           HttpServletRequest request,
+                           RedirectAttributes redirectAttributes) {
+        try {
+            String paymentUrl = orderService.preparePayAgainUrl(authentication.getName(), orderCode, payPalService);
+            return "redirect:" + paymentUrl;
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+            return "redirect:/account#orders";
+        }
     }
 
     @PostMapping("/products/{slug}/reviews")
@@ -289,13 +467,64 @@ public class CustomerController {
                             Authentication authentication,
                             @RequestParam int rating,
                             @RequestParam String comment,
+                            @RequestParam(required = false) String orderCode,
                             RedirectAttributes redirectAttributes) {
         try {
             productReviewService.addReview(authentication.getName(), slug, rating, comment);
+            redirectAttributes.addFlashAttribute("accountMessage", "Review submitted successfully.");
             redirectAttributes.addFlashAttribute("cartMessage", "Review submitted successfully.");
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
         }
+        if (orderCode != null && !orderCode.isBlank()) {
+            return "redirect:/account/orders/" + orderCode;
+        }
         return "redirect:/products/" + slug;
+    }
+
+    @PostMapping("/products/{slug}/reviews/{reviewId}/edit")
+    public String editReview(@PathVariable String slug,
+                             @PathVariable Long reviewId,
+                             Authentication authentication,
+                             @RequestParam int rating,
+                             @RequestParam String comment,
+                             @RequestParam(required = false) String orderCode,
+                             RedirectAttributes redirectAttributes) {
+        try {
+            productReviewService.updateReview(authentication.getName(), reviewId, rating, comment);
+            redirectAttributes.addFlashAttribute("accountMessage", "Review updated successfully.");
+            redirectAttributes.addFlashAttribute("cartMessage", "Review updated successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+        }
+        if (orderCode != null && !orderCode.isBlank()) {
+            return "redirect:/account/orders/" + orderCode;
+        }
+        return "redirect:/products/" + slug;
+    }
+
+    @PostMapping("/products/{slug}/reviews/{reviewId}/delete")
+    public String deleteReview(@PathVariable String slug,
+                               @PathVariable Long reviewId,
+                               Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            productReviewService.deleteReview(authentication.getName(), reviewId, isAdmin(authentication));
+            redirectAttributes.addFlashAttribute("cartMessage", "Review deleted successfully.");
+            redirectAttributes.addFlashAttribute("accountMessage", "Review deleted successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+        }
+        return "redirect:/products/" + slug;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null
+                && authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

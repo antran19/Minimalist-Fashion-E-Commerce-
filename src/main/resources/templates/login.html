@@ -1,13 +1,9 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sign In | U-Minimalist</title>
-    <meta name="description" content="Sign in to your U-Minimalist account.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block th:insert="~{fragments/head :: head('Sign In | U-Minimalist', 'Sign in to your U-Minimalist account.')}">
+    </th:block>
     <style>
         .auth-container {
             min-height: calc(100vh - 72px - 240px);
@@ -17,6 +13,7 @@
             padding-block: 120px 60px;
             background-color: var(--page);
         }
+
         .auth-card {
             width: 100%;
             max-width: 440px;
@@ -26,20 +23,24 @@
             background: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
         }
+
         .auth-card h1 {
             font-size: 2.2rem;
             font-weight: 800;
             letter-spacing: -0.04em;
             margin-bottom: 8px;
         }
+
         .auth-card p.subtitle {
             color: var(--muted);
             font-size: 0.95rem;
             margin-bottom: 32px;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -49,6 +50,7 @@
             text-transform: uppercase;
             color: var(--ink);
         }
+
         .form-control-custom {
             width: 100%;
             min-height: 46px;
@@ -61,10 +63,12 @@
             background-color: #ffffff;
             transition: border-color 150ms ease;
         }
+
         .form-control-custom:focus {
             outline: none;
             border-color: var(--ink);
         }
+
         .auth-btn {
             width: 100%;
             min-height: 48px;
@@ -78,13 +82,16 @@
             margin-top: 10px;
             transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
         }
+
         .auth-btn:hover {
             background: var(--accent);
             border-color: var(--accent);
         }
+
         .auth-btn:active {
             transform: scale(0.98);
         }
+
         .auth-alert {
             padding: 12px 16px;
             border-radius: var(--radius);
@@ -92,16 +99,19 @@
             font-weight: 600;
             margin-bottom: 24px;
         }
+
         .alert-error {
             background-color: #fff5f5;
             border: 1px solid #ffc9c9;
             color: var(--accent);
         }
+
         .alert-success {
             background-color: #f4fbf7;
             border: 1px solid #c3ebd6;
             color: #1b854d;
         }
+
         .auth-switch {
             text-align: center;
             margin-top: 24px;
@@ -109,123 +119,98 @@
             color: var(--muted);
             font-weight: 500;
         }
+
         .auth-switch a {
             color: var(--ink);
             font-weight: 700;
             border-bottom: 1px solid var(--ink);
         }
+
         .auth-switch a:hover {
             color: var(--accent);
             border-color: var(--accent);
         }
     </style>
 </head>
+
 <body>
-<header class="site-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}" aria-label="Search products">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link active" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
+    <th:block th:replace="~{fragments/navbar :: navbar('login', 'site-header is-scrolled', '', true, false, true)}">
+    </th:block>
+
+    <main class="auth-container">
+        <div class="auth-card">
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Please enter your details to sign in.</p>
+
+            <div th:if="${errorMessage}" class="auth-alert alert-error" th:text="${errorMessage}"></div>
+            <div th:if="${successMessage}" class="auth-alert alert-success" th:text="${successMessage}"></div>
+
+            <form th:action="@{/login}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control-custom"
+                        placeholder="name@domain.com" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control-custom"
+                        placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+
+            <div class="auth-switch">
+                Don't have an account? <a th:href="@{/register}">Create account</a>
             </div>
+
+            <!-- Quick Login Buttons for Testing -->
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                <button type="button" onclick="fillLogin('admin@uminimalist.com', 'admin123')"
+                    style="flex: 1; padding: 8px; border: 1px solid var(--line); background: #f9f9f9; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Admin</button>
+                <button type="button" onclick="fillLogin('customer@uminimalist.com', 'customer123')"
+                    style="flex: 1; padding: 8px; border: 1px solid var(--line); background: #f9f9f9; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 0.85rem;">Customer</button>
+            </div>
+            <script>
+                function fillLogin(email, password) {
+                    document.getElementById('email').value = email;
+                    document.getElementById('password').value = password;
+                }
+            </script>
         </div>
-    </nav>
-</header>
+    </main>
 
-<main class="auth-container">
-    <div class="auth-card">
-        <h1>Welcome Back</h1>
-        <p class="subtitle">Please enter your details to sign in.</p>
+    <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+<script>
+    (function () {
+        var form = document.querySelector('form[action*="/login"]');
+        var emailInput = document.getElementById('email');
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-        <div th:if="${errorMessage}" class="auth-alert alert-error" th:text="${errorMessage}"></div>
-        <div th:if="${successMessage}" class="auth-alert alert-success" th:text="${successMessage}"></div>
+        function showError(msg) {
+            var existing = document.getElementById('client-error');
+            if (existing) existing.remove();
+            var div = document.createElement('div');
+            div.id = 'client-error';
+            div.className = 'auth-alert alert-error';
+            div.textContent = msg;
+            form.parentNode.insertBefore(div, form);
+        }
 
-        <form th:action="@{/login}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" class="form-control-custom" placeholder="name@domain.com" required autofocus>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-control-custom" placeholder="••••••••" required>
-            </div>
-            <button type="submit" class="auth-btn">Sign In</button>
-        </form>
-
-        <div class="auth-switch">
-            Don't have an account? <a th:href="@{/register}">Create account</a>
-        </div>
-    </div>
-</main>
-
-<footer class="site-footer">
-    <div class="page-shell">
-        <div class="footer-brand">
-            <strong>U-Minimalist</strong>
-            <p>Minimal fashion e-commerce system for Java Frameworks.</p>
-        </div>
-        <div class="footer-columns">
-            <div>
-                <h2>Shop</h2>
-                <a th:href="@{/products(collection='men')}">Men</a>
-                <a th:href="@{/products(collection='women')}">Women</a>
-                <a th:href="@{/products(collection='kids')}">Kids</a>
-                <a th:href="@{/products(sort='new')}">New arrivals</a>
-            </div>
-            <div>
-                <h2>Support</h2>
-                <a th:href="@{/help}">Contact</a>
-                <a th:href="@{/orders}">Order status</a>
-                <a th:href="@{/shipping}">Shipping</a>
-                <a th:href="@{/returns}">Returns</a>
-            </div>
-            <div>
-                <h2>Account</h2>
-                <a th:href="@{/login}">Sign in</a>
-                <a th:href="@{/register}">Create account</a>
-                <a th:href="@{/cart}">Cart</a>
-                <a th:href="@{/wishlist}">Wishlist</a>
-            </div>
-            <div>
-                <h2>Updates</h2>
-                <p>Seasonal essentials, product drops, and stock updates.</p>
-            </div>
-        </div>
-    </div>
-</footer>
-
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+        form.addEventListener('submit', function (e) {
+            var email = emailInput.value.trim();
+            if (!emailRegex.test(email)) {
+                e.preventDefault();
+                showError('Email không hợp lệ. Vui lòng nhập đúng định dạng, ví dụ: name@domain.com');
+                emailInput.focus();
+                return;
+            }
+            var existing = document.getElementById('client-error');
+            if (existing) existing.remove();
+        });
+    })();
+</script>
+    <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 </body>
+
 </html>

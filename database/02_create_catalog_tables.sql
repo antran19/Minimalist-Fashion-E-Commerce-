@@ -30,11 +30,13 @@ CREATE TABLE dbo.products (
     slug NVARCHAR(120) NOT NULL UNIQUE,
     name NVARCHAR(180) NOT NULL,
     product_type NVARCHAR(80) NOT NULL,
-    description NVARCHAR(500) NULL,
+    description NVARCHAR(MAX) NULL,
     base_price DECIMAL(10, 2) NOT NULL,
     crop_class NVARCHAR(80) NOT NULL,
     new_arrival BIT NOT NULL DEFAULT 0,
     best_seller BIT NOT NULL DEFAULT 0,
+    on_sale BIT NOT NULL DEFAULT 0,
+    discount_percentage INT NULL,
     active BIT NOT NULL DEFAULT 1,
     created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT fk_products_category
@@ -49,6 +51,8 @@ CREATE TABLE dbo.product_variants (
     size NVARCHAR(40) NOT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
     active BIT NOT NULL DEFAULT 1,
+    image_url NVARCHAR(500) NULL,
+    image_public_id NVARCHAR(200) NULL,
     CONSTRAINT fk_product_variants_product
         FOREIGN KEY (product_id) REFERENCES dbo.products(id),
     CONSTRAINT ck_product_variants_stock_quantity

@@ -1,175 +1,520 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Products | U-Minimalist</title>
-    <meta name="description" content="Browse U-Minimalist everyday apparel by category, size, color, and price.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
+    <th:block th:insert="~{fragments/head :: head('Products | U-Minimalist', 'Browse U-Minimalist everyday apparel by category, size, color, price, and stock availability.')}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/products-stitch.css(v=1)}">
 </head>
-<body class="catalog-page">
-<header class="site-header catalog-header is-scrolled">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}" aria-current="page">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
+<body class="catalog-stitch-page">
+<th:block th:replace="~{fragments/navbar :: navbar('products', 'site-header catalog-header is-scrolled', '', true, false, true)}"></th:block>
+
+<main class="catalog-stitch-main">
+    <section class="catalog-stitch-layout page-shell" aria-label="Product catalog">
+        <div class="catalog-filter-overlay" id="catalog-filter-overlay" hidden></div>
+
+        <aside class="catalog-filter-panel" id="catalog-filter-panel" aria-label="Product filters" aria-hidden="false">
+            <div class="catalog-filter-heading">
+                <div>
+                    <span class="catalog-eyebrow">Refine results</span>
+                    <h2>Filter by</h2>
+                </div>
+                <button class="catalog-filter-close"
+                        id="catalog-filter-close"
+                        type="button"
+                        aria-label="Close product filters">
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M6 6l12 12M18 6L6 18"></path>
+                    </svg>
+                </button>
             </div>
-        </div>
-    </nav>
-</header>
 
-<main>
-    <section class="catalog-hero page-shell" aria-labelledby="catalog-title">
-        <div>
-            <h1 id="catalog-title">Everyday essentials</h1>
-            <p>Find clean, repeatable pieces by category, size, color, and price before moving into the cart flow.</p>
-        </div>
-        <a class="btn btn-primary retail-btn" th:href="@{/products(sort='new')}">Newest first</a>
-    </section>
+            <form class="catalog-filter-form" th:action="@{/products}" method="get">
+                <input type="hidden" name="sort" th:value="${selectedSort}">
 
-    <section class="catalog-layout page-shell" aria-label="Product catalog">
-        <aside class="filter-panel" aria-label="Product filters">
-            <form th:action="@{/products}" method="get">
-                <div class="filter-block">
+                <div class="catalog-filter-group">
                     <label for="q">Search</label>
-                    <input id="q" name="q" type="search" th:value="${q}" placeholder="Tee, shirt, pants">
+                    <div class="catalog-search-field">
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="M20 20l-3.8-3.8"></path>
+                        </svg>
+                        <input id="q"
+                               name="q"
+                               type="search"
+                               th:value="${q}"
+                               placeholder="Search products"
+                               autocomplete="off">
+                    </div>
                 </div>
 
-                <div class="filter-block">
+                <div class="catalog-filter-group">
                     <label for="collection">Category</label>
                     <select id="collection" name="collection">
                         <option value="">All categories</option>
-                        <option th:each="collection : ${collections}"
-                                th:value="${collection}"
-                                th:text="${#strings.capitalize(collection)}"
-                                th:selected="${collection == selectedCollection}">Men</option>
+                        <option th:each="collectionOption : ${collections}"
+                                th:value="${collectionOption}"
+                                th:text="${#strings.capitalize(collectionOption)}"
+                                th:selected="${collectionOption == selectedCollection}">Men</option>
                     </select>
                 </div>
 
-                <div class="filter-block">
-                    <label for="size">Size</label>
-                    <select id="size" name="size">
-                        <option value="">All sizes</option>
-                        <option th:each="sizeOption : ${sizes}"
-                                th:value="${sizeOption}"
-                                th:text="${sizeOption}"
-                                th:selected="${sizeOption == selectedSize}">M</option>
-                    </select>
-                </div>
+                <fieldset class="catalog-filter-group catalog-filter-fieldset">
+                    <legend>Size</legend>
+                    <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 6px;">
+                        <!-- Adults -->
+                        <div>
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Adults</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option">
+                                    <input type="radio"
+                                           name="size"
+                                           value=""
+                                           th:checked="${selectedSize == null or #strings.isEmpty(selectedSize)}">
+                                    <span>All</span>
+                                </label>
+                                <label class="catalog-size-option"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption == 'XXS' or sizeOption == 'XS' or sizeOption == 'S' or sizeOption == 'M' or sizeOption == 'L' or sizeOption == 'XL' or sizeOption == '2XL' or sizeOption == '3XL'}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">M</span>
+                                </label>
+                            </div>
+                        </div>
 
-                <div class="filter-block">
-                    <label for="color">Color</label>
-                    <select id="color" name="color">
-                        <option value="">All colors</option>
-                        <option th:each="colorOption : ${colors}"
-                                th:value="${colorOption}"
-                                th:text="${colorOption}"
-                                th:selected="${colorOption == selectedColor}">White</option>
-                    </select>
-                </div>
+                        <!-- Kids -->
+                        <div th:if="${#lists.contains(sizes, '110') or #lists.contains(sizes, '120') or #lists.contains(sizes, '130') or #lists.contains(sizes, '140')}">
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Kids</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption.matches('\d+')}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">110</span>
+                                </label>
+                            </div>
+                        </div>
 
-                <div class="filter-range">
-                    <div class="filter-block">
-                        <label for="minPrice">Min</label>
-                        <input id="minPrice" name="minPrice" type="number" min="0" step="1" th:value="${minPrice}" placeholder="$0">
+                        <!-- Accessories -->
+                        <div th:if="${#lists.contains(sizes, 'One size')}">
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Accessories</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option" style="grid-column: span 2;"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption.equalsIgnoreCase('One size')}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">One size</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="filter-block">
-                        <label for="maxPrice">Max</label>
-                        <input id="maxPrice" name="maxPrice" type="number" min="0" step="1" th:value="${maxPrice}" placeholder="$80">
+                </fieldset>
+
+                <fieldset class="catalog-filter-group catalog-filter-fieldset">
+                    <legend>Color</legend>
+                    <div class="catalog-color-options">
+                        <label class="catalog-color-option catalog-color-option-all">
+                            <input type="radio"
+                                   name="color"
+                                   value=""
+                                   th:checked="${selectedColor == null or #strings.isEmpty(selectedColor)}">
+                            <span class="catalog-color-dot catalog-color-dot-all" aria-hidden="true"></span>
+                            <span>All colors</span>
+                        </label>
+                        <label class="catalog-color-option" th:each="colorOption : ${colors}">
+                            <input type="radio"
+                                   name="color"
+                                   th:value="${colorOption}"
+                                   th:checked="${colorOption == selectedColor}">
+                            <span class="catalog-color-dot"
+                                  aria-hidden="true"
+                                  th:style="'background-color:' + ${T(com.uminimalist.store.model.ProductView).getColorHex(colorOption)}"></span>
+                            <span th:text="${colorOption}">Black</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="catalog-filter-group">
+                    <span class="catalog-filter-label">Price range</span>
+                    <div class="catalog-price-range">
+                        <label>
+                            <span>Min</span>
+                            <input id="minPrice"
+                                   name="minPrice"
+                                   type="number"
+                                   min="0"
+                                   step="1"
+                                   th:value="${minPrice}"
+                                   placeholder="0">
+                        </label>
+                        <span class="catalog-price-divider" aria-hidden="true">—</span>
+                        <label>
+                            <span>Max</span>
+                            <input id="maxPrice"
+                                   name="maxPrice"
+                                   type="number"
+                                   min="0"
+                                   step="1"
+                                   th:value="${maxPrice}"
+                                   placeholder="80">
+                        </label>
                     </div>
                 </div>
 
-                <div class="filter-block">
-                    <label for="sort">Sort</label>
-                    <select id="sort" name="sort">
-                        <option value="new" th:selected="${selectedSort == 'new'}">Newest</option>
-                        <option value="best" th:selected="${selectedSort == 'best'}">Best sellers</option>
-                        <option value="price-asc" th:selected="${selectedSort == 'price-asc'}">Price low to high</option>
-                        <option value="price-desc" th:selected="${selectedSort == 'price-desc'}">Price high to low</option>
-                    </select>
-                </div>
-
-                <div class="filter-actions">
-                    <button class="btn btn-primary retail-btn" type="submit">Apply</button>
-                    <a th:href="@{/products}" class="clear-link">Reset</a>
+                <div class="catalog-filter-actions">
+                    <button class="catalog-primary-button" type="submit">Apply filters</button>
+                    <a class="catalog-secondary-button" th:href="@{/products}">Reset</a>
                 </div>
             </form>
         </aside>
 
-        <div class="catalog-results">
-            <div class="catalog-toolbar">
-                <p><strong th:text="${#lists.size(products)}">10</strong> styles found</p>
+        <div class="catalog-stitch-content">
+            <header class="catalog-stitch-header">
+                <div class="catalog-stitch-intro">
+                    <span class="catalog-eyebrow">Curated collection</span>
+                    <h1>Everyday essentials</h1>
+                    <p>Find clean, repeatable pieces by category, size, color, and price before moving into the cart flow.</p>
+                </div>
+
+                <form class="catalog-sort-form" th:action="@{/products}" method="get">
+                    <input type="hidden" name="q" th:value="${q}" th:if="${q != null and !#strings.isEmpty(q)}">
+                    <input type="hidden" name="collection" th:value="${selectedCollection}" th:if="${selectedCollection != null and !#strings.isEmpty(selectedCollection)}">
+                    <input type="hidden" name="size" th:value="${selectedSize}" th:if="${selectedSize != null and !#strings.isEmpty(selectedSize)}">
+                    <input type="hidden" name="color" th:value="${selectedColor}" th:if="${selectedColor != null and !#strings.isEmpty(selectedColor)}">
+                    <input type="hidden" name="minPrice" th:value="${minPrice}" th:if="${minPrice != null}">
+                    <input type="hidden" name="maxPrice" th:value="${maxPrice}" th:if="${maxPrice != null}">
+                    <label for="catalog-sort">Sort by</label>
+                    <select id="catalog-sort" name="sort" onchange="this.form.submit()">
+                        <option value="" th:selected="${selectedSort == null or #strings.isEmpty(selectedSort)}">Default</option>
+                        <option value="new" th:selected="${selectedSort == 'new'}">Newest first</option>
+                        <option value="best" th:selected="${selectedSort == 'best'}">Best sellers</option>
+                        <option value="price-asc" th:selected="${selectedSort == 'price-asc'}">Price: low to high</option>
+                        <option value="price-desc" th:selected="${selectedSort == 'price-desc'}">Price: high to low</option>
+                    </select>
+                </form>
+            </header>
+
+            <p class="catalog-filter-alert" th:if="${filterError}" th:text="${filterError}">The price range was adjusted.</p>
+
+            <div class="catalog-mobile-toolbar">
+                <button class="catalog-mobile-filter-button"
+                        id="catalog-filter-open"
+                        type="button"
+                        aria-controls="catalog-filter-panel"
+                        aria-expanded="false">
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M4 7h16M7 12h10M10 17h4"></path>
+                    </svg>
+                    Filters
+                </button>
+                <label class="catalog-mobile-sort" for="catalog-sort-mobile">
+                    <span>Sort</span>
+                    <select id="catalog-sort-mobile"
+                            aria-label="Sort products"
+                            onchange="document.getElementById('catalog-sort').value=this.value; document.getElementById('catalog-sort').form.submit();">
+                        <option value="" th:selected="${selectedSort == null or #strings.isEmpty(selectedSort)}">Default</option>
+                        <option value="new" th:selected="${selectedSort == 'new'}">Newest</option>
+                        <option value="best" th:selected="${selectedSort == 'best'}">Best sellers</option>
+                        <option value="price-asc" th:selected="${selectedSort == 'price-asc'}">Price ↑</option>
+                        <option value="price-desc" th:selected="${selectedSort == 'price-desc'}">Price ↓</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="catalog-results-toolbar">
+                <p>
+                    <strong th:text="${#lists.size(products)}">0</strong>
+                    <span th:text="${#lists.size(products) == 1 ? 'style found' : 'styles found'}">styles found</span>
+                </p>
                 <span>Inventory visible before checkout</span>
             </div>
 
-            <div class="product-grid catalog-grid" th:if="${!#lists.isEmpty(products)}">
-                <article class="product-card reveal-card" th:each="product : ${products}">
-                    <a th:href="@{/products/{slug}(slug=${product.slug})}" class="product-image product-image-real" th:classappend="${product.cropClass}">
-                        <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
+            <div class="catalog-active-filters"
+                 th:if="${(q != null and !#strings.isEmpty(q))
+                        or (selectedCollection != null and !#strings.isEmpty(selectedCollection))
+                        or (selectedSize != null and !#strings.isEmpty(selectedSize))
+                        or (selectedColor != null and !#strings.isEmpty(selectedColor))
+                        or minPrice != null
+                        or maxPrice != null}">
+                <span class="catalog-active-filter" th:if="${q != null and !#strings.isEmpty(q)}">
+                    Search: <strong th:text="${q}">tee</strong>
+                </span>
+                <span class="catalog-active-filter" th:if="${selectedCollection != null and !#strings.isEmpty(selectedCollection)}">
+                    Category: <strong th:text="${#strings.capitalize(selectedCollection)}">Men</strong>
+                </span>
+                <span class="catalog-active-filter" th:if="${selectedSize != null and !#strings.isEmpty(selectedSize)}">
+                    Size: <strong th:text="${selectedSize}">M</strong>
+                </span>
+                <span class="catalog-active-filter" th:if="${selectedColor != null and !#strings.isEmpty(selectedColor)}">
+                    <span class="catalog-active-filter-color"
+                          aria-hidden="true"
+                          th:style="'background-color:' + ${T(com.uminimalist.store.model.ProductView).getColorHex(selectedColor)}"></span>
+                    <strong th:text="${selectedColor}">Black</strong>
+                </span>
+                <span class="catalog-active-filter" th:if="${minPrice != null}">
+                    Min: <strong th:text="${'$' + #numbers.formatDecimal(minPrice, 1, 2)}">$0.00</strong>
+                </span>
+                <span class="catalog-active-filter" th:if="${maxPrice != null}">
+                    Max: <strong th:text="${'$' + #numbers.formatDecimal(maxPrice, 1, 2)}">$80.00</strong>
+                </span>
+                <a class="catalog-clear-filters" th:href="@{/products}">Clear all</a>
+            </div>
+
+            <div class="catalog-product-grid" th:if="${!#lists.isEmpty(products)}">
+                <article class="catalog-product-card"
+                         th:each="product : ${products}"
+                         th:classappend="${product.stock <= 0} ? ' is-sold-out' : ''">
+                    <a class="catalog-product-image"
+                       th:href="@{/products/{slug}(slug=${product.slug})}"
+                       th:attr="aria-label=${'View ' + product.name}">
+                        <img class="catalog-card-main-image"
+                             th:src="${product.imagePath}"
+                             th:alt="${product.name}"
+                             loading="lazy">
+
+                        <span class="catalog-sold-out-overlay" th:if="${product.stock <= 0}">Sold out</span>
+
+                        <span class="catalog-card-badges"
+                              th:if="${product.stock <= 0 or product.isNew or product.onSale or product.bestSeller}">
+                            <span class="catalog-card-badge is-sold-out" th:if="${product.stock <= 0}">Out of stock</span>
+                            <div class="catalog-card-badges-row" th:if="${product.stock > 0 and (product.isNew or product.bestSeller)}">
+                                <span class="catalog-card-badge is-new" th:if="${product.isNew}">New arrival</span>
+                                <span class="catalog-card-badge is-best" th:if="${product.bestSeller}">Best seller</span>
+                            </div>
+                            <span class="catalog-card-badge is-sale" th:if="${product.stock > 0 and product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
+                        </span>
                     </a>
-                    <div class="product-meta">
-                        <div class="product-status">
-                            <p th:text="${product.category}">T-shirt</p>
-                            <span th:if="${product.bestSeller}">Best</span>
-                            <span th:if="${product.isNew}">New</span>
+
+                    <div class="catalog-product-copy">
+                        <p class="catalog-product-category" th:text="${product.category}">T-shirt</p>
+                        <h2>
+                            <a th:href="@{/products/{slug}(slug=${product.slug})}"
+                               th:text="${product.name}">Product name</a>
+                        </h2>
+
+                        <div class="catalog-product-price-row">
+                            <strong th:if="${product.onSale}" style="color: #dc2626;" th:text="${product.salePriceLabel}">$0.00</strong>
+                            <span th:if="${product.onSale}" class="text-muted text-decoration-line-through" th:text="${product.priceLabel}">$0.00</span>
+                            <strong th:unless="${product.onSale}" th:text="${product.priceLabel}">$0.00</strong>
+                            <span class="catalog-low-stock"
+                                  th:if="${product.stock > 0 and product.stock <= 5}"
+                                  th:text="${'Only ' + product.stock + ' left'}">Only 3 left</span>
+                            <span class="catalog-stock-label"
+                                  th:if="${product.stock > 5}"
+                                  th:text="${product.stock + ' in stock'}">10 in stock</span>
                         </div>
-                        <h3 th:text="${product.name}">Air Cotton Tee</h3>
-                        <div class="product-line">
-                            <span th:text="${product.priceLabel}">$19.90</span>
-                            <span th:text="${product.colorLabel()}">Cream</span>
+
+                        <div class="catalog-product-footer">
+                            <div class="catalog-product-swatches" th:if="${!#lists.isEmpty(product.colors)}" aria-label="Available colors">
+                                <span th:each="productColor : ${product.colors}"
+                                      class="catalog-product-swatch"
+                                      th:title="${productColor}"
+                                      th:data-color="${productColor}"
+                                      th:data-slug="${product.slug}"
+                                      th:data-image="${product.imageForColor(productColor)}"
+                                      th:style="'cursor: pointer; background-color:' + ${product.colorHex(productColor)}"></span>
+                            </div>
+                            <a class="catalog-view-product"
+                               th:href="@{/products/{slug}(slug=${product.slug})}">View product</a>
                         </div>
-                        <small th:text="${product.sizeLabel()}">S M L XL</small>
-                        <small class="stock-line" th:text="${product.stock + ' in stock'}">48 in stock</small>
                     </div>
                 </article>
             </div>
 
-            <div class="empty-state" th:if="${#lists.isEmpty(products)}">
-                <h2>No matching styles</h2>
-                <p>Adjust the category, size, color, or price range to see available inventory.</p>
-                <a class="btn btn-primary retail-btn" th:href="@{/products}">View all products</a>
-            </div>
+            <section class="catalog-empty-state" th:if="${#lists.isEmpty(products)}" aria-labelledby="empty-products-title">
+                <div class="catalog-empty-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="10.5" cy="10.5" r="6.5"></circle>
+                        <path d="M15.5 15.5L21 21M8 8l5 5M13 8l-5 5"></path>
+                    </svg>
+                </div>
+                <span class="catalog-eyebrow">No matching inventory</span>
+                <h2 id="empty-products-title">No products found</h2>
+                <p>We could not find products matching the current filters. Adjust your selection or reset the catalog filters.</p>
+                <div class="catalog-empty-actions">
+                    <a class="catalog-primary-button" th:href="@{/products}">Reset filters</a>
+                    <a class="catalog-secondary-button" th:href="@{/}">Continue browsing</a>
+                </div>
+            </section>
         </div>
     </section>
 </main>
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
-<script th:src="@{/vendor/gsap/gsap.min.js}"></script>
-<script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
-<script th:src="@{/js/landing.js}"></script>
+<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+<th:block th:replace="~{fragments/scripts :: scripts(true)}"></th:block>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const openButton = document.getElementById('catalog-filter-open');
+        const closeButton = document.getElementById('catalog-filter-close');
+        const panel = document.getElementById('catalog-filter-panel');
+        const overlay = document.getElementById('catalog-filter-overlay');
+
+        if (!openButton || !closeButton || !panel || !overlay) {
+            return;
+        }
+
+        const setFilterOpen = function (isOpen) {
+            document.body.classList.toggle('catalog-filter-is-open', isOpen);
+            panel.classList.toggle('is-open', isOpen);
+            overlay.hidden = !isOpen;
+            panel.setAttribute('aria-hidden', String(!isOpen));
+            openButton.setAttribute('aria-expanded', String(isOpen));
+
+            if (isOpen) {
+                closeButton.focus();
+            } else {
+                openButton.focus();
+            }
+        };
+
+        openButton.addEventListener('click', function () {
+            setFilterOpen(true);
+        });
+
+        closeButton.addEventListener('click', function () {
+            setFilterOpen(false);
+        });
+
+        overlay.addEventListener('click', function () {
+            setFilterOpen(false);
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && panel.classList.contains('is-open')) {
+                setFilterOpen(false);
+            }
+        });
+
+        const desktopMedia = window.matchMedia('(min-width: 992px)');
+        const syncDesktopState = function () {
+            if (desktopMedia.matches) {
+                document.body.classList.remove('catalog-filter-is-open');
+                panel.classList.remove('is-open');
+                overlay.hidden = true;
+                panel.setAttribute('aria-hidden', 'false');
+                openButton.setAttribute('aria-expanded', 'false');
+            } else if (!panel.classList.contains('is-open')) {
+                panel.setAttribute('aria-hidden', 'true');
+            }
+        };
+
+        desktopMedia.addEventListener('change', syncDesktopState);
+        syncDesktopState();
+
+        // Catalog Card Color Swatch Click Handler
+        const catalogColorMap = {
+            'air-cotton-tee-light-blue': '/images/products/air-cotton-tee-light-blue.png',
+            'air-cotton-tee-pink': '/images/products/air-cotton-tee-pink.png',
+            'air-cotton-tee-cream': '/images/products/air-cotton-tee-cream.png',
+            'light-utility-jacket-navy': '/images/products/light-utility-jacket-navy.png',
+            'light-utility-jacket-gray': '/images/products/light-utility-jacket-gray.png',
+            'oxford-shirt-light-blue': '/images/products/oxford-shirt-light-blue.jpg',
+            'oxford-shirt-white': '/images/products/oxford-shirt-white.png',
+            'oxford-shirt-brown': '/images/products/oxford-shirt-brown.png',
+            'soft-jersey-tee-red': '/images/products/soft-jersey-tee-red.jpg',
+            'soft-jersey-tee-white': '/images/products/soft-jersey-tee-white.jpg',
+            'soft-jersey-tee-brown': '/images/products/soft-jersey-tee-brown.png',
+            'smart-ankle-pants-brown': '/images/products/smart-ankle-pants-brown.jpg',
+            'smart-ankle-pants-white': '/images/products/smart-ankle-pants-white.jpg',
+            'smart-ankle-pants-black': '/images/products/smart-ankle-pants-black.png',
+            'everyday-zip-hoodie-cream': '/images/products/everyday-zip-hoodie-cream.jpg',
+            'everyday-zip-hoodie-red': '/images/products/everyday-zip-hoodie-red.jpg',
+            'everyday-zip-hoodie-black': '/images/products/everyday-zip-hoodie-black.png',
+            'linen-blend-shirt-orange': '/images/products/linen-blend-shirt-orange.jpg',
+            'linen-blend-shirt-white': '/images/products/linen-blend-shirt-white.jpg',
+            'linen-blend-shirt-cream': '/images/products/linen-blend-shirt-cream.png',
+            'utility-tote-red': '/images/products/utility-tote-red.png',
+            'utility-tote-yellow': '/images/products/utility-tote-yellow.jpg',
+            'utility-tote-pink': '/images/products/utility-tote-pink.jpg',
+            'school-day-cardigan-dark-green': '/images/products/school-day-cardigan-dark-green.jpg',
+            'school-day-cardigan-navy': '/images/products/school-day-cardigan-navy.png',
+            'school-day-cardigan-black': '/images/products/school-day-cardigan-black.jpg',
+            'easy-cotton-shorts-gray': '/images/products/easy-cotton-shorts-gray.png',
+            'easy-cotton-shorts-blue': '/images/products/easy-cotton-shorts-blue.png'
+        };
+
+        document.querySelectorAll('.catalog-product-swatch').forEach(swatch => {
+            swatch.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const card = this.closest('.catalog-product-card');
+                if (!card) return;
+
+                const slug = this.getAttribute('data-slug');
+                const color = (this.getAttribute('data-color') || '').trim().toLowerCase().replace(/\s+/g, '-');
+                const img = card.querySelector('.catalog-card-main-image');
+
+                const directImg = this.getAttribute('data-image');
+                const key = slug + '-' + color;
+                if (img) {
+                    if (directImg) {
+                        img.src = directImg;
+                    } else if (catalogColorMap[key]) {
+                        img.src = catalogColorMap[key];
+                    }
+                }
+
+                const siblingSwatches = card.querySelectorAll('.catalog-product-swatch');
+                siblingSwatches.forEach(s => {
+                    s.style.outline = 'none';
+                    s.style.transform = 'none';
+                });
+                this.style.outline = '2px solid var(--ink, #000)';
+                this.style.outlineOffset = '2px';
+                this.style.transform = 'scale(1.2)';
+            });
+        });
+
+        function applyColorToAllCards(colorName) {
+            if (!colorName) return;
+            const formattedColor = colorName.trim().toLowerCase().replace(/\s+/g, '-');
+
+            document.querySelectorAll('.catalog-product-card').forEach(card => {
+                const matchingSwatch = Array.from(card.querySelectorAll('.catalog-product-swatch'))
+                    .find(s => (s.getAttribute('data-color') || '').trim().toLowerCase() === colorName.trim().toLowerCase());
+
+                if (matchingSwatch) {
+                    matchingSwatch.click();
+                } else {
+                    const firstSwatch = card.querySelector('.catalog-product-swatch');
+                    const slug = firstSwatch ? firstSwatch.getAttribute('data-slug') : null;
+                    const img = card.querySelector('.catalog-card-main-image');
+                    if (slug && img) {
+                        const key = slug + '-' + formattedColor;
+                        if (catalogColorMap[key]) {
+                            img.src = catalogColorMap[key];
+                        }
+                    }
+                }
+            });
+        }
+
+        // Listen for clicks/changes on left sidebar color filter
+        document.querySelectorAll('input[name="color"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                if (this.value) {
+                    applyColorToAllCards(this.value);
+                }
+            });
+        });
+
+        // Sync image colors on initial page load if color filter is active
+        const checkedColorRadio = document.querySelector('input[name="color"]:checked');
+        if (checkedColorRadio && checkedColorRadio.value) {
+            applyColorToAllCards(checkedColorRadio.value);
+        }
+    });
+</script>
 </body>
 </html>

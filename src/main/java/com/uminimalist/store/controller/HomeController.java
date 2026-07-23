@@ -19,17 +19,22 @@ public class HomeController {
     private final LandingPageService landingPageService;
     private final WishlistService wishlistService;
     private final ProductReviewService productReviewService;
+    private final com.uminimalist.store.service.ShoppingCartService shoppingCartService;
 
     public HomeController(LandingPageService landingPageService,
                           WishlistService wishlistService,
-                          ProductReviewService productReviewService) {
+                          ProductReviewService productReviewService,
+                          com.uminimalist.store.service.ShoppingCartService shoppingCartService) {
         this.landingPageService = landingPageService;
         this.wishlistService = wishlistService;
         this.productReviewService = productReviewService;
+        this.shoppingCartService = shoppingCartService;
     }
 
     @GetMapping("/")
-    public String home(Model model) {
+    public String home(Authentication authentication, jakarta.servlet.http.HttpSession session, Model model) {
+        String username = (authentication != null && authentication.isAuthenticated()) ? authentication.getName() : null;
+        model.addAttribute("cart", shoppingCartService.getCart(session, username));
         model.addAttribute("categories", landingPageService.getFeaturedCategories());
         model.addAttribute("newArrivals", landingPageService.getNewArrivals());
         model.addAttribute("essentials", landingPageService.getEssentials());
@@ -43,9 +48,29 @@ public class HomeController {
                            @RequestParam(required = false) String color,
                            @RequestParam(required = false) Double minPrice,
                            @RequestParam(required = false) Double maxPrice,
-                           @RequestParam(required = false, defaultValue = "new") String sort,
+                           @RequestParam(required = false) String sort,
                            Model model) {
-        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, minPrice, maxPrice, sort));
+        Double validatedMinPrice = minPrice;
+        Double validatedMaxPrice = maxPrice;
+        String filterError = null;
+
+        if (validatedMinPrice != null && validatedMinPrice < 0) {
+            filterError = "Minimum price cannot be negative. Reset to $0.";
+            validatedMinPrice = 0.0;
+        }
+        if (validatedMaxPrice != null && validatedMaxPrice < 0) {
+            filterError = "Maximum price cannot be negative. Reset to $0.";
+            validatedMaxPrice = 0.0;
+        }
+
+        if (validatedMinPrice != null && validatedMaxPrice != null && validatedMinPrice > validatedMaxPrice) {
+            filterError = "Min price ($" + minPrice + ") cannot be greater than Max price ($" + maxPrice + "). Filter adjusted automatically.";
+            Double temp = validatedMinPrice;
+            validatedMinPrice = validatedMaxPrice;
+            validatedMaxPrice = temp;
+        }
+
+        model.addAttribute("products", landingPageService.getProducts(q, collection, size, color, validatedMinPrice, validatedMaxPrice, sort));
         model.addAttribute("collections", landingPageService.getCollections());
         model.addAttribute("sizes", landingPageService.getSizes());
         model.addAttribute("colors", landingPageService.getColors());
@@ -56,6 +81,9 @@ public class HomeController {
         model.addAttribute("minPrice", minPrice);
         model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("selectedSort", sort);
+        if (filterError != null) {
+            model.addAttribute("filterError", filterError);
+        }
         return "products";
     }
 
@@ -64,16 +92,45 @@ public class HomeController {
         var product = landingPageService.getProduct(slug)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         model.addAttribute("product", product);
-        boolean authenticated = authentication != null
-                && authentication.isAuthenticated()
-                && authentication.getAuthorities().stream().noneMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
-        model.addAttribute("inWishlist", authenticated && wishlistService.contains(authentication.getName(), slug));
+        model.addAttribute("variantStocks", landingPageService.getVariantStockMap(slug));
         
-        String email = authenticated ? authentication.getName() : null;
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isAdmin = isAuthenticated && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        boolean isCustomer = isAuthenticated && !isAdmin;
+        
+        model.addAttribute("inWishlist", isCustomer && wishlistService.contains(authentication.getName(), slug));
+        
+        model.addAttribute("currentUserEmail", isAuthenticated ? authentication.getName() : null);
+        model.addAttribute("isAdmin", isAdmin);
+        
         model.addAttribute("reviews", productReviewService.findReviewsForProduct(slug));
         model.addAttribute("ratingStats", productReviewService.getStatsForProduct(slug));
-        model.addAttribute("canReview", authenticated && productReviewService.canUserReview(email, slug));
+        model.addAttribute("relatedProducts", landingPageService.getRelatedProducts(product.slug(), product.collection(), 4));
         
         return "product-detail";
+    }
+
+    @GetMapping({"/help", "/shipping", "/returns"})
+    public String helpPage(Authentication authentication, jakarta.servlet.http.HttpSession session, Model model) {
+        String username = (authentication != null && authentication.isAuthenticated()) ? authentication.getName() : null;
+        model.addAttribute("cart", shoppingCartService.getCart(session, username));
+        return "help";
+    }
+
+    @GetMapping("/orders")
+    public String ordersRedirect() {
+        return "redirect:/account";
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/newsletter")
+    public String subscribeNewsletter(@RequestParam(required = false) String email,
+                                      org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes,
+                                      jakarta.servlet.http.HttpServletRequest request) {
+        if (email != null && !email.isBlank()) {
+            redirectAttributes.addFlashAttribute("newsletterSuccess", "Thank you for joining the U-Minimalist newsletter!");
+        }
+        String referer = request.getHeader("Referer");
+        return "redirect:" + (referer != null && !referer.isBlank() ? referer : "/");
     }
 }

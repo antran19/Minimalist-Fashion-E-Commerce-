@@ -3,7 +3,10 @@ package com.uminimalist.store.controller;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.UserRegistrationDto;
 import com.uminimalist.store.repository.UserRepository;
+import com.uminimalist.store.service.ShoppingCartService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,17 +21,32 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ShoppingCartService shoppingCartService;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository userRepository,
+                          PasswordEncoder passwordEncoder,
+                          ShoppingCartService shoppingCartService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.shoppingCartService = shoppingCartService;
     }
 
     @GetMapping("/login")
     public String login(@RequestParam(value = "error", required = false) String error,
                         @RequestParam(value = "logout", required = false) String logout,
                         @RequestParam(value = "registered", required = false) String registered,
+                        @RequestParam(value = "expired", required = false) String expired,
+                        @RequestParam(value = "session_limit", required = false) String sessionLimit,
+                        Authentication authentication,
                         Model model) {
+        if (logout == null && expired == null && sessionLimit == null
+                && authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            return isAdmin ? "redirect:/admin/dashboard" : "redirect:/";
+        }
+
         if (error != null) {
             model.addAttribute("errorMessage", "Invalid email or password.");
         }
@@ -37,6 +55,12 @@ public class AuthController {
         }
         if (registered != null) {
             model.addAttribute("successMessage", "Account created successfully! Please sign in.");
+        }
+        if (expired != null) {
+            model.addAttribute("errorMessage", "Your session has expired because your account was logged in on another device.");
+        }
+        if (sessionLimit != null) {
+            model.addAttribute("errorMessage", "This account is currently logged in on another browser or device. Concurrent login is not allowed.");
         }
         return "login";
     }
@@ -50,6 +74,7 @@ public class AuthController {
     @PostMapping("/register")
     public String registerSubmit(@Valid @ModelAttribute("user") UserRegistrationDto registrationDto,
                                  BindingResult bindingResult,
+                                 HttpSession session,
                                  Model model) {
         normalizeRegistration(registrationDto);
 
@@ -76,6 +101,7 @@ public class AuthController {
         );
 
         userRepository.save(user);
+        shoppingCartService.mergeSessionCartToCustomerAfterRegister(session, registrationDto.getEmail());
         return "redirect:/login?registered=true";
     }
 
