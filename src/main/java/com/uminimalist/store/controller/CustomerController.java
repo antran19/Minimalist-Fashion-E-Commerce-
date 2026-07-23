@@ -204,6 +204,7 @@ public class CustomerController {
                         .map(ProductVariant::getStockQuantity)
                         .orElse(0);
                 if (availableStock > 0) {
+<<<<<<< HEAD
                     try {
                         shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
                         addedItems += availableStock;
@@ -211,6 +212,11 @@ public class CustomerController {
                     } catch (IllegalArgumentException ignored) {
                         // Skip completely unavailable or out-of-stock variants
                     }
+=======
+                    shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
+                    addedItems += availableStock;
+                    warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
+>>>>>>> 6018660c20a9cc98f32dd2c7dc2b8292c299d5f2
                 }
             }
         }

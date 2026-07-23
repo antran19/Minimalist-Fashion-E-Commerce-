@@ -17,4 +17,7 @@ public record CartItemView(
         boolean outOfStock,
         boolean stockExceeded
 ) {
+    public boolean isSelectable() {
+        return !outOfStock && !stockExceeded;
+    }
 }

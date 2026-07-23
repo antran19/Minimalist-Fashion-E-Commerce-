@@ -20,6 +20,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.io.PrintWriter;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -220,6 +222,7 @@ public class AdminController {
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
             redirectAttributes.addFlashAttribute("adminErrorModal", "#addVariantModal");
+            redirectAttributes.addFlashAttribute("adminErrorProductId", productId);
         }
         return "redirect:/admin/dashboard#catalog";
     }
@@ -311,6 +314,20 @@ public class AdminController {
         try {
             adminCatalogService.setPrimaryProductImage(productId, imageId);
             redirectAttributes.addFlashAttribute("adminMessage", "Primary product image updated.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/{productId}/images/primary-by-url")
+    public String setPrimaryProductImageByUrl(@PathVariable Long productId,
+                                              @RequestParam String imageUrl,
+                                              @RequestParam(required = false) String color,
+                                              RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.setPrimaryProductImageByUrl(productId, imageUrl, color);
+            redirectAttributes.addFlashAttribute("adminMessage", "Primary product representative image updated successfully.");
         } catch (Exception exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
         }
@@ -416,5 +433,29 @@ public class AdminController {
         }
         model.addAttribute("order", order.get());
         return "admin/order-detail";
+    }
+    @GetMapping("/admin/orders/export")
+    public void exportOrders(HttpServletResponse response) throws java.io.IOException {
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"orders.csv\"");
+
+        // We use findPaginatedOrders with a large page size to get all orders since there is no findAll method yet.
+        var orders = orderService.findPaginatedOrders(0, 100000, null, "ALL").orders();
+
+        try (PrintWriter writer = response.getWriter()) {
+            writer.println("Order Code,Date,Customer Name,Customer Email,Status,Payment Status,Items,Total");
+            for (var order : orders) {
+                writer.printf("%s,%s,\"%s\",\"%s\",%s,%s,%d,\"%s\"\n",
+                        order.orderCode(),
+                        order.createdAt(),
+                        order.customerName().replace("\"", "\"\""),
+                        order.customerEmail().replace("\"", "\"\""),
+                        order.status(),
+                        order.paymentStatus(),
+                        order.itemCount(),
+                        order.totalLabel()
+                );
+            }
+        }
     }
 }

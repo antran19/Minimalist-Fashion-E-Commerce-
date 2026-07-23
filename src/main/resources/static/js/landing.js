@@ -10,6 +10,16 @@
 
     const header = document.querySelector(".site-header");
     if (header) {
+        const toggleScrolled = () => {
+            if (window.scrollY > 20) {
+                header.classList.add("is-scrolled");
+            } else {
+                header.classList.remove("is-scrolled");
+            }
+        };
+        window.addEventListener("scroll", toggleScrolled, { passive: true });
+        toggleScrolled();
+
         ScrollTrigger.create({
             trigger: document.body,
             start: "top top-=24",
