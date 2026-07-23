@@ -35,6 +35,14 @@
                         <label class="form-label fw-bold">Description</label>
                         <textarea name="description" class="form-control" rows="3" placeholder="Product description..."></textarea>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" name="onSale" id="addOnSale" onchange="toggleDiscountField('addDiscountDiv', this.checked)">
+                        <label class="form-check-label fw-bold" for="addOnSale">On Sale</label>
+                    </div>
+                    <div class="mb-3" id="addDiscountDiv" style="display: none;">
+                        <label class="form-label fw-bold">Discount Percentage (%)</label>
+                        <input type="number" name="discountPercentage" class="form-control" min="1" max="100" placeholder="e.g. 20">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -80,6 +88,14 @@
                         <label class="form-label fw-bold">Description</label>
                         <textarea name="description" id="editProductDescription" class="form-control" rows="3"></textarea>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" name="onSale" id="editOnSale" onchange="toggleDiscountField('editDiscountDiv', this.checked)">
+                        <label class="form-check-label fw-bold" for="editOnSale">On Sale</label>
+                    </div>
+                    <div class="mb-3" id="editDiscountDiv" style="display: none;">
+                        <label class="form-label fw-bold">Discount Percentage (%)</label>
+                        <input type="number" name="discountPercentage" id="editDiscountPercentage" class="form-control" min="1" max="100" placeholder="e.g. 20">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -89,5 +105,13 @@
         </div>
     </div>
 
+    <script>
+        function toggleDiscountField(divId, isChecked) {
+            const div = document.getElementById(divId);
+            if (div) {
+                div.style.display = isChecked ? 'block' : 'none';
+            }
+        }
+    </script>
 </th:block>
 </html>

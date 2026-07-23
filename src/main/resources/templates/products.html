@@ -243,10 +243,13 @@
                         <span class="catalog-sold-out-overlay" th:if="${product.stock <= 0}">Sold out</span>
 
                         <span class="catalog-card-badges"
-                              th:if="${product.stock <= 0 or product.isNew or product.bestSeller}">
+                              th:if="${product.stock <= 0 or product.isNew or product.onSale or product.bestSeller}">
                             <span class="catalog-card-badge is-sold-out" th:if="${product.stock <= 0}">Out of stock</span>
-                            <span class="catalog-card-badge is-new" th:if="${product.stock > 0 and product.isNew}">New arrival</span>
-                            <span class="catalog-card-badge is-best" th:if="${product.stock > 0 and product.bestSeller}">Best seller</span>
+                            <div class="catalog-card-badges-row" th:if="${product.stock > 0 and (product.isNew or product.bestSeller)}">
+                                <span class="catalog-card-badge is-new" th:if="${product.isNew}">New arrival</span>
+                                <span class="catalog-card-badge is-best" th:if="${product.bestSeller}">Best seller</span>
+                            </div>
+                            <span class="catalog-card-badge is-sale" th:if="${product.stock > 0 and product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
                         </span>
                     </a>
 
@@ -258,7 +261,9 @@
                         </h2>
 
                         <div class="catalog-product-price-row">
-                            <strong th:text="${product.priceLabel}">$0.00</strong>
+                            <strong th:if="${product.onSale}" style="color: #dc2626;" th:text="${product.salePriceLabel}">$0.00</strong>
+                            <span th:if="${product.onSale}" class="text-muted text-decoration-line-through" th:text="${product.priceLabel}">$0.00</span>
+                            <strong th:unless="${product.onSale}" th:text="${product.priceLabel}">$0.00</strong>
                             <span class="catalog-low-stock"
                                   th:if="${product.stock > 0 and product.stock <= 5}"
                                   th:text="${'Only ' + product.stock + ' left'}">Only 3 left</span>

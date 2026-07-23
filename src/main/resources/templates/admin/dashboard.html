@@ -285,6 +285,8 @@
                                   th:data-price="${product.basePrice}"
                                   th:data-type="${product.productType}"
                                   th:data-description="${product.description}"
+                                  th:data-on-sale="${product.onSale}"
+                                  th:data-discount="${product.discountPercentage}"
                                   onclick="openEditProductModal(this)">Edit</button>
                           <form th:action="@{/admin/products/{id}/toggle(id=${product.id})}" method="post" style="display: inline; margin: 0;">
                               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -683,6 +685,8 @@
         const price = btn.getAttribute('data-price');
         const productType = btn.getAttribute('data-type');
         const description = btn.getAttribute('data-description');
+        const onSale = btn.getAttribute('data-on-sale') === 'true';
+        const discountPercentage = btn.getAttribute('data-discount');
 
         const form = document.getElementById('editProductForm');
         form.action = '/admin/products/' + productId + '/edit';
@@ -693,6 +697,16 @@
         formatLivePrice(priceInput);
         document.getElementById('editProductType').value = productType;
         document.getElementById('editProductDescription').value = description || '';
+
+        const onSaleCheckbox = document.getElementById('editOnSale');
+        if (onSaleCheckbox) {
+            onSaleCheckbox.checked = onSale;
+            toggleDiscountField('editDiscountDiv', onSale);
+        }
+        const discountInput = document.getElementById('editDiscountPercentage');
+        if (discountInput) {
+            discountInput.value = discountPercentage || '';
+        }
 
         const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
         modal.show();

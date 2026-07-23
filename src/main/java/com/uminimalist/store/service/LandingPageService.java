@@ -45,9 +45,6 @@ public class LandingPageService {
     public List<ProductView> getNewArrivals() {
         return productViews().stream()
                 .filter(ProductView::isNew)
-                .filter(product -> !"kids".equalsIgnoreCase(product.collection()))
-                .filter(product -> !"Accessories".equalsIgnoreCase(product.category()))
-                .limit(8)
                 .toList();
     }
 
@@ -270,6 +267,10 @@ public class LandingPageService {
                 stock,
                 product.isNewArrival(),
                 product.isBestSeller(),
+                product.isOnSale(),
+                product.getDiscountPercentage() != null ? product.getDiscountPercentage() : 0,
+                product.getSalePrice().doubleValue(),
+                currencyFormat.format(product.getSalePrice().doubleValue()),
                 imageViews,
                 product.getCreatedAt()
         );

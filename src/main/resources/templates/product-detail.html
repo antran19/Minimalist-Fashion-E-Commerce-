@@ -12,6 +12,14 @@
         <div class="detail-gallery-container" style="flex: 1; max-width: 520px;">
             <div class="detail-image product-image product-image-real" th:classappend="${product.cropClass}">
                 <img id="main-product-image" th:src="${product.imagePath}" th:alt="${product.name}">
+                <div class="product-badges" th:if="${product.stock <= 0 or product.isNew or product.onSale or product.bestSeller}">
+                    <span class="product-badge is-sold-out" th:if="${product.stock <= 0}">Out of stock</span>
+                    <div class="product-badges-row" th:if="${product.stock > 0 and (product.isNew or product.bestSeller)}">
+                        <span class="product-badge is-new" th:if="${product.isNew}">New arrival</span>
+                        <span class="product-badge is-best" th:if="${product.bestSeller}">Best Seller</span>
+                    </div>
+                    <span class="product-badge is-sale" th:if="${product.stock > 0 and product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
+                </div>
             </div>
             <!-- Multi-Image Thumbnail Gallery Bar -->
             <div id="product-thumbnails-bar" class="detail-thumbnails-grid" th:if="${product.images != null and !product.images.empty}" style="display: flex; gap: 10px; margin-top: 14px; overflow-x: auto; padding-bottom: 6px;">
@@ -32,7 +40,11 @@
                 <p class="cart-alert error" th:if="${cartError}" th:text="${cartError}">Product variant is not available.</p>
                 <p class="detail-category" th:text="${product.category}">T-shirt</p>
                 <h1 id="product-title" th:text="${product.name}">Air Cotton Tee</h1>
-                <p class="detail-price" th:text="${product.priceLabel}">$19.90</p>
+                <div style="margin-bottom: 24px;">
+                    <p th:if="${product.onSale}" class="detail-price" style="color: #dc2626; display: inline-block; margin: 0 12px 0 0;" th:text="${product.salePriceLabel}">$15.90</p>
+                    <p th:if="${product.onSale}" class="detail-price text-muted text-decoration-line-through" style="display: inline-block; margin: 0; font-size: 1.1rem; opacity: 0.7;" th:text="${product.priceLabel}">$19.90</p>
+                    <p th:unless="${product.onSale}" class="detail-price" style="margin-bottom: 0;" th:text="${product.priceLabel}">$19.90</p>
+                </div>
                 <div class="rating-summary" style="margin-top: -10px; margin-bottom: 20px;" th:if="${ratingStats.reviewCount > 0}">
                     <span style="color: #ffc107; font-size: 1.1rem;">★</span>
                     <strong th:text="${ratingStats.averageRatingLabel}">4.5</strong>
@@ -186,9 +198,14 @@
                     <a th:href="@{/products/{slug}(slug=${relProduct.slug})}">
                         <img th:src="${relProduct.imagePath}" th:alt="${relProduct.name}">
                     </a>
-                    <span class="product-badge" th:if="${relProduct.stock <= 0}" style="background: #e11b1e;">Out of Stock</span>
-                    <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.isNew}">New Arrival</span>
-                    <span class="product-badge" th:if="${relProduct.stock > 0 and relProduct.bestSeller}" th:style="${relProduct.isNew ? 'top: 36px; background: #f59e0b;' : 'background: #f59e0b;'}">Best Seller</span>
+                    <div class="product-badges" th:if="${relProduct.stock <= 0 or relProduct.isNew or relProduct.onSale or relProduct.bestSeller}">
+                        <span class="product-badge is-sold-out" th:if="${relProduct.stock <= 0}">Out of Stock</span>
+                        <div class="product-badges-row" th:if="${relProduct.stock > 0 and (relProduct.isNew or relProduct.bestSeller)}">
+                            <span class="product-badge is-new" th:if="${relProduct.isNew}">New Arrival</span>
+                            <span class="product-badge is-best" th:if="${relProduct.bestSeller}">Best Seller</span>
+                        </div>
+                        <span class="product-badge is-sale" th:if="${relProduct.stock > 0 and relProduct.onSale}" th:text="${'-' + relProduct.discountPercentage + '% OFF'}">-30% OFF</span>
+                    </div>
                     <div class="product-actions">
                         <a th:href="@{/products/{slug}(slug=${relProduct.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
