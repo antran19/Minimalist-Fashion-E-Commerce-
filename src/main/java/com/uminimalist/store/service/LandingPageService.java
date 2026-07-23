@@ -123,12 +123,42 @@ public class LandingPageService {
     }
 
     public List<String> getSizes() {
-        return productRepository.findByActiveTrue()
+        List<String> rawSizes = productRepository.findByActiveTrue()
                 .stream()
                 .flatMap(product -> product.getVariants().stream())
                 .filter(ProductVariant::isActive)
                 .map(ProductVariant::getSize)
+                .filter(s -> s != null && !s.isBlank())
                 .distinct()
+                .toList();
+
+        List<String> letterOrder = List.of("XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL");
+
+        return rawSizes.stream()
+                .sorted((s1, s2) -> {
+                    String u1 = s1.trim().toUpperCase(java.util.Locale.ROOT);
+                    String u2 = s2.trim().toUpperCase(java.util.Locale.ROOT);
+
+                    int idx1 = letterOrder.indexOf(u1);
+                    int idx2 = letterOrder.indexOf(u2);
+
+                    if (idx1 != -1 && idx2 != -1) {
+                        return Integer.compare(idx1, idx2);
+                    }
+                    if (idx1 != -1) return -1;
+                    if (idx2 != -1) return 1;
+
+                    boolean isNum1 = u1.matches("\\d+");
+                    boolean isNum2 = u2.matches("\\d+");
+
+                    if (isNum1 && isNum2) {
+                        return Integer.compare(Integer.parseInt(u1), Integer.parseInt(u2));
+                    }
+                    if (isNum1) return -1;
+                    if (isNum2) return 1;
+
+                    return u1.compareTo(u2);
+                })
                 .toList();
     }
 
@@ -138,6 +168,7 @@ public class LandingPageService {
                 .flatMap(product -> product.getVariants().stream())
                 .filter(ProductVariant::isActive)
                 .map(ProductVariant::getColor)
+                .filter(c -> c != null && !c.isBlank() && !"Default".equalsIgnoreCase(c.trim()))
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();

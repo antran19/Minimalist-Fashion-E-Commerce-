@@ -19,17 +19,22 @@ public class HomeController {
     private final LandingPageService landingPageService;
     private final WishlistService wishlistService;
     private final ProductReviewService productReviewService;
+    private final com.uminimalist.store.service.ShoppingCartService shoppingCartService;
 
     public HomeController(LandingPageService landingPageService,
                           WishlistService wishlistService,
-                          ProductReviewService productReviewService) {
+                          ProductReviewService productReviewService,
+                          com.uminimalist.store.service.ShoppingCartService shoppingCartService) {
         this.landingPageService = landingPageService;
         this.wishlistService = wishlistService;
         this.productReviewService = productReviewService;
+        this.shoppingCartService = shoppingCartService;
     }
 
     @GetMapping("/")
-    public String home(Model model) {
+    public String home(Authentication authentication, jakarta.servlet.http.HttpSession session, Model model) {
+        String username = (authentication != null && authentication.isAuthenticated()) ? authentication.getName() : null;
+        model.addAttribute("cart", shoppingCartService.getCart(session, username));
         model.addAttribute("categories", landingPageService.getFeaturedCategories());
         model.addAttribute("newArrivals", landingPageService.getNewArrivals());
         model.addAttribute("essentials", landingPageService.getEssentials());
@@ -104,5 +109,28 @@ public class HomeController {
         model.addAttribute("relatedProducts", landingPageService.getRelatedProducts(product.slug(), product.collection(), 4));
         
         return "product-detail";
+    }
+
+    @GetMapping({"/help", "/shipping", "/returns"})
+    public String helpPage(Authentication authentication, jakarta.servlet.http.HttpSession session, Model model) {
+        String username = (authentication != null && authentication.isAuthenticated()) ? authentication.getName() : null;
+        model.addAttribute("cart", shoppingCartService.getCart(session, username));
+        return "help";
+    }
+
+    @GetMapping("/orders")
+    public String ordersRedirect() {
+        return "redirect:/account";
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/newsletter")
+    public String subscribeNewsletter(@RequestParam(required = false) String email,
+                                      org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes,
+                                      jakarta.servlet.http.HttpServletRequest request) {
+        if (email != null && !email.isBlank()) {
+            redirectAttributes.addFlashAttribute("newsletterSuccess", "Thank you for joining the U-Minimalist newsletter!");
+        }
+        String referer = request.getHeader("Referer");
+        return "redirect:" + (referer != null && !referer.isBlank() ? referer : "/");
     }
 }

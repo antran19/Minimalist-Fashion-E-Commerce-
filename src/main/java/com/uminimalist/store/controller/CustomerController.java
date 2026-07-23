@@ -203,7 +203,6 @@ public class CustomerController {
                 addedItems += item.quantity();
             } catch (IllegalArgumentException ex) {
                 // If requested quantity exceeds stock, attempt to add available stock quantity
-                try {
                     int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
                             .map(ProductVariant::getStockQuantity)
                             .orElse(0);

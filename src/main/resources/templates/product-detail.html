@@ -433,11 +433,53 @@
 
                 if (matchedThumb) {
                     setActiveThumb(matchedThumb);
+                } else if (mainImg) {
+                    const currentSlug = /*[[${product.slug}]]*/ '';
+                    const colorImg = getColorImagePath(currentSlug, selectedColor);
+                    if (colorImg) {
+                        mainImg.src = colorImg;
+                    }
                 }
                 updateAvailableSizes();
                 updateVariantStock();
             });
         });
+
+        function getColorImagePath(slug, color) {
+            const normalizedColor = (color || '').trim().toLowerCase().replace(/\s+/g, '-');
+            const map = {
+                'air-cotton-tee-light-blue': '/images/products/air-cotton-tee-light-blue.png',
+                'air-cotton-tee-pink': '/images/products/air-cotton-tee-pink.png',
+                'air-cotton-tee-cream': '/images/products/air-cotton-tee-cream.png',
+                'light-utility-jacket-navy': '/images/products/light-utility-jacket-navy.png',
+                'light-utility-jacket-gray': '/images/products/light-utility-jacket-gray.png',
+                'oxford-shirt-light-blue': '/images/products/oxford-shirt-light-blue.jpg',
+                'oxford-shirt-white': '/images/products/oxford-shirt-white.png',
+                'oxford-shirt-brown': '/images/products/oxford-shirt-brown.png',
+                'soft-jersey-tee-red': '/images/products/soft-jersey-tee-red.jpg',
+                'soft-jersey-tee-white': '/images/products/soft-jersey-tee-white.jpg',
+                'soft-jersey-tee-brown': '/images/products/soft-jersey-tee-brown.png',
+                'smart-ankle-pants-brown': '/images/products/smart-ankle-pants-brown.jpg',
+                'smart-ankle-pants-white': '/images/products/smart-ankle-pants-white.jpg',
+                'smart-ankle-pants-black': '/images/products/smart-ankle-pants-black.png',
+                'everyday-zip-hoodie-cream': '/images/products/everyday-zip-hoodie-cream.jpg',
+                'everyday-zip-hoodie-red': '/images/products/everyday-zip-hoodie-red.jpg',
+                'everyday-zip-hoodie-black': '/images/products/everyday-zip-hoodie-black.png',
+                'linen-blend-shirt-orange': '/images/products/linen-blend-shirt-orange.jpg',
+                'linen-blend-shirt-white': '/images/products/linen-blend-shirt-white.jpg',
+                'linen-blend-shirt-cream': '/images/products/linen-blend-shirt-cream.png',
+                'utility-tote-red': '/images/products/utility-tote-red.png',
+                'utility-tote-yellow': '/images/products/utility-tote-yellow.jpg',
+                'utility-tote-pink': '/images/products/utility-tote-pink.jpg',
+                'school-day-cardigan-dark-green': '/images/products/school-day-cardigan-dark-green.jpg',
+                'school-day-cardigan-navy': '/images/products/school-day-cardigan-navy.png',
+                'school-day-cardigan-black': '/images/products/school-day-cardigan-black.jpg',
+                'easy-cotton-shorts-gray': '/images/products/easy-cotton-shorts-gray.png',
+                'easy-cotton-shorts-blue': '/images/products/easy-cotton-shorts-blue.png'
+            };
+            return map[slug + '-' + normalizedColor] || null;
+        }
+
         document.querySelectorAll('input[name="size"]').forEach(input => {
             input.addEventListener('change', updateVariantStock);
         });

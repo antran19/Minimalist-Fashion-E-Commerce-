@@ -3,6 +3,7 @@ package com.uminimalist.store.config;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.session.SessionRegistry;
@@ -10,6 +11,7 @@ import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.session.SessionAuthenticationException;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
@@ -32,15 +34,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/vendor/**").permitAll()
-                .requestMatchers("/", "/login", "/register").permitAll()
-                .requestMatchers("/cart/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/products/*/reviews", "/products/*/reviews/*/edit", "/products/*/reviews/*/delete").authenticated()
-                .requestMatchers("/products/**").permitAll()
-                .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/products/*/reviews").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.POST, "/products/*/reviews/*/edit", "/products/*/reviews/*/delete").authenticated()
+                .requestMatchers("/cart", "/cart/**", "/checkout", "/checkout/**", "/account", "/account/**", "/wishlist", "/wishlist/**").hasRole("CUSTOMER")
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/", "/products", "/products/**", "/login", "/register", "/error", "/paypal/**", "/help", "/shipping", "/returns", "/orders", "/newsletter").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -57,19 +59,27 @@ public class SecurityConfig {
                     }
                     response.sendRedirect("/");
                 })
-                .failureUrl("/login?error=true")
+                .failureHandler((request, response, exception) -> {
+                    if (exception instanceof SessionAuthenticationException) {
+                        response.sendRedirect("/login?session_limit=true");
+                    } else {
+                        response.sendRedirect("/login?error=true");
+                    }
+                })
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout=true")
                 .invalidateHttpSession(true)
+                .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")
                 .permitAll()
             )
             .sessionManagement(session -> session
                 .maximumSessions(1)
-                .sessionRegistry(sessionRegistry())
+                .maxSessionsPreventsLogin(true)
+                .sessionRegistry(sessionRegistry)
                 .expiredUrl("/login?expired=true")
             );
 
