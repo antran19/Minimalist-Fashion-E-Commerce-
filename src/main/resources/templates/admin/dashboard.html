@@ -3,15 +3,17 @@
 <head>
     <th:block th:insert="~{fragments/head :: head('Admin Dashboard | U-Minimalist', 'U-Minimalist administrator dashboard.')}"></th:block>
     <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/admin-stitch.css(v=1)}">
 </head>
 <body>
 <th:block th:replace="~{fragments/navbar :: navbar('admin', 'site-header is-scrolled', '', true, false, true)}"></th:block>
 
 <main class="admin-container page-shell">
     <div class="admin-header">
-        <div>
+        <div class="admin-heading-copy">
+            <p class="admin-eyebrow">Administration</p>
             <h1>Dashboard</h1>
-            <p class="text-muted m-0">Welcome back, <span sec:authentication="name">Admin</span></p>
+            <p class="text-muted m-0">Manage products, inventory, orders, categories, and customer accounts. Signed in as <strong sec:authentication="name">Admin</strong>.</p>
         </div>
        
     </div>
@@ -45,7 +47,7 @@
             </div>
             <div class="stat-card clickable" onclick="switchTab('users')">
                 <small>Registered Accounts</small>
-                <h3 th:text="${users.size()}">2</h3>
+                <h3 th:text="${usersPage != null ? usersPage.totalElements : 0}">0</h3>
             </div>
             <div class="stat-card clickable" onclick="switchTab('orders')">
                 <small>Total Orders</small>
@@ -58,12 +60,12 @@
         </div>
 
         <!-- Quick Actions Bar -->
-        <div style="background-color: #fafafa; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 24px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div class="admin-quick-actions">
             <div>
                 <strong style="font-size: 0.95rem; font-weight: 800;">Quick Management Actions</strong>
                 <p class="text-muted m-0" style="font-size: 0.82rem;">Create new items or jump directly to storefront</p>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div class="admin-quick-actions-buttons">
                 <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
                 <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Add Category</button>
                 <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
@@ -72,9 +74,9 @@
         </div>
 
         <!-- Recent Activity & Low Stock Summary Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px;">
+        <div class="admin-overview-grid">
             <!-- Recent Orders Section -->
-            <div style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #ffffff;">
+            <section class="admin-overview-card admin-recent-orders-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div>
                         <p class="panel-kicker">Fulfillment</p>
@@ -109,10 +111,10 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
             <!-- Urgent Low Stock Alert Section -->
-            <div style="border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; background: #ffffff;">
+            <section class="admin-overview-card admin-stock-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div>
                         <p class="panel-kicker" style="color: var(--accent);" th:if="${lowStockVariants > 0}">Attention Required</p>
@@ -146,24 +148,24 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
     <!-- Categories Panel -->
     <div class="admin-panel d-none" id="tab-categories">
-        <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div class="admin-panel-title">
             <div>
                 <p class="panel-kicker">Categories</p>
-                <h2 style="margin: 0;">Product categories</h2>
+                <h2>Product Categories</h2>
             </div>
             <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                 + Add Category
             </button>
         </div>
 
-        <form th:action="@{'/admin/dashboard#categories'}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px;">
-            <input type="text" name="categoryQuery" class="search-control" th:value="${categoryQuery}" placeholder="Search categories by name or description..." style="flex: 1;">
+        <form th:action="@{'/admin/dashboard#categories'}" method="get" class="admin-toolbar">
+            <input type="text" name="categoryQuery" class="search-control admin-toolbar-search" th:value="${categoryQuery}" placeholder="Search categories by name or description...">
             <button type="submit" class="btn btn-dark btn-sm rounded-1 px-3">Search</button>
         </form>
 
@@ -176,7 +178,7 @@
                         <th>Slug</th>
                         <th>Description</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -190,7 +192,7 @@
                                   th:text="${category.active ? 'ACTIVE' : 'HIDDEN'}">ACTIVE</span>
                         </td>
                         <td>
-                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <div class="admin-row-actions">
                                 <button type="button" class="admin-action-btn admin-btn-outline"
                                         th:onclick="openEditCategoryModal([[${category.id}]], [[${category.name}]], [[${category.description}]])">
                                     Edit
@@ -236,10 +238,10 @@
 
     <!-- Catalog Panel -->
     <div class="admin-panel d-none" id="tab-catalog">
-        <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div class="admin-panel-title">
             <div>
                 <p class="panel-kicker">Catalog</p>
-                <h2 style="margin: 0;">Products and inventory</h2>
+                <h2>Products &amp; Inventory</h2>
             </div>
             <div style="display: flex; gap: 8px;">
                 <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
@@ -247,8 +249,8 @@
             </div>
         </div>
 
-        <form th:action="@{'/admin/dashboard#catalog'}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-            <input type="text" name="catalogQuery" class="search-control" th:value="${catalogQuery}" placeholder="Search products by name or SKU..." style="flex: 1; min-width: 240px;">
+        <form th:action="@{'/admin/dashboard#catalog'}" method="get" class="admin-toolbar">
+            <input type="text" name="catalogQuery" class="search-control admin-toolbar-search" th:value="${catalogQuery}" placeholder="Search products by name or SKU...">
             <select name="catalogFilter" class="select-control" onchange="this.form.submit()">
                 <option value="all" th:selected="${catalogFilter == 'all'}">All Products</option>
                 <option value="active" th:selected="${catalogFilter == 'active'}">Active Products</option>
@@ -276,17 +278,25 @@
                     </div>
                 </div>
                 <div class="admin-product-head">
-                     <div>
-                         <h3 th:text="${product.name}">Air Cotton Tee</h3>
-                         <p>
-                             <span th:text="${product.category.name}">Men</span>
-                             <span> / </span>
-                             <span th:text="${product.productType}">T-shirt</span>
-                             <span> / </span>
-                             <span th:text="${'$' + product.basePrice}">$19.90</span>
-                         </p>
+                     <div class="d-flex align-items-center gap-3">
+                         <th:block th:with="imgList=${product.images}, varList=${product.variants}, coverUrl=${!#lists.isEmpty(imgList) ? imgList[0].imageUrl : (!#lists.isEmpty(varList) and varList[0].imageUrl != null ? varList[0].imageUrl : null)}">
+                             <img th:if="${coverUrl != null and !coverUrl.isBlank()}" th:src="${coverUrl}" th:alt="${product.name}"
+                                  style="width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--admin-line); flex-shrink: 0;">
+                             <div th:unless="${coverUrl != null and !coverUrl.isBlank()}" class="d-inline-flex align-items-center justify-content-center bg-light text-muted fw-bold rounded-2"
+                                  style="width: 52px; height: 52px; border: 1px solid var(--admin-line); font-size: 0.72rem; flex-shrink: 0;">No Img</div>
+                         </th:block>
+                         <div>
+                             <h3 th:text="${product.name}">Air Cotton Tee</h3>
+                             <p>
+                                 <span th:text="${product.category.name}">Men</span>
+                                 <span> / </span>
+                                 <span th:text="${product.productType}">T-shirt</span>
+                                 <span> / </span>
+                                 <span th:text="${'$' + product.basePrice}">$19.90</span>
+                             </p>
+                         </div>
                      </div>
-                     <div class="admin-row-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                     <div class="admin-row-actions">
                           <span class="admin-status-badge" th:classappend="${product.active ? 'admin-status-active' : 'admin-status-hidden'}"
                                 th:text="${product.active ? 'ACTIVE' : 'HIDDEN'}">ACTIVE</span>
                           <button type="button" class="admin-action-btn admin-btn-dark"
@@ -336,14 +346,14 @@
                              <th>Size</th>
                              <th>Stock</th>
                              <th>Status</th>
-                             <th>Action</th>
+                             <th style="text-align: right;">Action</th>
                          </tr>
                          </thead>
                          <tbody>
                          <tr th:each="variant : ${product.variants}" th:classappend="${variant.stockQuantity <= 5 ? 'low-stock-row' : ''}">
                              <td>
-                                 <img th:if="${variant.imageUrl != null}" th:src="${variant.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line);" th:alt="${variant.sku}">
-                                 <span th:unless="${variant.imageUrl != null}" style="color: var(--muted); font-size: 0.8rem;">—</span>
+                                 <img th:if="${variant.imageUrl != null and !variant.imageUrl.isBlank()}" th:src="${variant.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--admin-line);" th:alt="${variant.sku}">
+                                 <span th:unless="${variant.imageUrl != null and !variant.imageUrl.isBlank()}" style="color: var(--admin-muted); font-size: 0.8rem;">—</span>
                              </td>
                              <td th:text="${variant.sku}">SKU</td>
                              <td th:text="${variant.color}">Cream</td>
@@ -351,8 +361,8 @@
                              <td>
                                  <form class="stock-form" th:action="@{/admin/variants/{id}/stock(id=${variant.id})}" method="post">
                                      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                                     <input name="stockQuantity" type="number" min="0" th:value="${variant.stockQuantity}" style="width: 70px; padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-weight: 700; text-align: center;">
-                                     <button type="submit" style="background: var(--ink); color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;">Save</button>
+                                     <input name="stockQuantity" type="number" min="0" th:value="${variant.stockQuantity}" style="width: 70px; padding: 4px; border: 1px solid var(--admin-line); border-radius: 4px; font-weight: 700; text-align: center;">
+                                     <button type="submit" style="background: var(--admin-ink); color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;">Save</button>
                                  </form>
                                  <span class="low-stock-badge" th:if="${variant.stockQuantity <= 5}">Low Stock</span>
                              </td>
@@ -361,7 +371,7 @@
                                         th:text="${variant.active ? 'ACTIVE' : 'HIDDEN'}">ACTIVE</span>
                              </td>
                              <td>
-                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                 <div class="admin-row-actions">
                                      <button type="button" class="admin-action-btn admin-btn-outline"
                                              th:onclick="openEditVariantModal([[${variant.id}]], [[${variant.color}]], [[${variant.size}]], [[${variant.sku}]], [[${variant.stockQuantity}]], [[${variant.imageUrl != null ? variant.imageUrl : ''}]])">
                                          Edit
@@ -417,7 +427,7 @@
             </div>
             <button class="btn btn-dark btn-sm rounded-1 px-3 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add Account</button>
         </div>
-        <form th:action="@{/admin/dashboard#users}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px;">
+        <form th:action="@{/admin/dashboard#users}" method="get" class="admin-toolbar">
             <input type="text" name="userQuery" class="search-control" th:value="${userQuery}" placeholder="Search accounts by name, email or phone..." style="flex: 1;">
             <button type="submit" class="btn btn-dark btn-sm rounded-1 px-3">Search</button>
         </form>
@@ -431,7 +441,7 @@
                         <th>Phone</th>
                         <th>Role</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -449,7 +459,7 @@
                                   th:text="${user.active ? 'ACTIVE' : 'DISABLED'}">ACTIVE</span>
                         </td>
                         <td>
-                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <div class="admin-row-actions">
                                 <button type="button" class="admin-action-btn admin-btn-outline"
                                         th:onclick="openEditUserModal([[${user.id}]], [[${user.fullName}]], [[${user.email}]], [[${user.phone}]], [[${user.role}]], [[${user.active}]])">
                                     Edit
@@ -495,19 +505,20 @@
 
     <!-- Orders Panel -->
     <div class="admin-panel d-none" id="tab-orders">
-        <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div class="admin-panel-title">
             <div>
                 <p class="panel-kicker">Orders</p>
-                <h2 style="margin: 0;">Recent customer orders</h2>
+                <h2>Customer Orders</h2>
             </div>
             <a th:href="@{/admin/orders/export}" class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2 fw-bold">
                 Export to CSV
             </a>
         </div>
-        <form th:action="@{'/admin/dashboard#orders'}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-            <input type="text" name="orderQuery" class="search-control" th:value="${orderQuery}" placeholder="Search orders by code, customer name or email..." style="flex: 1; min-width: 240px;">
+        <form th:action="@{'/admin/dashboard#orders'}" method="get" class="admin-toolbar">
+            <input type="text" name="orderQuery" class="search-control admin-toolbar-search" th:value="${orderQuery}" placeholder="Search orders by code, customer name or email...">
             <select name="orderStatus" class="select-control" onchange="this.form.submit()">
                 <option value="ALL" th:selected="${selectedStatus == 'ALL'}">All Orders</option>
+                <option value="PENDING_PAYMENT" th:selected="${selectedStatus == 'PENDING_PAYMENT'}">Awaiting Payment</option>
                 <option value="PLACED" th:selected="${selectedStatus == 'PLACED'}">Placed</option>
                 <option value="PROCESSING" th:selected="${selectedStatus == 'PROCESSING'}">Processing</option>
                 <option value="SHIPPED" th:selected="${selectedStatus == 'SHIPPED'}">Shipped</option>
@@ -517,7 +528,7 @@
             <button type="submit" class="btn btn-dark btn-sm rounded-1 px-3">Search</button>
         </form>
         <div class="order-empty" th:if="${#lists.isEmpty(orders)}">
-            <p>No orders have been placed yet.</p>
+            <p>No orders match the current search or status filter.</p>
         </div>
         <div class="table-responsive" th:if="${!#lists.isEmpty(orders)}">
             <table class="table-custom">
@@ -530,7 +541,7 @@
                     <th>Items</th>
                     <th>Total</th>
                     <th>Status</th>
-                    <th>Detail</th>
+                    <th style="text-align: right;">Detail</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -564,7 +575,7 @@
                             </select>
                         </form>
                     </td>
-                    <td style="vertical-align: middle;">
+                    <td style="vertical-align: middle; text-align: right;">
                         <a th:href="@{/admin/orders/{orderCode}(orderCode=${order.orderCode})}"
                            class="admin-action-btn admin-btn-outline" style="text-decoration: none; white-space: nowrap;">
                             View

@@ -1,0 +1,679 @@
+/*
+ * U-Minimalist Admin Stitch integration
+ * UI-only override layer for the existing Spring Boot + Thymeleaf admin dashboard.
+ * No backend data, routes, or business rules are defined here.
+ */
+
+:root {
+    --admin-bg: #f8f8f7;
+    --admin-card: #ffffff;
+    --admin-ink: #151515;
+    --admin-muted: #696969;
+    --admin-line: #dededb;
+    --admin-soft: #f2f2f0;
+    --admin-soft-2: #ebebe8;
+    --admin-radius: 14px;
+    --admin-shadow: 0 12px 34px rgba(19, 19, 19, 0.045);
+    --admin-success: #147a48;
+    --admin-success-bg: #edf8f2;
+    --admin-warning: #9a5b0a;
+    --admin-warning-bg: #fff7e8;
+    --admin-danger: #b42318;
+    --admin-danger-bg: #fff1f0;
+    --admin-blue: #315f9b;
+    --admin-blue-bg: #eef4ff;
+}
+
+body {
+    background: var(--admin-bg);
+}
+
+.admin-container {
+    max-width: 1440px;
+    padding-top: 112px;
+    padding-bottom: 72px;
+}
+
+.admin-header {
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 26px;
+    padding-bottom: 24px;
+}
+
+.admin-eyebrow,
+.panel-kicker {
+    margin: 0 0 7px;
+    color: var(--admin-muted);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+}
+
+.admin-heading-copy {
+    max-width: 760px;
+}
+
+.admin-header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(2.25rem, 4vw, 4rem);
+    line-height: 0.98;
+    letter-spacing: -0.065em;
+}
+
+.admin-header .text-muted {
+    max-width: 720px;
+    color: var(--admin-muted) !important;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Tabs: preserve existing JS IDs and switching behavior. */
+.admin-tabs {
+    gap: 4px;
+    margin-bottom: 24px;
+    padding: 0 0 1px;
+    border-bottom: 1px solid var(--admin-line);
+}
+
+.admin-tab-btn {
+    min-height: 44px;
+    padding: 10px 18px;
+    color: #666;
+    font-size: 0.88rem;
+    font-weight: 760;
+    border-bottom-width: 2px;
+}
+
+.admin-tab-btn.active {
+    color: var(--admin-ink);
+    border-bottom-color: var(--admin-ink);
+}
+
+/* Alerts */
+.admin-container .cart-alert {
+    margin: 0 0 18px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    border: 1px solid var(--admin-line);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.admin-container .cart-alert.success {
+    color: var(--admin-success);
+    background: var(--admin-success-bg);
+    border-color: #bfe7d0;
+}
+
+.admin-container .cart-alert.error {
+    color: var(--admin-danger);
+    background: var(--admin-danger-bg);
+    border-color: #f1c4c0;
+}
+
+/* Panels */
+.admin-panel {
+    margin-bottom: 26px;
+    padding: 28px;
+    border-color: var(--admin-line);
+    border-radius: var(--admin-radius);
+    background: var(--admin-card);
+    box-shadow: none;
+}
+
+#tab-overview {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.admin-panel-title {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+
+.admin-panel-title h2,
+.admin-panel h2 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+}
+
+/* KPI bento grid inspired by Stitch, but values remain Thymeleaf-driven. */
+.admin-stats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px !important;
+}
+
+.stat-card {
+    min-width: 0;
+    padding: 20px;
+    border-color: var(--admin-line);
+    border-radius: 12px;
+    background: var(--admin-card);
+}
+
+.stat-card.clickable:hover {
+    transform: translateY(-2px);
+    border-color: #bcbcb8;
+    box-shadow: var(--admin-shadow);
+}
+
+.stat-card small {
+    display: block;
+    min-height: 30px;
+    color: var(--admin-muted);
+    font-size: 0.67rem;
+    line-height: 1.35;
+    letter-spacing: 0.1em;
+}
+
+.stat-card h3 {
+    margin-top: 8px;
+    font-size: clamp(1.75rem, 2.5vw, 2.45rem);
+    line-height: 1;
+    letter-spacing: -0.055em;
+}
+
+/* Warning emphasis only for the third KPI (Low Stock). */
+.admin-stats .stat-card:nth-child(3):has(h3:not(:empty)) {
+    background: #fffdf8;
+}
+
+.admin-quick-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 20px !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 18px !important;
+    padding: 18px 20px !important;
+    border: 1px solid var(--admin-line) !important;
+    border-radius: 12px !important;
+    background: var(--admin-card) !important;
+}
+
+.admin-quick-actions strong {
+    font-size: 0.92rem !important;
+}
+
+.admin-quick-actions .text-muted {
+    margin-top: 4px !important;
+    color: var(--admin-muted) !important;
+    font-size: 0.78rem !important;
+}
+
+.admin-quick-actions-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-overview-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr) !important;
+    gap: 18px !important;
+}
+
+.admin-overview-card {
+    min-width: 0;
+    padding: 22px !important;
+    border: 1px solid var(--admin-line) !important;
+    border-radius: 12px !important;
+    background: var(--admin-card) !important;
+}
+
+.admin-overview-card > div:first-child {
+    margin-bottom: 12px !important;
+}
+
+/* Buttons */
+.admin-container .btn-dark {
+    border-color: #111827;
+    background: #111827;
+    color: #fff !important;
+}
+
+.admin-container .btn-dark:hover {
+    border-color: #000;
+    background: #000;
+}
+
+.admin-container .btn-outline-dark {
+    border-color: #b9b9b5;
+    background: #fff;
+    color: var(--admin-ink);
+}
+
+.admin-container .btn-outline-dark:hover {
+    border-color: var(--admin-ink);
+    background: var(--admin-soft);
+    color: var(--admin-ink);
+}
+
+/* Row Action Buttons (Edit, Hide/Disable, Delete, etc.) */
+.admin-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.admin-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 8px;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 150ms ease;
+    text-decoration: none !important;
+}
+
+.admin-action-btn.admin-btn-dark {
+    background-color: var(--admin-ink) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--admin-ink) !important;
+}
+
+.admin-action-btn.admin-btn-dark:hover {
+    background-color: #000000 !important;
+    border-color: #000000 !important;
+}
+
+.admin-action-btn.admin-btn-outline {
+    background-color: #ffffff !important;
+    color: var(--admin-ink) !important;
+    border: 1px solid #d1d5db !important;
+}
+
+.admin-action-btn.admin-btn-outline:hover {
+    background-color: #f3f4f6 !important;
+    border-color: var(--admin-ink) !important;
+    color: var(--admin-ink) !important;
+}
+
+.admin-action-btn.admin-btn-danger {
+    background-color: #ffffff !important;
+    color: var(--admin-danger) !important;
+    border: 1px solid #fca5a5 !important;
+}
+
+.admin-action-btn.admin-btn-danger:hover {
+    background-color: var(--admin-danger-bg) !important;
+    border-color: var(--admin-danger) !important;
+    color: var(--admin-danger) !important;
+}
+
+/* Search/filter toolbars */
+.admin-toolbar {
+    display: flex !important;
+    align-items: center;
+    gap: 10px !important;
+    margin-bottom: 20px !important;
+    padding: 12px;
+    border: 1px solid var(--admin-line);
+    border-radius: 12px;
+    background: var(--admin-soft);
+    flex-wrap: wrap !important;
+}
+
+.admin-toolbar-search {
+    flex: 1 1 320px;
+    min-width: 220px;
+}
+
+.search-control,
+.select-control,
+.admin-container .form-select {
+    min-height: 42px;
+    border-color: #cececa;
+    border-radius: 99px;
+    background-color: #fff;
+    color: var(--admin-ink);
+    font-size: 0.86rem;
+    font-weight: 650;
+}
+
+.search-control:focus,
+.select-control:focus,
+.admin-container .form-select:focus {
+    border-color: #666;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.07);
+}
+
+/* Tables */
+.table-responsive {
+    border-radius: 10px;
+}
+
+.table-custom {
+    font-size: 0.87rem;
+}
+
+.table-custom th {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--admin-line);
+    background: var(--admin-soft);
+    color: #64645f;
+    font-size: 0.67rem;
+    letter-spacing: 0.1em;
+}
+
+.table-custom th:last-child {
+    text-align: right;
+}
+
+.table-custom td {
+    padding: 14px 13px;
+    border-bottom-color: #e9e9e6;
+    font-weight: 580;
+    vertical-align: middle;
+}
+
+.table-custom tbody tr {
+    transition: background 140ms ease;
+}
+
+.table-custom tbody tr:hover {
+    background: #fafaf8;
+}
+
+.table-custom.compact th,
+.table-custom.compact td {
+    padding: 11px 10px;
+}
+
+/* Status system */
+.admin-status-badge {
+    min-height: 27px;
+    height: auto;
+    padding: 6px 9px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+}
+
+.admin-status-active {
+    color: var(--admin-success);
+    background: var(--admin-success-bg);
+    border-color: #bfe7d0;
+}
+
+.admin-status-hidden {
+    color: var(--admin-danger);
+    background: var(--admin-danger-bg);
+    border-color: #f1c4c0;
+}
+
+.badge-customer {
+    color: var(--admin-blue);
+    background: var(--admin-blue-bg);
+    border-color: #ccdafa;
+}
+
+.low-stock-row {
+    background: #fffaf1 !important;
+}
+
+.low-stock-badge {
+    margin-left: 0;
+    color: var(--admin-warning);
+    background: var(--admin-warning-bg);
+    border-color: #f2d49c;
+    border-radius: 999px;
+}
+
+/* Product & Inventory cards */
+.admin-product-list {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-product-card {
+    overflow: hidden;
+    border: 1px solid var(--admin-line);
+    border-radius: 12px;
+    background: var(--admin-card);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.admin-product-card:hover {
+    border-color: #c4c4bf;
+    box-shadow: 0 8px 26px rgba(20, 20, 20, 0.035);
+}
+
+.admin-product-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 20px;
+    background: #fff;
+    flex-wrap: wrap;
+}
+
+.admin-product-head h3 {
+    margin: 0 0 5px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.admin-product-head p {
+    margin: 0;
+    color: var(--admin-muted);
+    font-size: 0.8rem;
+}
+
+.variants-table-container {
+    max-height: 410px;
+    margin: 0 20px 20px;
+    border-color: var(--admin-line);
+    border-radius: 10px;
+}
+
+.variants-table-container thead th {
+    background: #f6f6f4;
+}
+
+/* Empty states */
+.order-empty,
+.admin-panel .text-muted.text-center.py-4 {
+    padding: 38px 18px !important;
+    border: 1px dashed #d4d4cf;
+    border-radius: 10px;
+    background: #fbfbfa;
+    color: var(--admin-muted) !important;
+    text-align: center;
+}
+
+.order-empty p {
+    margin: 0;
+    color: var(--admin-muted);
+    font-weight: 650;
+}
+
+/* Pagination */
+.admin-pagination-container {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top-color: var(--admin-line);
+}
+
+.admin-page-btn {
+    min-height: 34px;
+    height: auto;
+    padding: 8px 12px;
+    border-color: #d0d0cc;
+    border-radius: 8px;
+}
+
+.admin-page-number,
+.admin-pagination-info {
+    color: var(--admin-muted);
+    font-size: 0.8rem;
+}
+
+/* Modal polish without changing Bootstrap behavior. */
+.modal-content {
+    overflow: hidden;
+    border: 1px solid var(--admin-line);
+    border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.14);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--admin-line);
+}
+
+.modal-header {
+    padding: 18px 20px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 14px 20px;
+    background: #fafaf8;
+}
+
+/* Responsive */
+@media (max-width: 1199px) {
+    .admin-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-overview-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .admin-container {
+        padding-top: 92px;
+        padding-bottom: 48px;
+    }
+
+    .admin-header {
+        margin-bottom: 18px;
+        padding-bottom: 18px;
+    }
+
+    .admin-header h1 {
+        font-size: 2.4rem;
+    }
+
+    .admin-tabs {
+        margin-inline: -4px;
+    }
+
+    .admin-tab-btn {
+        padding-inline: 13px;
+    }
+
+    .admin-panel {
+        padding: 18px;
+        border-radius: 11px;
+    }
+
+    #tab-overview {
+        padding: 0;
+    }
+
+    .admin-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card small {
+        min-height: 28px;
+        font-size: 0.62rem;
+    }
+
+    .admin-quick-actions {
+        align-items: stretch !important;
+    }
+
+    .admin-quick-actions-buttons {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-quick-actions-buttons > * {
+        width: 100%;
+    }
+
+    .admin-panel-title {
+        align-items: stretch;
+    }
+
+    .admin-toolbar {
+        align-items: stretch;
+    }
+
+    .admin-toolbar-search,
+    .admin-toolbar .select-control,
+    .admin-toolbar .btn {
+        width: 100%;
+        flex-basis: 100%;
+    }
+
+    .admin-product-head {
+        align-items: flex-start;
+        padding: 16px;
+    }
+
+    .admin-row-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .variants-table-container {
+        margin: 0 16px 16px;
+    }
+
+    .admin-pagination-container {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .table-responsive {
+        margin-inline: -2px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-quick-actions-buttons {
+        grid-template-columns: 1fr;
+    }
+}
