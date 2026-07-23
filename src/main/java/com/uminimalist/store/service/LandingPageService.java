@@ -2,6 +2,7 @@ package com.uminimalist.store.service;
 
 import com.uminimalist.store.entity.Category;
 import com.uminimalist.store.entity.Product;
+import com.uminimalist.store.entity.ProductImage;
 import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.model.CategoryView;
 import com.uminimalist.store.model.ProductImageView;
@@ -241,32 +242,52 @@ public class LandingPageService {
                 ? product.getDescription()
                 : "Designed for everyday rotation with a clean shape, simple care, and transparent stock before checkout.";
 
-        List<ProductImageView> imageViews = new java.util.ArrayList<>(product.getImages().stream()
-                .map(img -> new ProductImageView(
-                        img.getId(),
-                        img.getImageUrl(),
-                        img.getPublicId(),
-                        img.getColor(),
-                        img.isPrimary(),
-                        img.getDisplayOrder()
-                ))
-                .toList());
+        List<ProductImageView> imageViews = new java.util.ArrayList<>();
+        java.util.Set<String> seenColors = new java.util.HashSet<>();
+        java.util.Set<String> seenUrls = new java.util.HashSet<>();
 
+        // First add images from product_images table (sorted by isPrimary DESC, displayOrder ASC)
+        product.getImages().stream()
+                .sorted(java.util.Comparator.comparing(ProductImage::isPrimary).reversed()
+                        .thenComparing(ProductImage::getDisplayOrder))
+                .forEach(img -> {
+                    String colorKey = img.getColor() != null ? img.getColor().trim().toLowerCase(java.util.Locale.ROOT) : "";
+                    String urlKey = img.getImageUrl() != null ? img.getImageUrl().trim() : "";
+                    if (urlKey.isEmpty()) return;
+                    if (seenUrls.contains(urlKey)) return;
+                    if (!colorKey.isEmpty() && seenColors.contains(colorKey)) return;
+
+                    if (!colorKey.isEmpty()) seenColors.add(colorKey);
+                    seenUrls.add(urlKey);
+                    imageViews.add(new ProductImageView(
+                            img.getId(),
+                            img.getImageUrl(),
+                            img.getPublicId(),
+                            img.getColor(),
+                            img.isPrimary(),
+                            img.getDisplayOrder()
+                    ));
+                });
+
+        // Then fallback to active variants for missing colors
         activeVariants.stream()
                 .filter(v -> v.getImageUrl() != null && !v.getImageUrl().isBlank())
                 .forEach(v -> {
-                    boolean alreadyExists = imageViews.stream()
-                            .anyMatch(img -> img.imageUrl().equals(v.getImageUrl()));
-                    if (!alreadyExists) {
-                        imageViews.add(new ProductImageView(
-                                v.getId(),
-                                v.getImageUrl(),
-                                v.getImagePublicId(),
-                                v.getColor(),
-                                false,
-                                imageViews.size()
-                        ));
-                    }
+                    String colorKey = v.getColor() != null ? v.getColor().trim().toLowerCase(java.util.Locale.ROOT) : "";
+                    String urlKey = v.getImageUrl().trim();
+                    if (seenUrls.contains(urlKey)) return;
+                    if (!colorKey.isEmpty() && seenColors.contains(colorKey)) return;
+
+                    if (!colorKey.isEmpty()) seenColors.add(colorKey);
+                    seenUrls.add(urlKey);
+                    imageViews.add(new ProductImageView(
+                            v.getId(),
+                            v.getImageUrl(),
+                            v.getImagePublicId(),
+                            v.getColor(),
+                            false,
+                            imageViews.size()
+                    ));
                 });
 
         String resolvedImagePath = imageViews.stream()

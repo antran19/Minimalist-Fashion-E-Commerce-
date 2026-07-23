@@ -260,6 +260,21 @@
 
         <div class="admin-product-list">
             <article class="admin-product-card" th:each="product : ${products}" th:data-product-id="${product.id}">
+                <div class="product-images-data d-none">
+                    <div th:each="img : ${product.images}"
+                         th:data-id="${img.id}"
+                         th:data-url="${img.imageUrl}"
+                         th:data-color="${img.color}"
+                         th:data-primary="${img.primary}">
+                    </div>
+                    <div th:each="variant : ${product.variants}"
+                         th:if="${variant.imageUrl != null and !variant.imageUrl.isBlank()}"
+                         th:data-id="${'var-' + variant.id}"
+                         th:data-url="${variant.imageUrl}"
+                         th:data-color="${variant.color}"
+                         th:data-primary="false">
+                    </div>
+                </div>
                 <div class="admin-product-head">
                      <div>
                          <h3 th:text="${product.name}">Air Cotton Tee</h3>
@@ -278,6 +293,10 @@
                                   th:data-id="${product.id}"
                                   th:data-name="${product.name}"
                                   onclick="openAddVariantModal(this)">+ Variant</button>
+                          <button type="button" class="admin-action-btn admin-btn-outline"
+                                  th:data-id="${product.id}"
+                                  th:data-name="${product.name}"
+                                  onclick="openManageImagesModal(this)">🖼️ Images</button>
                           <button type="button" class="admin-action-btn admin-btn-outline"
                                   th:data-id="${product.id}"
                                   th:data-name="${product.name}"
@@ -928,6 +947,74 @@
         }, 550);
     }
 
+    function openManageImagesModal(btn) {
+        const productId = btn.getAttribute('data-id');
+        const productName = btn.getAttribute('data-name');
+        
+        const titleEl = document.getElementById('manageImagesProductName');
+        if (titleEl) titleEl.textContent = productName;
+
+        const imagesList = document.getElementById('manageImagesList');
+        if (!imagesList) return;
+        imagesList.innerHTML = '';
+
+        const productCard = btn.closest('.admin-product-card');
+        const dataContainer = productCard ? productCard.querySelector('.product-images-data') : null;
+        const imageElements = dataContainer ? dataContainer.querySelectorAll('div[data-id]') : [];
+
+        const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+
+        const seenUrls = new Set();
+        let renderedCount = 0;
+
+        imageElements.forEach(el => {
+            const url = el.getAttribute('data-url');
+            if (!url || seenUrls.has(url)) return;
+            seenUrls.add(url);
+            renderedCount++;
+
+            const id = el.getAttribute('data-id');
+            const color = el.getAttribute('data-color') || 'General';
+            const isPrimary = el.getAttribute('data-primary') === 'true';
+
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-center justify-content-between p-2 border rounded mb-2';
+            row.style.background = '#fcfcfc';
+
+            row.innerHTML = `
+                <div class="d-flex align-items-center gap-3">
+                    <img src="${url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd;">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark px-2 py-1">${color}</span>
+                            ${isPrimary ? '<span class="badge bg-success fw-bold px-2 py-1">PRIMARY REPRESENTATIVE</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    ${!isPrimary ? `
+                        <form action="/admin/products/${productId}/images/primary-by-url" method="post" style="margin:0;">
+                            <input type="hidden" name="_csrf" value="${csrfToken}">
+                            <input type="hidden" name="imageUrl" value="${url}">
+                            <input type="hidden" name="color" value="${color}">
+                            <button type="submit" class="btn btn-sm btn-dark fw-bold">Set as Primary</button>
+                        </form>
+                    ` : '<span class="text-success fw-bold" style="font-size: 0.85rem;">✓ Active Cover</span>'}
+                </div>
+            `;
+            imagesList.appendChild(row);
+        });
+
+        if (renderedCount === 0) {
+            imagesList.innerHTML = '<p class="text-muted fw-semibold">No images uploaded for this product variants yet. Please upload an image when adding or editing a variant.</p>';
+        }
+
+        const modalEl = document.getElementById('manageProductImagesModal');
+        if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
     // Save open variant tables before page unload
     window.addEventListener('beforeunload', () => {
         saveOpenVariantTables();
@@ -972,13 +1059,23 @@
 
 <script th:inline="javascript">
     /* Server-side Error Auto-Reopen Modal */
-    /*[[${adminErrorModal != null}]]*/
     const serverErrorModalId = /*[[${adminErrorModal}]]*/ null;
     const serverErrorMessageStr = /*[[${adminError}]]*/ null;
+    const serverErrorProductId = /*[[${adminErrorProductId}]]*/ null;
     if (serverErrorModalId) {
         window.addEventListener('DOMContentLoaded', () => {
             const modalEl = document.querySelector(serverErrorModalId);
             if (modalEl) {
+                if (serverErrorProductId && serverErrorModalId === '#addVariantModal') {
+                    const productIdInput = document.getElementById('addVariantProductId');
+                    if (productIdInput) productIdInput.value = serverErrorProductId;
+                    const card = document.querySelector(`.admin-product-card[data-product-id="${serverErrorProductId}"]`);
+                    if (card) {
+                        const productName = card.querySelector('.admin-product-head h3')?.textContent || '';
+                        const nameEl = document.getElementById('addVariantProductName');
+                        if (nameEl) nameEl.textContent = productName;
+                    }
+                }
                 if (serverErrorMessageStr) {
                     const modalBody = modalEl.querySelector('.modal-body');
                     if (modalBody && !modalBody.querySelector('.modal-server-error')) {
