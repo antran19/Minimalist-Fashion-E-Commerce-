@@ -423,7 +423,7 @@ public class ShoppingCartService {
     }
 
     private CartItemView toCartItemView(ProductVariant variant, int quantity) {
-        double unitPrice = variant.getProduct().getBasePrice().doubleValue();
+        double unitPrice = variant.getProduct().getSalePrice().doubleValue();
         double lineTotal = unitPrice * quantity;
         boolean outOfStock = variant.getStockQuantity() <= 0;
         boolean stockExceeded = quantity > variant.getStockQuantity();

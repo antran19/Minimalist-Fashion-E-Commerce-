@@ -214,7 +214,7 @@ public class AdminCatalogService {
     }
 
     @Transactional
-    public void createProduct(Long categoryId, String name, String basePriceStr, String productType, String description) {
+    public void createProduct(Long categoryId, String name, String basePriceStr, String productType, String description, boolean onSale, Integer discountPercentage) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Product name cannot be empty.");
         }
@@ -238,6 +238,8 @@ public class AdminCatalogService {
         product.setCropClass("crop-top");
         product.setNewArrival(true);
         product.setBestSeller(false);
+        product.setOnSale(onSale);
+        product.setDiscountPercentage(discountPercentage);
         product.setActive(true);
         product.setCreatedAt(LocalDateTime.now());
 
@@ -245,7 +247,7 @@ public class AdminCatalogService {
     }
 
     @Transactional
-    public void updateProduct(Long productId, Long categoryId, String name, String basePriceStr, String productType, String description) {
+    public void updateProduct(Long productId, Long categoryId, String name, String basePriceStr, String productType, String description, boolean onSale, Integer discountPercentage) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Product name cannot be empty.");
         }
@@ -266,6 +268,8 @@ public class AdminCatalogService {
         product.setBasePrice(formattedPrice);
         product.setProductType(validProductType);
         product.setDescription(description != null ? description.trim() : "");
+        product.setOnSale(onSale);
+        product.setDiscountPercentage(discountPercentage);
         productRepository.save(product);
     }
 

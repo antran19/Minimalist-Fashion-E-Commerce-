@@ -527,11 +527,17 @@ img {
     top: 8px;
     left: 8px;
     display: flex;
+    flex-direction: column;
     max-width: calc(100% - 16px);
     align-items: flex-start;
     gap: 6px;
-    flex-wrap: wrap;
     z-index: 2;
+}
+
+.product-badges-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
 }
 
 .product-badge {
@@ -559,6 +565,15 @@ img {
     background: #ff4d85;
     color: white;
     box-shadow: 0 2px 4px rgba(255, 77, 133, 0.2);
+}
+
+.product-badge.is-sale {
+    background: #facc15;
+    color: #451a03;
+    box-shadow: 0 2px 4px rgba(250, 204, 21, 0.2);
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 6px 14px;
 }
 
 .product-badge.is-sold-out {

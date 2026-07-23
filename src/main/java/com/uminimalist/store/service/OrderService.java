@@ -170,7 +170,7 @@ public class OrderService {
                 throw new IllegalArgumentException(item.productName() + " only has " + variant.getStockQuantity() + " item(s) left.");
             }
 
-            BigDecimal unitPrice = variant.getProduct().getBasePrice();
+            BigDecimal unitPrice = variant.getProduct().getSalePrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.quantity()));
             lines.add(new OrderLine(item, variant, unitPrice, lineTotal));
             total = total.add(lineTotal);

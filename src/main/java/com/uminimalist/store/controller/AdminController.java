@@ -162,9 +162,11 @@ public class AdminController {
                                 @RequestParam String basePrice,
                                 @RequestParam(required = false) String productType,
                                 @RequestParam(required = false) String description,
+                                @RequestParam(name = "onSale", defaultValue = "false") boolean onSale,
+                                @RequestParam(required = false) Integer discountPercentage,
                                 RedirectAttributes redirectAttributes) {
         try {
-            adminCatalogService.createProduct(categoryId, name, basePrice, productType, description);
+            adminCatalogService.createProduct(categoryId, name, basePrice, productType, description, onSale, discountPercentage);
             redirectAttributes.addFlashAttribute("adminMessage", "Product created successfully.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
@@ -180,9 +182,11 @@ public class AdminController {
                                 @RequestParam String basePrice,
                                 @RequestParam(required = false) String productType,
                                 @RequestParam(required = false) String description,
+                                @RequestParam(name = "onSale", defaultValue = "false") boolean onSale,
+                                @RequestParam(required = false) Integer discountPercentage,
                                 RedirectAttributes redirectAttributes) {
         try {
-            adminCatalogService.updateProduct(id, categoryId, name, basePrice, productType, description);
+            adminCatalogService.updateProduct(id, categoryId, name, basePrice, productType, description, onSale, discountPercentage);
             redirectAttributes.addFlashAttribute("adminMessage", "Product updated successfully.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());

@@ -54,6 +54,12 @@ public class Product {
     @Column(name = "best_seller", nullable = false)
     private boolean bestSeller;
 
+    @Column(name = "on_sale", nullable = false)
+    private boolean onSale = false;
+
+    @Column(name = "discount_percentage")
+    private Integer discountPercentage;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -106,6 +112,22 @@ public class Product {
 
     public boolean isBestSeller() {
         return bestSeller;
+    }
+
+    public boolean isOnSale() {
+        return onSale;
+    }
+
+    public Integer getDiscountPercentage() {
+        return discountPercentage;
+    }
+
+    public BigDecimal getSalePrice() {
+        if (onSale && discountPercentage != null && discountPercentage > 0 && discountPercentage <= 100) {
+            return basePrice.multiply(BigDecimal.valueOf(100 - discountPercentage))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        }
+        return basePrice;
     }
 
     public boolean isActive() {
@@ -166,6 +188,14 @@ public class Product {
 
     public void setBestSeller(boolean bestSeller) {
         this.bestSeller = bestSeller;
+    }
+
+    public void setOnSale(boolean onSale) {
+        this.onSale = onSale;
+    }
+
+    public void setDiscountPercentage(Integer discountPercentage) {
+        this.discountPercentage = discountPercentage;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {
