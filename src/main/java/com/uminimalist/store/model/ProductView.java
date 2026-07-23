@@ -116,4 +116,81 @@ public record ProductView(
             default -> "#cccccc";
         };
     }
+
+    public String imageForColor(String colorName) {
+        if (colorName == null || colorName.isBlank()) {
+            return imagePath;
+        }
+        if (images != null && !images.isEmpty()) {
+            for (ProductImageView img : images) {
+                if (img.color() != null && img.color().equalsIgnoreCase(colorName.trim())) {
+                    return img.imageUrl();
+                }
+            }
+        }
+        return resolveStaticColorImage(slug, colorName);
+    }
+
+    public static String resolveStaticColorImage(String productSlug, String colorName) {
+        if (productSlug == null || colorName == null) return "/images/product-collage.png";
+        String normalizedColor = colorName.trim().toLowerCase(java.util.Locale.ROOT).replace(" ", "-");
+        return switch (productSlug) {
+            case "air-cotton-tee" -> switch (normalizedColor) {
+                case "light-blue" -> "/images/products/air-cotton-tee-light-blue.png";
+                case "pink" -> "/images/products/air-cotton-tee-pink.png";
+                case "red" -> "/images/products/soft-jersey-tee-red.jpg";
+                case "white" -> "/images/products/soft-jersey-tee-white.jpg";
+                case "brown" -> "/images/products/soft-jersey-tee-brown.png";
+                default -> "/images/products/air-cotton-tee-cream.png";
+            };
+            case "light-utility-jacket" -> switch (normalizedColor) {
+                case "navy", "blue" -> "/images/products/light-utility-jacket-navy.png";
+                default -> "/images/products/light-utility-jacket-gray.png";
+            };
+            case "oxford-shirt" -> switch (normalizedColor) {
+                case "light-blue" -> "/images/products/oxford-shirt-light-blue.jpg";
+                case "white" -> "/images/products/oxford-shirt-white.png";
+                default -> "/images/products/oxford-shirt-brown.png";
+            };
+            case "soft-jersey-tee" -> switch (normalizedColor) {
+                case "red" -> "/images/products/soft-jersey-tee-red.jpg";
+                case "white" -> "/images/products/soft-jersey-tee-white.jpg";
+                case "pink" -> "/images/products/air-cotton-tee-pink.png";
+                case "light-blue" -> "/images/products/air-cotton-tee-light-blue.png";
+                case "sage", "grey", "gray" -> "/images/products/air-cotton-tee-cream.png";
+                default -> "/images/products/soft-jersey-tee-brown.png";
+            };
+            case "smart-ankle-pants" -> switch (normalizedColor) {
+                case "brown" -> "/images/products/smart-ankle-pants-brown.jpg";
+                case "white" -> "/images/products/smart-ankle-pants-white.jpg";
+                default -> "/images/products/smart-ankle-pants-black.png";
+            };
+            case "everyday-zip-hoodie" -> switch (normalizedColor) {
+                case "cream" -> "/images/products/everyday-zip-hoodie-cream.jpg";
+                case "red" -> "/images/products/everyday-zip-hoodie-red.jpg";
+                case "yellow" -> "/images/products/utility-tote-yellow.jpg";
+                default -> "/images/products/everyday-zip-hoodie-black.png";
+            };
+            case "linen-blend-shirt" -> switch (normalizedColor) {
+                case "orange" -> "/images/products/linen-blend-shirt-orange.jpg";
+                case "white" -> "/images/products/linen-blend-shirt-white.jpg";
+                default -> "/images/products/linen-blend-shirt-cream.png";
+            };
+            case "utility-tote" -> switch (normalizedColor) {
+                case "red" -> "/images/products/utility-tote-red.png";
+                case "yellow" -> "/images/products/utility-tote-yellow.jpg";
+                default -> "/images/products/utility-tote-pink.jpg";
+            };
+            case "school-day-cardigan" -> switch (normalizedColor) {
+                case "dark-green" -> "/images/products/school-day-cardigan-dark-green.jpg";
+                case "navy", "blue" -> "/images/products/school-day-cardigan-navy.png";
+                default -> "/images/products/school-day-cardigan-black.jpg";
+            };
+            case "easy-cotton-shorts" -> switch (normalizedColor) {
+                case "gray", "grey" -> "/images/products/easy-cotton-shorts-gray.png";
+                default -> "/images/products/easy-cotton-shorts-blue.png";
+            };
+            default -> "/images/product-collage.png";
+        };
+    }
 }

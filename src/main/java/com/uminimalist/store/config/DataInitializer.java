@@ -98,25 +98,25 @@ public class DataInitializer implements CommandLineRunner {
                     new String[][]{{"OXFORD-SHIRT-WHITE-S", "White", "S", "7"}, {"OXFORD-SHIRT-WHITE-M", "White", "M", "8"}, {"OXFORD-SHIRT-WHITE-L", "White", "L", "8"}, {"OXFORD-SHIRT-WHITE-XL", "White", "XL", "8"}});
 
             createProduct(women, "soft-jersey-tee", "Soft Jersey Tee", "T-shirt", "Easy jersey tee with a relaxed everyday shape.", new BigDecimal("19.90"), "product-sage", true, false,
-                    new String[][]{{"SOFT-JERSEY-TEE-SAGE-XS", "Sage", "XS", "10"}, {"SOFT-JERSEY-TEE-SAGE-S", "Sage", "S", "11"}, {"SOFT-JERSEY-TEE-SAGE-M", "Sage", "M", "12"}, {"SOFT-JERSEY-TEE-SAGE-L", "Sage", "L", "9"}});
+                    new String[][]{{"SOFT-JERSEY-TEE-RED-XS", "Red", "XS", "10"}, {"SOFT-JERSEY-TEE-WHITE-S", "White", "S", "11"}, {"SOFT-JERSEY-TEE-BROWN-M", "Brown", "M", "12"}, {"SOFT-JERSEY-TEE-RED-L", "Red", "L", "9"}});
 
             createProduct(women, "smart-ankle-pants", "Smart Ankle Pants", "Pants", "Straight ankle pants for repeat outfits.", new BigDecimal("39.90"), "product-pants", false, true,
-                    new String[][]{{"SMART-ANKLE-PANTS-BLACK-XS", "Black", "XS", "5"}, {"SMART-ANKLE-PANTS-BLACK-S", "Black", "S", "5"}, {"SMART-ANKLE-PANTS-BLACK-M", "Black", "M", "6"}, {"SMART-ANKLE-PANTS-BLACK-L", "Black", "L", "5"}, {"SMART-ANKLE-PANTS-BLACK-XL", "Black", "XL", "5"}});
+                    new String[][]{{"SMART-ANKLE-PANTS-BLACK-XS", "Black", "XS", "5"}, {"SMART-ANKLE-PANTS-BROWN-S", "Brown", "S", "5"}, {"SMART-ANKLE-PANTS-WHITE-M", "White", "M", "6"}, {"SMART-ANKLE-PANTS-BLACK-L", "Black", "L", "5"}, {"SMART-ANKLE-PANTS-BLACK-XL", "Black", "XL", "5"}});
 
             createProduct(women, "everyday-zip-hoodie", "Everyday Zip Hoodie", "Sweatshirt", "A clean zip hoodie for cool mornings.", new BigDecimal("49.90"), "product-hoodie", true, false,
-                    new String[][]{{"EVERYDAY-ZIP-HOODIE-GREY-S", "Grey", "S", "4"}, {"EVERYDAY-ZIP-HOODIE-GREY-M", "Grey", "M", "4"}, {"EVERYDAY-ZIP-HOODIE-GREY-L", "Grey", "L", "4"}, {"EVERYDAY-ZIP-HOODIE-GREY-XL", "Grey", "XL", "3"}});
+                    new String[][]{{"EVERYDAY-ZIP-HOODIE-BLACK-S", "Black", "S", "4"}, {"EVERYDAY-ZIP-HOODIE-CREAM-M", "Cream", "M", "4"}, {"EVERYDAY-ZIP-HOODIE-RED-L", "Red", "L", "4"}, {"EVERYDAY-ZIP-HOODIE-BLACK-XL", "Black", "XL", "3"}});
 
             createProduct(men, "linen-blend-shirt", "Linen Blend Shirt", "Shirt", "Light linen blend shirt with natural texture.", new BigDecimal("34.90"), "product-linen", false, false,
-                    new String[][]{{"LINEN-BLEND-SHIRT-NATURAL-S", "Natural", "S", "5"}, {"LINEN-BLEND-SHIRT-NATURAL-M", "Natural", "M", "6"}, {"LINEN-BLEND-SHIRT-NATURAL-L", "Natural", "L", "6"}, {"LINEN-BLEND-SHIRT-NATURAL-XL", "Natural", "XL", "5"}});
+                    new String[][]{{"LINEN-BLEND-SHIRT-ORANGE-S", "Orange", "S", "5"}, {"LINEN-BLEND-SHIRT-WHITE-M", "White", "M", "6"}, {"LINEN-BLEND-SHIRT-CREAM-L", "Cream", "L", "6"}, {"LINEN-BLEND-SHIRT-ORANGE-XL", "Orange", "XL", "5"}});
 
             createProduct(women, "utility-tote", "Utility Tote", "Accessories", "A compact tote for daily carry.", new BigDecimal("14.90"), "product-tote", true, true,
                     new String[][]{{"UTILITY-TOTE-RED-ONE-SIZE", "Red", "One size", "64"}});
 
             createProduct(kids, "school-day-cardigan", "School Day Cardigan", "Knitwear", "Soft cardigan for school and weekends.", new BigDecimal("29.90"), "product-kids-cardigan", true, false,
-                    new String[][]{{"SCHOOL-DAY-CARDIGAN-BLUE-110", "Blue", "110", "8"}, {"SCHOOL-DAY-CARDIGAN-BLUE-120", "Blue", "120", "9"}, {"SCHOOL-DAY-CARDIGAN-GREY-130", "Grey", "130", "9"}, {"SCHOOL-DAY-CARDIGAN-GREY-140", "Grey", "140", "8"}});
+                    new String[][]{{"SCHOOL-DAY-CARDIGAN-BLACK-110", "Black", "110", "8"}, {"SCHOOL-DAY-CARDIGAN-DARKGREEN-120", "Dark Green", "120", "9"}, {"SCHOOL-DAY-CARDIGAN-NAVY-130", "Navy", "130", "9"}, {"SCHOOL-DAY-CARDIGAN-BLACK-140", "Black", "140", "8"}});
 
             createProduct(kids, "easy-cotton-shorts", "Easy Cotton Shorts", "Shorts", "Cotton shorts for warm days and active routines.", new BigDecimal("16.90"), "product-kids-shorts", false, true,
-                    new String[][]{{"EASY-COTTON-SHORTS-KHAKI-110", "Khaki", "110", "7"}, {"EASY-COTTON-SHORTS-KHAKI-120", "Khaki", "120", "7"}, {"EASY-COTTON-SHORTS-KHAKI-130", "Khaki", "130", "7"}, {"EASY-COTTON-SHORTS-KHAKI-140", "Khaki", "140", "7"}});
+                    new String[][]{{"EASY-COTTON-SHORTS-BLUE-110", "Blue", "110", "7"}, {"EASY-COTTON-SHORTS-GRAY-120", "Gray", "120", "7"}, {"EASY-COTTON-SHORTS-BLUE-130", "Blue", "130", "7"}, {"EASY-COTTON-SHORTS-GRAY-140", "Gray", "140", "7"}});
         }
 
         // Ensure every product in DB has rich color and full size variants (XS, S, M, L, XL, 2XL, 110, 120, 130, 140)
@@ -217,10 +217,13 @@ public class DataInitializer implements CommandLineRunner {
             case "air-cotton-tee" -> switch (normalizedColor) {
                 case "light-blue" -> "/images/products/air-cotton-tee-light-blue.png";
                 case "pink" -> "/images/products/air-cotton-tee-pink.png";
+                case "red" -> "/images/products/soft-jersey-tee-red.jpg";
+                case "white" -> "/images/products/soft-jersey-tee-white.jpg";
+                case "brown" -> "/images/products/soft-jersey-tee-brown.png";
                 default -> "/images/products/air-cotton-tee-cream.png";
             };
             case "light-utility-jacket" -> switch (normalizedColor) {
-                case "navy" -> "/images/products/light-utility-jacket-navy.png";
+                case "navy", "blue" -> "/images/products/light-utility-jacket-navy.png";
                 default -> "/images/products/light-utility-jacket-gray.png";
             };
             case "oxford-shirt" -> switch (normalizedColor) {
@@ -231,6 +234,9 @@ public class DataInitializer implements CommandLineRunner {
             case "soft-jersey-tee" -> switch (normalizedColor) {
                 case "red" -> "/images/products/soft-jersey-tee-red.jpg";
                 case "white" -> "/images/products/soft-jersey-tee-white.jpg";
+                case "pink" -> "/images/products/air-cotton-tee-pink.png";
+                case "light-blue" -> "/images/products/air-cotton-tee-light-blue.png";
+                case "sage", "grey", "gray" -> "/images/products/air-cotton-tee-cream.png";
                 default -> "/images/products/soft-jersey-tee-brown.png";
             };
             case "smart-ankle-pants" -> switch (normalizedColor) {
@@ -241,6 +247,7 @@ public class DataInitializer implements CommandLineRunner {
             case "everyday-zip-hoodie" -> switch (normalizedColor) {
                 case "cream" -> "/images/products/everyday-zip-hoodie-cream.jpg";
                 case "red" -> "/images/products/everyday-zip-hoodie-red.jpg";
+                case "yellow" -> "/images/products/utility-tote-yellow.jpg";
                 default -> "/images/products/everyday-zip-hoodie-black.png";
             };
             case "linen-blend-shirt" -> switch (normalizedColor) {
@@ -255,11 +262,11 @@ public class DataInitializer implements CommandLineRunner {
             };
             case "school-day-cardigan" -> switch (normalizedColor) {
                 case "dark-green" -> "/images/products/school-day-cardigan-dark-green.jpg";
-                case "navy" -> "/images/products/school-day-cardigan-navy.png";
+                case "navy", "blue" -> "/images/products/school-day-cardigan-navy.png";
                 default -> "/images/products/school-day-cardigan-black.jpg";
             };
             case "easy-cotton-shorts" -> switch (normalizedColor) {
-                case "gray" -> "/images/products/easy-cotton-shorts-gray.png";
+                case "gray", "grey" -> "/images/products/easy-cotton-shorts-gray.png";
                 default -> "/images/products/easy-cotton-shorts-blue.png";
             };
             default -> "/images/product-collage.png";
@@ -290,6 +297,7 @@ public class DataInitializer implements CommandLineRunner {
             variant.setSize(v[2]);
             variant.setStockQuantity(Integer.parseInt(v[3]));
             variant.setActive(true);
+            variant.setImageUrl(resolveColorImagePath(slug, v[1]));
             product.getVariants().add(variant);
         }
         productRepository.save(product);

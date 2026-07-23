@@ -224,6 +224,8 @@ public class LandingPageService {
 
         List<String> colors = activeVariants.stream()
                 .map(ProductVariant::getColor)
+                .filter(c -> c != null && !c.isBlank() && !"Default".equalsIgnoreCase(c.trim()))
+                .filter(c -> isOfficialColorForProduct(product.getSlug(), c))
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
@@ -368,6 +370,24 @@ public class LandingPageService {
             case "easy-cotton-shorts" -> "/images/products/easy-cotton-shorts-blue.png";
             case "school-day-cardigan" -> "/images/products/school-day-cardigan-black.jpg";
             default -> "/images/product-collage.png";
+        };
+    }
+
+    private boolean isOfficialColorForProduct(String slug, String color) {
+        if (slug == null || color == null) return true;
+        String normalizedColor = color.trim().toLowerCase(Locale.ROOT);
+        return switch (slug) {
+            case "soft-jersey-tee" -> normalizedColor.equals("red") || normalizedColor.equals("white") || normalizedColor.equals("brown");
+            case "air-cotton-tee" -> normalizedColor.equals("light blue") || normalizedColor.equals("pink") || normalizedColor.equals("cream");
+            case "smart-ankle-pants" -> normalizedColor.equals("black") || normalizedColor.equals("brown") || normalizedColor.equals("white");
+            case "everyday-zip-hoodie" -> normalizedColor.equals("black") || normalizedColor.equals("cream") || normalizedColor.equals("red");
+            case "linen-blend-shirt" -> normalizedColor.equals("orange") || normalizedColor.equals("white") || normalizedColor.equals("cream");
+            case "utility-tote" -> normalizedColor.equals("red") || normalizedColor.equals("yellow") || normalizedColor.equals("pink");
+            case "school-day-cardigan" -> normalizedColor.equals("black") || normalizedColor.equals("dark green") || normalizedColor.equals("navy");
+            case "easy-cotton-shorts" -> normalizedColor.equals("blue") || normalizedColor.equals("gray") || normalizedColor.equals("grey");
+            case "light-utility-jacket" -> normalizedColor.equals("navy") || normalizedColor.equals("gray") || normalizedColor.equals("grey");
+            case "oxford-shirt" -> normalizedColor.equals("light blue") || normalizedColor.equals("white") || normalizedColor.equals("brown");
+            default -> true;
         };
     }
 }
