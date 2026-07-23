@@ -54,7 +54,7 @@ public class Product {
     @Column(name = "best_seller", nullable = false)
     private boolean bestSeller;
 
-    @Column(name = "on_sale", nullable = false, columnDefinition = "BIT NOT NULL DEFAULT 0")
+    @Column(name = "on_sale", nullable = false, columnDefinition = "BIT DEFAULT 0")
     private boolean onSale = false;
 
     @Column(name = "discount_percentage")

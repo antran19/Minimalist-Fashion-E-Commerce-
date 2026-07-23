@@ -476,11 +476,14 @@
 
     <!-- Orders Panel -->
     <div class="admin-panel d-none" id="tab-orders">
-        <div class="admin-panel-title">
+        <div class="admin-panel-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
             <div>
                 <p class="panel-kicker">Orders</p>
-                <h2>Recent customer orders</h2>
+                <h2 style="margin: 0;">Recent customer orders</h2>
             </div>
+            <a th:href="@{/admin/orders/export}" class="btn btn-outline-dark btn-sm rounded-1 px-3 py-2 fw-bold">
+                Export to CSV
+            </a>
         </div>
         <form th:action="@{'/admin/dashboard#orders'}" method="get" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
             <input type="text" name="orderQuery" class="search-control" th:value="${orderQuery}" placeholder="Search orders by code, customer name or email..." style="flex: 1; min-width: 240px;">
