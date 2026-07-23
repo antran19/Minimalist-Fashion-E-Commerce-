@@ -60,14 +60,16 @@ public class ProductReviewService {
     public List<ReviewView> findReviewsForProduct(String productSlug) {
         ensureReviewTable();
         return jdbcTemplate.query("""
-                SELECT u.full_name, r.rating, r.comment, r.created_at
+                SELECT r.id, u.full_name, u.email, r.rating, r.comment, r.created_at
                 FROM dbo.product_reviews r
                 JOIN dbo.products p ON p.id = r.product_id
                 JOIN dbo.users u ON u.id = r.user_id
                 WHERE p.slug = ? AND p.active = 1
                 ORDER BY r.created_at DESC
                 """, (rs, rowNum) -> new ReviewView(
+                        rs.getLong("id"),
                         rs.getString("full_name"),
+                        rs.getString("email"),
                         rs.getInt("rating"),
                         rs.getString("comment"),
                         rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime()
@@ -171,5 +173,83 @@ public class ProductReviewService {
                 INSERT INTO dbo.product_reviews (product_id, user_id, rating, comment)
                 VALUES (?, ?, ?, ?)
                 """, productId, user.getId(), rating, normalizedComment);
+    }
+
+    public java.util.Optional<ReviewView> getUserReviewForProduct(String email, String productSlug) {
+        ensureReviewTable();
+        if (email == null || email.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        List<ReviewView> reviews = jdbcTemplate.query("""
+                SELECT r.id, u.full_name, u.email, r.rating, r.comment, r.created_at
+                FROM dbo.product_reviews r
+                JOIN dbo.products p ON p.id = r.product_id
+                JOIN dbo.users u ON u.id = r.user_id
+                WHERE u.email = ? AND p.slug = ? AND p.active = 1
+                """, (rs, rowNum) -> new ReviewView(
+                        rs.getLong("id"),
+                        rs.getString("full_name"),
+                        rs.getString("email"),
+                        rs.getInt("rating"),
+                        rs.getString("comment"),
+                        rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime()
+                ), email, productSlug);
+        return reviews.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(reviews.get(0));
+    }
+
+    @Transactional
+    public void updateReview(String email, Long reviewId, int rating, String comment) {
+        ensureReviewTable();
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5.");
+        }
+        String normalizedComment = comment == null ? "" : comment.trim();
+        if (normalizedComment.length() < 3 || normalizedComment.length() > 1000) {
+            throw new IllegalArgumentException("Review comment must be between 3 and 1000 characters.");
+        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Customer account not found."));
+
+        // Verify ownership
+        Integer ownershipCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM dbo.product_reviews WHERE id = ? AND user_id = ?
+                """, Integer.class, reviewId, user.getId());
+
+        if (ownershipCount == null || ownershipCount == 0) {
+            throw new IllegalArgumentException("You can only edit your own reviews.");
+        }
+
+        jdbcTemplate.update("""
+                UPDATE dbo.product_reviews
+                SET rating = ?, comment = ?, created_at = SYSUTCDATETIME()
+                WHERE id = ? AND user_id = ?
+                """, rating, normalizedComment, reviewId, user.getId());
+    }
+
+    @Transactional
+    public void deleteReview(String email, Long reviewId, boolean isAdmin) {
+        ensureReviewTable();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+
+        if (isAdmin) {
+            // Admin can delete any review
+            jdbcTemplate.update("""
+                    DELETE FROM dbo.product_reviews WHERE id = ?
+                    """, reviewId);
+        } else {
+            // Verify ownership
+            Integer ownershipCount = jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM dbo.product_reviews WHERE id = ? AND user_id = ?
+                    """, Integer.class, reviewId, user.getId());
+
+            if (ownershipCount == null || ownershipCount == 0) {
+                throw new IllegalArgumentException("You can only delete your own reviews.");
+            }
+
+            jdbcTemplate.update("""
+                    DELETE FROM dbo.product_reviews WHERE id = ? AND user_id = ?
+                    """, reviewId, user.getId());
+        }
     }
 }

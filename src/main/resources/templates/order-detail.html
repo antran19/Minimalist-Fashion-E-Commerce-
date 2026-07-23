@@ -36,6 +36,7 @@
                         <th>Qty</th>
                         <th>Unit</th>
                         <th>Total</th>
+                        <th th:if="${order.status == 'DELIVERED'}">Action</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -53,6 +54,19 @@
                         <td th:text="${item.quantity}" style="vertical-align: middle;">1</td>
                         <td th:text="${item.unitPriceLabel}" style="vertical-align: middle;">$19.90</td>
                         <td th:text="${item.lineTotalLabel}" style="vertical-align: middle; font-weight: 700;">$19.90</td>
+                        <td th:if="${order.status == 'DELIVERED'}" style="vertical-align: middle;">
+                            <button th:if="${item.productSlug != null}"
+                                    type="button" 
+                                    class="account-button account-button-secondary account-button-small review-trigger-btn"
+                                    th:data-product-slug="${item.productSlug}"
+                                    th:data-product-name="${item.productName}"
+                                    th:data-existing-id="${existingReviews[item.productSlug] != null ? existingReviews[item.productSlug].id : ''}"
+                                    th:data-existing-rating="${existingReviews[item.productSlug] != null ? existingReviews[item.productSlug].rating : ''}"
+                                    th:data-existing-comment="${existingReviews[item.productSlug] != null ? existingReviews[item.productSlug].comment : ''}"
+                                    style="padding: 6px 12px; font-size: 0.8rem; height: auto; border-radius: 4px;">
+                                <span th:text="${existingReviews[item.productSlug] != null ? 'Edit Review' : 'Write Review'}">Review</span>
+                            </button>
+                        </td>
                     </tr>
                     </tbody>
                 </table>
@@ -199,6 +213,221 @@
         </div>
     </section>
 </main>
+
+<!-- Review Modal Overlay -->
+<div id="review-modal-overlay" class="review-modal-overlay">
+    <div class="review-modal-container">
+        <div class="review-modal-header">
+            <h3 class="review-modal-title" id="review-modal-title">Write a Review</h3>
+            <p class="review-modal-subtitle" id="review-modal-subtitle">Product Name</p>
+        </div>
+        <form id="review-modal-form" method="post" action="">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <input type="hidden" name="orderCode" th:value="${order.orderCode}">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Star Rating</label>
+                <div class="rating-select" style="display: flex; gap: 8px;">
+                    <label th:each="stars : ${#numbers.sequence(1, 5)}" style="cursor: pointer; margin: 0;">
+                        <input type="radio" name="rating" th:value="${stars}" required style="display: none;" class="modal-star-radio">
+                        <span class="modal-star-icon" th:data-value="${stars}">☆</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 24px;">
+                <label for="review-modal-comment" style="display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Your Review</label>
+                <textarea id="review-modal-comment" name="comment" rows="4" required minlength="3" maxlength="1000" style="width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 0.95rem; resize: vertical; outline: none; font-weight: 600; font-family: inherit;" placeholder="Share your experience (3 to 1000 characters)..."></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" id="review-modal-cancel" class="account-button account-button-secondary" style="height: auto; padding: 10px 20px; font-size: 0.9rem; border-radius: 6px;">Cancel</button>
+                <button type="submit" id="review-modal-submit" class="account-button account-button-primary" style="height: auto; padding: 10px 20px; font-size: 0.9rem; border-radius: 6px;">Submit Review</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .review-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+    .review-modal-overlay.is-active {
+        display: flex;
+        opacity: 1;
+    }
+    .review-modal-container {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        max-width: 480px;
+        width: 90%;
+        padding: 32px;
+        transform: translateY(-20px);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid var(--line);
+    }
+    .review-modal-overlay.is-active .review-modal-container {
+        transform: translateY(0);
+    }
+    .review-modal-header {
+        margin-bottom: 24px;
+    }
+    .review-modal-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin: 0 0 6px 0;
+        color: var(--ink);
+    }
+    .review-modal-subtitle {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin: 0;
+        font-weight: 600;
+    }
+    .modal-star-radio {
+        display: none;
+    }
+    .modal-star-icon {
+        font-size: 2.2rem;
+        color: #ccc;
+        cursor: pointer;
+        transition: color 0.15s ease, transform 0.15s ease;
+        user-select: none;
+        display: inline-block;
+    }
+    .modal-star-icon:hover {
+        transform: scale(1.15);
+    }
+    .modal-star-icon.selected {
+        color: #ffc107;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const modalOverlay = document.getElementById("review-modal-overlay");
+        const modalForm = document.getElementById("review-modal-form");
+        const modalTitle = document.getElementById("review-modal-title");
+        const modalSubtitle = document.getElementById("review-modal-subtitle");
+        const modalComment = document.getElementById("review-modal-comment");
+        const cancelButton = document.getElementById("review-modal-cancel");
+        const submitButton = document.getElementById("review-modal-submit");
+
+        const stars = document.querySelectorAll(".modal-star-icon");
+        const starRadios = document.querySelectorAll(".modal-star-radio");
+
+        function updateStars(rating) {
+            stars.forEach(star => {
+                const val = parseInt(star.getAttribute("data-value"));
+                if (val <= rating) {
+                    star.textContent = "★";
+                    star.classList.add("selected");
+                } else {
+                    star.textContent = "☆";
+                    star.classList.remove("selected");
+                }
+            });
+        }
+
+        // Star interaction
+        stars.forEach(star => {
+            star.addEventListener("click", function() {
+                const val = parseInt(this.getAttribute("data-value"));
+                const radio = document.querySelector(`.modal-star-radio[value="${val}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+                updateStars(val);
+            });
+            star.addEventListener("mouseenter", function() {
+                const val = parseInt(this.getAttribute("data-value"));
+                updateStars(val);
+            });
+            star.addEventListener("mouseleave", function() {
+                const checkedRadio = document.querySelector(".modal-star-radio:checked");
+                if (checkedRadio) {
+                    updateStars(parseInt(checkedRadio.value));
+                } else {
+                    stars.forEach(s => {
+                        s.textContent = "☆";
+                        s.classList.remove("selected");
+                    });
+                }
+            });
+        });
+
+        // Open Modal
+        document.querySelectorAll(".review-trigger-btn").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const slug = this.getAttribute("data-product-slug");
+                const name = this.getAttribute("data-product-name");
+                const existingId = this.getAttribute("data-existing-id");
+                const existingRating = this.getAttribute("data-existing-rating");
+                const existingComment = this.getAttribute("data-existing-comment");
+
+                modalSubtitle.textContent = name;
+                modalComment.value = existingComment || "";
+
+                if (existingId) {
+                    // Edit Mode
+                    modalTitle.textContent = "Edit Review";
+                    submitButton.textContent = "Save Changes";
+                    modalForm.action = "/products/" + slug + "/reviews/" + existingId + "/edit";
+                    
+                    const ratingVal = parseInt(existingRating);
+                    const radio = document.querySelector(`.modal-star-radio[value="${ratingVal}"]`);
+                    if (radio) radio.checked = true;
+                    updateStars(ratingVal);
+                } else {
+                    // Create Mode
+                    modalTitle.textContent = "Write a Review";
+                    submitButton.textContent = "Submit Review";
+                    modalForm.action = "/products/" + slug + "/reviews";
+                    
+                    starRadios.forEach(r => r.checked = false);
+                    updateStars(0);
+                }
+
+                // Show Modal
+                modalOverlay.style.display = "flex";
+                // Force reflow
+                modalOverlay.offsetHeight;
+                modalOverlay.classList.add("is-active");
+            });
+        });
+
+        // Close Modal function
+        function closeModal() {
+            modalOverlay.classList.remove("is-active");
+            setTimeout(() => {
+                modalOverlay.style.display = "none";
+            }, 250);
+        }
+
+        if (cancelButton) {
+            cancelButton.addEventListener("click", closeModal);
+        }
+
+        if (modalOverlay) {
+            modalOverlay.addEventListener("click", function(e) {
+                if (e.target === modalOverlay) {
+                    closeModal();
+                }
+            });
+        }
+    });
+</script>
 
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
 <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>

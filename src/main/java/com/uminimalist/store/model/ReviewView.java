@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public record ReviewView(
+        Long id,
         String reviewerName,
+        String reviewerEmail,
         int rating,
         String comment,
         LocalDateTime createdAt

@@ -145,6 +145,35 @@
 </main>
 
 <th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+<script>
+    (function () {
+        var form = document.querySelector('form[action*="/login"]');
+        var emailInput = document.getElementById('email');
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+        function showError(msg) {
+            var existing = document.getElementById('client-error');
+            if (existing) existing.remove();
+            var div = document.createElement('div');
+            div.id = 'client-error';
+            div.className = 'auth-alert alert-error';
+            div.textContent = msg;
+            form.parentNode.insertBefore(div, form);
+        }
+
+        form.addEventListener('submit', function (e) {
+            var email = emailInput.value.trim();
+            if (!emailRegex.test(email)) {
+                e.preventDefault();
+                showError('Email không hợp lệ. Vui lòng nhập đúng định dạng, ví dụ: name@domain.com');
+                emailInput.focus();
+                return;
+            }
+            var existing = document.getElementById('client-error');
+            if (existing) existing.remove();
+        });
+    })();
+</script>
 <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 </body>
 </html>

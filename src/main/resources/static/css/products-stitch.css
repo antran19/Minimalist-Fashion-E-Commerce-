@@ -688,7 +688,7 @@
 }
 
 .catalog-product-price-row strong {
-    color: #dc171d;
+    color: var(--catalog-ink);
     font-size: 1.03rem;
 }
 

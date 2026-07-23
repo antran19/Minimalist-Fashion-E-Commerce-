@@ -897,7 +897,8 @@
     text-underline-offset: 3px;
 }
 
-.premium-wishlist-content > strong {
+.premium-wishlist-content > strong,
+.premium-wishlist-price {
     margin-top: 6px;
     font-size: 0.95rem;
 }

@@ -3,6 +3,7 @@ package com.uminimalist.store.controller;
 import com.uminimalist.store.entity.ProductVariant;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CartView;
+import com.uminimalist.store.model.ReviewView;
 import com.uminimalist.store.repository.ProductVariantRepository;
 import com.uminimalist.store.repository.UserRepository;
 import com.uminimalist.store.service.CustomerAddressService;
@@ -147,13 +148,26 @@ public class CustomerController {
                               RedirectAttributes redirectAttributes) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
-        var order = orderService.findOrderForCustomer(authentication.getName(), orderCode);
-        if (order.isEmpty()) {
+        var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
+        if (orderOpt.isEmpty()) {
             redirectAttributes.addFlashAttribute("accountError", "Order not found.");
             return "redirect:/account#orders";
         }
+        var order = orderOpt.get();
+        
+        java.util.Map<String, ReviewView> existingReviews = new java.util.HashMap<>();
+        if ("DELIVERED".equalsIgnoreCase(order.status())) {
+            for (var item : order.items()) {
+                if (item.productSlug() != null) {
+                    productReviewService.getUserReviewForProduct(authentication.getName(), item.productSlug())
+                            .ifPresent(review -> existingReviews.put(item.productSlug(), review));
+                }
+            }
+        }
+        
         model.addAttribute("account", user);
-        model.addAttribute("order", order.get());
+        model.addAttribute("order", order);
+        model.addAttribute("existingReviews", existingReviews);
         return "order-detail";
     }
 
@@ -450,12 +464,56 @@ public class CustomerController {
                             Authentication authentication,
                             @RequestParam int rating,
                             @RequestParam String comment,
+                            @RequestParam(required = false) String orderCode,
                             RedirectAttributes redirectAttributes) {
         try {
             productReviewService.addReview(authentication.getName(), slug, rating, comment);
+            redirectAttributes.addFlashAttribute("accountMessage", "Review submitted successfully.");
             redirectAttributes.addFlashAttribute("cartMessage", "Review submitted successfully.");
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
             redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+        }
+        if (orderCode != null && !orderCode.isBlank()) {
+            return "redirect:/account/orders/" + orderCode;
+        }
+        return "redirect:/products/" + slug;
+    }
+
+    @PostMapping("/products/{slug}/reviews/{reviewId}/edit")
+    public String editReview(@PathVariable String slug,
+                             @PathVariable Long reviewId,
+                             Authentication authentication,
+                             @RequestParam int rating,
+                             @RequestParam String comment,
+                             @RequestParam(required = false) String orderCode,
+                             RedirectAttributes redirectAttributes) {
+        try {
+            productReviewService.updateReview(authentication.getName(), reviewId, rating, comment);
+            redirectAttributes.addFlashAttribute("accountMessage", "Review updated successfully.");
+            redirectAttributes.addFlashAttribute("cartMessage", "Review updated successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+        }
+        if (orderCode != null && !orderCode.isBlank()) {
+            return "redirect:/account/orders/" + orderCode;
+        }
+        return "redirect:/products/" + slug;
+    }
+
+    @PostMapping("/products/{slug}/reviews/{reviewId}/delete")
+    public String deleteReview(@PathVariable String slug,
+                               @PathVariable Long reviewId,
+                               Authentication authentication,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            productReviewService.deleteReview(authentication.getName(), reviewId, isAdmin(authentication));
+            redirectAttributes.addFlashAttribute("cartMessage", "Review deleted successfully.");
+            redirectAttributes.addFlashAttribute("accountMessage", "Review deleted successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("cartError", exception.getMessage());
+            redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
         }
         return "redirect:/products/" + slug;
     }

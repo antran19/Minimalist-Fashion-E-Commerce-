@@ -113,73 +113,36 @@
     <section class="reviews-section" style="margin-top: 60px; border-top: 1px solid var(--line); padding-top: 40px;" aria-labelledby="reviews-title">
         <h2 id="reviews-title" style="font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 24px;">Customer Reviews</h2>
 
-        <div class="reviews-layout" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: start;">
+        <div class="reviews-layout" style="display: block;">
             <!-- Review List -->
-            <div class="reviews-list-container">
+            <div class="reviews-list-container" style="width: 100%;">
                 <div class="order-empty" th:if="${#lists.isEmpty(reviews)}">
                     <p style="margin: 0; color: var(--muted); font-weight: 600;">No reviews for this product yet.</p>
                 </div>
                 <div class="reviews-list" th:if="${!#lists.isEmpty(reviews)}">
                     <div class="review-card" th:each="review : ${reviews}" style="border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <strong th:text="${review.reviewerName}" style="font-weight: 700; color: var(--ink);">John Doe</strong>
-                            <small class="text-muted" th:text="${review.createdAtLabel()}" style="font-weight: 500;">03 Jul 2026</small>
+                            <strong th:text="${review.reviewerName}" style="font-weight: 700; color: var(--ink);"></strong>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <small class="text-muted" th:text="${review.createdAtLabel()}" style="font-weight: 500;"></small>
+                                <form th:if="${(currentUserEmail != null and currentUserEmail == review.reviewerEmail) or isAdmin}" 
+                                      th:action="@{/products/{slug}/reviews/{reviewId}/delete(slug=${product.slug},reviewId=${review.id})}" 
+                                      method="post" 
+                                      style="margin: 0;"
+                                      onsubmit="return confirm('Are you sure you want to delete this review?');">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                    <button type="submit" style="background: none; border: none; color: #a72121; font-weight: 600; font-size: 0.85rem; cursor: pointer; padding: 0;">Delete</button>
+                                </form>
+                            </div>
                         </div>
                         <div style="margin-bottom: 8px;">
                             <span th:each="i : ${#numbers.sequence(1, 5)}"
                                   th:text="${i <= review.rating ? '★' : '☆'}"
                                   th:style="${i <= review.rating ? 'color: #ffc107; font-size: 1.1rem;' : 'color: #ccc; font-size: 1.1rem;'}"></span>
                         </div>
-                        <p style="margin: 0; color: var(--ink); font-weight: 500; font-size: 0.95rem; line-height: 1.5;" th:text="${review.comment}">Nice product!</p>
+                        <p style="margin: 0; color: var(--ink); font-weight: 500; font-size: 0.95rem; line-height: 1.5;" th:text="${review.comment}"></p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Write Review Form -->
-            <div class="write-review-container" th:if="${canReview}" style="background-color: #fcfcfc; padding: 24px; border-radius: var(--radius); border: 1px solid var(--line);">
-                <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 16px; letter-spacing: -0.02em;">Write a Review</h3>
-                <form th:action="@{/products/{slug}/reviews(slug=${product.slug})}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-size: 0.78rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px;">Rating</label>
-                        <div class="rating-select" style="display: flex; gap: 8px;">
-                            <label th:each="stars : ${#numbers.sequence(1, 5)}" style="cursor: pointer; margin: 0;">
-                                <input type="radio" name="rating" th:value="${stars}" required style="display: none;" class="star-radio">
-                                <span class="star-icon" th:data-value="${stars}" style="font-size: 1.8rem; color: #ccc; transition: color 0.1s; user-select: none;">☆</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 20px;">
-                        <label for="comment" style="display: block; font-size: 0.78rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px;">Comment</label>
-                        <textarea id="comment" name="comment" rows="4" required minlength="3" maxlength="1000" style="width: 100%; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; font-weight: 600; font-size: 0.95rem; resize: vertical;" placeholder="Share your experience with this product (3 to 1000 characters)..."></textarea>
-                    </div>
-
-                    <button class="btn btn-primary retail-btn" type="submit" style="width: 100%;">Submit Review</button>
-                </form>
-            </div>
-
-            <!-- Message for anonymous or non-buyers -->
-            <div class="write-review-container" th:if="${!canReview}" style="background-color: #fcfcfc; padding: 24px; border-radius: var(--radius); border: 1px solid var(--line); text-align: center;">
-                <h3 style="font-size: 1.3rem; font-weight: 800; margin-top: 0; margin-bottom: 12px; letter-spacing: -0.02em;">Write a Review</h3>
-                <p sec:authorize="isAnonymous()" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
-                    Please <a th:href="@{/login}" style="color: var(--accent); text-decoration: underline;">sign in</a> to write a review.
-                </p>
-                <div sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                    <p th:if="${reviewStatus == 'ALREADY_REVIEWED'}" style="margin: 0; font-size: 0.95rem; color: #16a34a; font-weight: 700; line-height: 1.5;">
-                        ✓ You have already reviewed this product.
-                    </p>
-                    <p th:if="${reviewStatus == 'NOT_DELIVERED'}" style="margin: 0; font-size: 0.9rem; color: #d97706; font-weight: 600; line-height: 1.5;">
-                        You can review this product once your order is delivered.
-                    </p>
-                    <p th:if="${reviewStatus == 'NOT_PURCHASED'}" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
-                        Only customers who have purchased this product can leave a review.
-                    </p>
-                </div>
-                <p sec:authorize="hasRole('ADMIN')" style="margin: 0; font-size: 0.9rem; color: var(--muted); font-weight: 600; line-height: 1.5;">
-                    Administrators cannot leave reviews.
-                </p>
             </div>
         </div>
     </section>
@@ -236,46 +199,7 @@
 <th:block th:replace="~{fragments/scripts :: scripts(false)}"></th:block>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const stars = document.querySelectorAll(".rating-select .star-icon");
-        const radios = document.querySelectorAll(".rating-select .star-radio");
 
-        function updateStars(rating) {
-            stars.forEach(star => {
-                const val = parseInt(star.getAttribute("data-value"));
-                if (val <= rating) {
-                    star.textContent = "★";
-                    star.style.color = "#ffc107";
-                } else {
-                    star.textContent = "☆";
-                    star.style.color = "#ccc";
-                }
-            });
-        }
-
-        radios.forEach(radio => {
-            radio.addEventListener("change", function() {
-                updateStars(parseInt(this.value));
-            });
-        });
-
-        // Hover effect
-        stars.forEach(star => {
-            star.addEventListener("mouseenter", function() {
-                const val = parseInt(this.getAttribute("data-value"));
-                updateStars(val);
-            });
-            star.addEventListener("mouseleave", function() {
-                const checkedRadio = document.querySelector(".rating-select .star-radio:checked");
-                if (checkedRadio) {
-                    updateStars(parseInt(checkedRadio.value));
-                } else {
-                    stars.forEach(s => {
-                        s.textContent = "☆";
-                        s.style.color = "#ccc";
-                    });
-                }
-            });
-        });
         // Color swatch mapping
         const colorMap = {
             'white': '#ffffff',

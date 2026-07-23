@@ -80,7 +80,9 @@ public class ShoppingCartService {
         int currentQuantity = 0;
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
-            Long userId = userId(customerEmail);
+            var userIdOpt = userId(customerEmail);
+            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COALESCE(MAX(quantity), 0)
                     FROM dbo.customer_cart_items
@@ -112,7 +114,9 @@ public class ShoppingCartService {
         int currentQuantity = 0;
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
-            Long userId = userId(customerEmail);
+            var userIdOpt = userId(customerEmail);
+            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COALESCE(MAX(quantity), 0)
                     FROM dbo.customer_cart_items
@@ -161,7 +165,9 @@ public class ShoppingCartService {
 
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
-            Long userId = userId(customerEmail);
+            var userIdOpt = userId(customerEmail);
+            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COUNT(*)
                     FROM dbo.customer_cart_items
@@ -193,7 +199,9 @@ public class ShoppingCartService {
     public void removeItem(HttpSession session, String customerEmail, String sku) {
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
-            Long userId = userId(customerEmail);
+            var userIdOpt = userId(customerEmail);
+            if (userIdOpt.isEmpty()) return;
+            Long userId = userIdOpt.get();
             jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ? AND sku = ?", userId, sku);
             return;
         }
@@ -400,7 +408,8 @@ public class ShoppingCartService {
     @Transactional(readOnly = false)
     public void clearCart(HttpSession session, String customerEmail) {
         if (hasText(customerEmail)) {
-            jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ?", userId(customerEmail));
+            userId(customerEmail).ifPresent(uid ->
+                jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ?", uid));
         }
         session.removeAttribute(CART_SESSION_KEY);
     }
@@ -510,7 +519,9 @@ public class ShoppingCartService {
     }
 
     private void saveCustomerCartQuantity(String customerEmail, String sku, int nextQuantity) {
-        Long userId = userId(customerEmail);
+        var userIdOpt = userId(customerEmail);
+        if (userIdOpt.isEmpty()) return;
+        Long userId = userIdOpt.get();
 
         Integer count = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
@@ -532,7 +543,9 @@ public class ShoppingCartService {
     }
 
     private void addSkuToCustomerCart(String customerEmail, ProductVariant variant, int quantity) {
-        Long userId = userId(customerEmail);
+        var userIdOpt = userId(customerEmail);
+        if (userIdOpt.isEmpty()) return;
+        Long userId = userIdOpt.get();
         int requestedQuantity = Math.max(quantity, 1);
         Integer currentQuantity = jdbcTemplate.queryForObject("""
                 SELECT COALESCE(MAX(quantity), 0)
@@ -564,7 +577,9 @@ public class ShoppingCartService {
     }
 
     private void updateCustomerCartItem(String customerEmail, String sku, int quantity) {
-        Long userId = userId(customerEmail);
+        var userIdOpt = userId(customerEmail);
+        if (userIdOpt.isEmpty()) return;
+        Long userId = userIdOpt.get();
         if (quantity <= 0) {
             jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ? AND sku = ?", userId, sku);
             return;
@@ -583,7 +598,9 @@ public class ShoppingCartService {
     }
 
     private Map<String, Integer> readCustomerCart(String customerEmail) {
-        Long userId = userId(customerEmail);
+        var userIdOpt = userId(customerEmail);
+        if (userIdOpt.isEmpty()) return new LinkedHashMap<>();
+        Long userId = userIdOpt.get();
         ensureCartTable();
         return jdbcTemplate.query("""
                         SELECT sku, quantity
@@ -601,10 +618,9 @@ public class ShoppingCartService {
                 userId);
     }
 
-    private Long userId(String customerEmail) {
+    private java.util.Optional<Long> userId(String customerEmail) {
         return userRepository.findByEmail(customerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Customer account not found."))
-                .getId();
+                .map(u -> u.getId());
     }
 
     private boolean hasText(String value) {
