@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:insert="~{fragments/head :: head('Help & Customer Care | U-Minimalist', 'Support policies, shipping details, and return process.')}"></th:block>
+    <style>
+        .help-hero {
+            padding: 48px 0 32px;
+            text-align: center;
+            border-bottom: 1px solid var(--line, #e4e4e7);
+            background: #fafafa;
+        }
+        .help-hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+        .help-hero p {
+            color: #71717a;
+            font-size: 1rem;
+            max-width: 560px;
+            margin: 0 auto;
+        }
+        .help-container {
+            max-width: 960px;
+            margin: 40px auto 80px;
+            padding: 0 20px;
+        }
+        .help-grid {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 40px;
+        }
+        @media (max-width: 768px) {
+            .help-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .help-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .help-nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: #52525b;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .help-nav-item:hover, .help-nav-item.active {
+            background: #f4f4f5;
+            color: #18181b;
+        }
+        .help-section {
+            background: #ffffff;
+            border: 1px solid #e4e4e7;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .help-section h2 {
+            font-size: 1.4rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+            color: #18181b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .help-section p {
+            color: #52525b;
+            line-height: 1.6;
+            margin-bottom: 14px;
+            font-size: 0.95rem;
+        }
+        .policy-badge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .policy-card {
+            background: #fcfcfc;
+            border: 1px solid #f4f4f5;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .policy-card strong {
+            display: block;
+            font-size: 0.9rem;
+            color: #18181b;
+            margin-bottom: 4px;
+        }
+        .policy-card span {
+            font-size: 0.82rem;
+            color: #71717a;
+        }
+    </style>
+</head>
+<body>
+<th:block th:replace="~{fragments/navbar :: navbar('help', 'site-header catalog-header is-scrolled', '', true, false, true)}"></th:block>
+
+<section class="help-hero">
+    <div class="page-shell">
+        <h1>Help & Customer Support</h1>
+        <p>Find clear answers regarding shipping times, exchange policies, and customer assistance.</p>
+    </div>
+</section>
+
+<div class="help-container">
+    <div class="help-grid">
+        <aside>
+            <nav class="help-nav">
+                <a href="#shipping" class="help-nav-item active">🚚 Shipping & Delivery</a>
+                <a href="#returns" class="help-nav-item">🔄 Returns & Exchanges</a>
+                <a href="#contact" class="help-nav-item">📞 Contact Support</a>
+            </nav>
+        </aside>
+
+        <main>
+            <!-- Shipping Section -->
+            <section id="shipping" class="help-section">
+                <h2>🚚 Shipping & Delivery Policy</h2>
+                <p>We provide nationwide standard and express shipping for all orders. All orders are packed with eco-friendly minimal packaging.</p>
+
+                <div class="policy-badge-grid">
+                    <div class="policy-card">
+                        <strong>Standard Shipping</strong>
+                        <span>2 - 4 Business Days ($4.90 or FREE over $50)</span>
+                    </div>
+                    <div class="policy-card">
+                        <strong>Express Shipping</strong>
+                        <span>1 - 2 Business Days ($9.90)</span>
+                    </div>
+                    <div class="policy-card">
+                        <strong>Order Tracking</strong>
+                        <span>Real-time tracking link sent via email upon dispatch</span>
+                    </div>
+                </div>
+
+                <p>Orders placed before 2:00 PM are processed and shipped on the same business day.</p>
+            </section>
+
+            <!-- Returns Section -->
+            <section id="returns" class="help-section">
+                <h2>🔄 Returns & Exchange Policy</h2>
+                <p>If you are not satisfied with your purchase, you may return unworn items in their original condition within <strong>7 days of delivery</strong>.</p>
+
+                <div class="policy-badge-grid">
+                    <div class="policy-card">
+                        <strong>7-Day Return Window</strong>
+                        <span>Return unworn items within 7 days for a quick refund</span>
+                    </div>
+                    <div class="policy-card">
+                        <strong>Fast 24-48h Refund</strong>
+                        <span>Refund processed to original payment method within 1-2 business days</span>
+                    </div>
+                    <div class="policy-card">
+                        <strong>Free Size Exchanges</strong>
+                        <span>Exchange for another size with no extra shipping fee</span>
+                    </div>
+                </div>
+
+                <p>To request a return or exchange, visit your <a th:href="@{/account}" style="color: #18181b; font-weight: 600;">Account Orders</a> page or contact our support team.</p>
+            </section>
+
+            <!-- Contact Section -->
+            <section id="contact" class="help-section">
+                <h2>📞 Contact Support</h2>
+                <p>Our minimal care team is available Monday through Friday, 9:00 AM – 6:00 PM (EST).</p>
+
+                <div class="policy-badge-grid">
+                    <div class="policy-card">
+                        <strong>Email Us</strong>
+                        <span>support@u-minimalist.com</span>
+                    </div>
+                    <div class="policy-card">
+                        <strong>Customer Hotline</strong>
+                        <span>+1 (800) 555-0199</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/footer :: footer(false)}"></th:block>
+</body>
+</html>

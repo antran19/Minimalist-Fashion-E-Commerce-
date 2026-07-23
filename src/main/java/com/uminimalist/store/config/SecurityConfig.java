@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/products/*/reviews").hasRole("CUSTOMER")
                 .requestMatchers("/cart", "/cart/**", "/checkout", "/checkout/**", "/account", "/account/**", "/wishlist", "/wishlist/**").hasRole("CUSTOMER")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/", "/products", "/products/**", "/login", "/register", "/error", "/paypal/**").permitAll()
+                .requestMatchers("/", "/products", "/products/**", "/login", "/register", "/error", "/paypal/**", "/help", "/shipping", "/returns", "/orders", "/newsletter").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

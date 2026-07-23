@@ -61,21 +61,61 @@
 
                 <fieldset class="catalog-filter-group catalog-filter-fieldset">
                     <legend>Size</legend>
-                    <div class="catalog-size-options">
-                        <label class="catalog-size-option">
-                            <input type="radio"
-                                   name="size"
-                                   value=""
-                                   th:checked="${selectedSize == null or #strings.isEmpty(selectedSize)}">
-                            <span>All</span>
-                        </label>
-                        <label class="catalog-size-option" th:each="sizeOption : ${sizes}">
-                            <input type="radio"
-                                   name="size"
-                                   th:value="${sizeOption}"
-                                   th:checked="${sizeOption == selectedSize}">
-                            <span th:text="${sizeOption}">M</span>
-                        </label>
+                    <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 6px;">
+                        <!-- Adults -->
+                        <div>
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Adults</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option">
+                                    <input type="radio"
+                                           name="size"
+                                           value=""
+                                           th:checked="${selectedSize == null or #strings.isEmpty(selectedSize)}">
+                                    <span>All</span>
+                                </label>
+                                <label class="catalog-size-option"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption == 'XXS' or sizeOption == 'XS' or sizeOption == 'S' or sizeOption == 'M' or sizeOption == 'L' or sizeOption == 'XL' or sizeOption == '2XL' or sizeOption == '3XL'}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">M</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Kids -->
+                        <div th:if="${#lists.contains(sizes, '110') or #lists.contains(sizes, '120') or #lists.contains(sizes, '130') or #lists.contains(sizes, '140')}">
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Kids</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption.matches('\d+')}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">110</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Accessories -->
+                        <div th:if="${#lists.contains(sizes, 'One size')}">
+                            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin-bottom: 8px;">Accessories</div>
+                            <div class="catalog-size-options">
+                                <label class="catalog-size-option" style="grid-column: span 2;"
+                                       th:each="sizeOption : ${sizes}"
+                                       th:if="${sizeOption.equalsIgnoreCase('One size')}">
+                                    <input type="radio"
+                                           name="size"
+                                           th:value="${sizeOption}"
+                                           th:checked="${sizeOption == selectedSize}">
+                                    <span th:text="${sizeOption}">One size</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </fieldset>
 
@@ -236,7 +276,8 @@
                     <a class="catalog-product-image"
                        th:href="@{/products/{slug}(slug=${product.slug})}"
                        th:attr="aria-label=${'View ' + product.name}">
-                        <img th:src="${product.imagePath}"
+                        <img class="catalog-card-main-image"
+                             th:src="${product.imagePath}"
                              th:alt="${product.name}"
                              loading="lazy">
 
@@ -277,7 +318,9 @@
                                 <span th:each="productColor : ${product.colors}"
                                       class="catalog-product-swatch"
                                       th:title="${productColor}"
-                                      th:style="'background-color:' + ${product.colorHex(productColor)}"></span>
+                                      th:data-color="${productColor}"
+                                      th:data-slug="${product.slug}"
+                                      th:style="'cursor: pointer; background-color:' + ${product.colorHex(productColor)}"></span>
                             </div>
                             <a class="catalog-view-product"
                                th:href="@{/products/{slug}(slug=${product.slug})}">View product</a>
@@ -366,6 +409,105 @@
 
         desktopMedia.addEventListener('change', syncDesktopState);
         syncDesktopState();
+
+        // Catalog Card Color Swatch Click Handler
+        const catalogColorMap = {
+            'air-cotton-tee-light-blue': '/images/products/air-cotton-tee-light-blue.png',
+            'air-cotton-tee-pink': '/images/products/air-cotton-tee-pink.png',
+            'air-cotton-tee-cream': '/images/products/air-cotton-tee-cream.png',
+            'light-utility-jacket-navy': '/images/products/light-utility-jacket-navy.png',
+            'light-utility-jacket-gray': '/images/products/light-utility-jacket-gray.png',
+            'oxford-shirt-light-blue': '/images/products/oxford-shirt-light-blue.jpg',
+            'oxford-shirt-white': '/images/products/oxford-shirt-white.png',
+            'oxford-shirt-brown': '/images/products/oxford-shirt-brown.png',
+            'soft-jersey-tee-red': '/images/products/soft-jersey-tee-red.jpg',
+            'soft-jersey-tee-white': '/images/products/soft-jersey-tee-white.jpg',
+            'soft-jersey-tee-brown': '/images/products/soft-jersey-tee-brown.png',
+            'smart-ankle-pants-brown': '/images/products/smart-ankle-pants-brown.jpg',
+            'smart-ankle-pants-white': '/images/products/smart-ankle-pants-white.jpg',
+            'smart-ankle-pants-black': '/images/products/smart-ankle-pants-black.png',
+            'everyday-zip-hoodie-cream': '/images/products/everyday-zip-hoodie-cream.jpg',
+            'everyday-zip-hoodie-red': '/images/products/everyday-zip-hoodie-red.jpg',
+            'everyday-zip-hoodie-black': '/images/products/everyday-zip-hoodie-black.png',
+            'linen-blend-shirt-orange': '/images/products/linen-blend-shirt-orange.jpg',
+            'linen-blend-shirt-white': '/images/products/linen-blend-shirt-white.jpg',
+            'linen-blend-shirt-cream': '/images/products/linen-blend-shirt-cream.png',
+            'utility-tote-red': '/images/products/utility-tote-red.png',
+            'utility-tote-yellow': '/images/products/utility-tote-yellow.jpg',
+            'utility-tote-pink': '/images/products/utility-tote-pink.jpg',
+            'school-day-cardigan-dark-green': '/images/products/school-day-cardigan-dark-green.jpg',
+            'school-day-cardigan-navy': '/images/products/school-day-cardigan-navy.png',
+            'school-day-cardigan-black': '/images/products/school-day-cardigan-black.jpg',
+            'easy-cotton-shorts-gray': '/images/products/easy-cotton-shorts-gray.png',
+            'easy-cotton-shorts-blue': '/images/products/easy-cotton-shorts-blue.png'
+        };
+
+        document.querySelectorAll('.catalog-product-swatch').forEach(swatch => {
+            swatch.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const card = this.closest('.catalog-product-card');
+                if (!card) return;
+
+                const slug = this.getAttribute('data-slug');
+                const color = (this.getAttribute('data-color') || '').trim().toLowerCase().replace(/\s+/g, '-');
+                const img = card.querySelector('.catalog-card-main-image');
+
+                const key = slug + '-' + color;
+                if (img && catalogColorMap[key]) {
+                    img.src = catalogColorMap[key];
+                }
+
+                const siblingSwatches = card.querySelectorAll('.catalog-product-swatch');
+                siblingSwatches.forEach(s => {
+                    s.style.outline = 'none';
+                    s.style.transform = 'none';
+                });
+                this.style.outline = '2px solid var(--ink, #000)';
+                this.style.outlineOffset = '2px';
+                this.style.transform = 'scale(1.2)';
+            });
+        });
+
+        function applyColorToAllCards(colorName) {
+            if (!colorName) return;
+            const formattedColor = colorName.trim().toLowerCase().replace(/\s+/g, '-');
+
+            document.querySelectorAll('.catalog-product-card').forEach(card => {
+                const matchingSwatch = Array.from(card.querySelectorAll('.catalog-product-swatch'))
+                    .find(s => (s.getAttribute('data-color') || '').trim().toLowerCase() === colorName.trim().toLowerCase());
+
+                if (matchingSwatch) {
+                    matchingSwatch.click();
+                } else {
+                    const firstSwatch = card.querySelector('.catalog-product-swatch');
+                    const slug = firstSwatch ? firstSwatch.getAttribute('data-slug') : null;
+                    const img = card.querySelector('.catalog-card-main-image');
+                    if (slug && img) {
+                        const key = slug + '-' + formattedColor;
+                        if (catalogColorMap[key]) {
+                            img.src = catalogColorMap[key];
+                        }
+                    }
+                }
+            });
+        }
+
+        // Listen for clicks/changes on left sidebar color filter
+        document.querySelectorAll('input[name="color"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                if (this.value) {
+                    applyColorToAllCards(this.value);
+                }
+            });
+        });
+
+        // Sync image colors on initial page load if color filter is active
+        const checkedColorRadio = document.querySelector('input[name="color"]:checked');
+        if (checkedColorRadio && checkedColorRadio.value) {
+            applyColorToAllCards(checkedColorRadio.value);
+        }
     });
 </script>
 </body>
