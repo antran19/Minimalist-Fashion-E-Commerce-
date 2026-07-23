@@ -33,8 +33,8 @@ public class ShoppingCartService {
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
     public ShoppingCartService(ProductVariantRepository productVariantRepository,
-                               UserRepository userRepository,
-                               JdbcTemplate jdbcTemplate) {
+            UserRepository userRepository,
+            JdbcTemplate jdbcTemplate) {
         this.productVariantRepository = productVariantRepository;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -72,16 +72,19 @@ public class ShoppingCartService {
     }
 
     @Transactional(readOnly = false)
-    public void addItem(HttpSession session, String customerEmail, String productSlug, String color, String size, int quantity) {
+    public void addItem(HttpSession session, String customerEmail, String productSlug, String color, String size,
+            int quantity) {
         ProductVariant variant = productVariantRepository
-                .findFirstByProductSlugAndColorIgnoreCaseAndSizeIgnoreCaseAndActiveTrueAndProductActiveTrue(productSlug, color, size)
+                .findFirstByProductSlugAndColorIgnoreCaseAndSizeIgnoreCaseAndActiveTrueAndProductActiveTrue(productSlug,
+                        color, size)
                 .orElseThrow(() -> new IllegalArgumentException("Product variant is not available."));
 
         int currentQuantity = 0;
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
             var userIdOpt = userId(customerEmail);
-            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            if (userIdOpt.isEmpty())
+                throw new IllegalArgumentException("Customer account not found.");
             Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COALESCE(MAX(quantity), 0)
@@ -115,7 +118,8 @@ public class ShoppingCartService {
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
             var userIdOpt = userId(customerEmail);
-            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            if (userIdOpt.isEmpty())
+                throw new IllegalArgumentException("Customer account not found.");
             Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COALESCE(MAX(quantity), 0)
@@ -160,13 +164,15 @@ public class ShoppingCartService {
         }
 
         if (quantity > variant.getStockQuantity()) {
-            throw new IllegalArgumentException("Requested quantity (" + quantity + ") exceeds available stock (" + variant.getStockQuantity() + ").");
+            throw new IllegalArgumentException("Requested quantity (" + quantity + ") exceeds available stock ("
+                    + variant.getStockQuantity() + ").");
         }
 
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
             var userIdOpt = userId(customerEmail);
-            if (userIdOpt.isEmpty()) throw new IllegalArgumentException("Customer account not found.");
+            if (userIdOpt.isEmpty())
+                throw new IllegalArgumentException("Customer account not found.");
             Long userId = userIdOpt.get();
             Integer count = jdbcTemplate.queryForObject("""
                     SELECT COUNT(*)
@@ -200,7 +206,8 @@ public class ShoppingCartService {
         if (hasText(customerEmail)) {
             mergeSessionCartToCustomer(session, customerEmail);
             var userIdOpt = userId(customerEmail);
-            if (userIdOpt.isEmpty()) return;
+            if (userIdOpt.isEmpty())
+                return;
             Long userId = userIdOpt.get();
             jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ? AND sku = ?", userId, sku);
             return;
@@ -263,15 +270,19 @@ public class ShoppingCartService {
         List<CartItemView> items = new java.util.ArrayList<>();
         for (Map.Entry<String, Integer> entry : cart.entrySet()) {
             ProductVariant variant = activeVariantsBySku.get(entry.getKey());
-            if (variant == null) continue;
+            if (variant == null)
+                continue;
 
             int cartQty = entry.getValue();
             int stock = variant.getStockQuantity();
 
             if (stock <= 0) {
-                warnings.add("Item '" + variant.getProduct().getName() + " (" + variant.getColor() + ", " + variant.getSize() + ")' is currently out of stock.");
+                warnings.add("Item '" + variant.getProduct().getName() + " (" + variant.getColor() + ", "
+                        + variant.getSize() + ")' is currently out of stock.");
             } else if (cartQty > stock) {
-                warnings.add("Item '" + variant.getProduct().getName() + " (" + variant.getColor() + ", " + variant.getSize() + ")' quantity (" + cartQty + ") exceeds available stock (" + stock + "). Please update quantity.");
+                warnings.add("Item '" + variant.getProduct().getName() + " (" + variant.getColor() + ", "
+                        + variant.getSize() + ")' quantity (" + cartQty + ") exceeds available stock (" + stock
+                        + "). Please update quantity.");
             }
 
             items.add(toCartItemView(variant, cartQty));
@@ -326,7 +337,8 @@ public class ShoppingCartService {
         Set<String> uniqueSkus = new HashSet<>();
         for (String sku : selectedSkus) {
             if (sku == null || sku.isBlank()) {
-                throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
+                throw new IllegalArgumentException(
+                        "One or more selected cart items are invalid or no longer available.");
             }
             if (!uniqueSkus.add(sku.trim())) {
                 throw new IllegalArgumentException("Duplicate items selected for checkout.");
@@ -345,7 +357,8 @@ public class ShoppingCartService {
 
         for (String sku : uniqueSkus) {
             if (!caseInsensitiveCartMap.containsKey(sku)) {
-                throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
+                throw new IllegalArgumentException(
+                        "One or more selected cart items are invalid or no longer available.");
             }
         }
 
@@ -364,21 +377,24 @@ public class ShoppingCartService {
         for (String sku : uniqueSkus) {
             ProductVariant variant = variantsBySku.get(sku);
             if (variant == null || !variant.isActive() || !variant.getProduct().isActive()) {
-                throw new IllegalArgumentException("One or more selected cart items are invalid or no longer available.");
+                throw new IllegalArgumentException(
+                        "One or more selected cart items are invalid or no longer available.");
             }
             int cartQty = caseInsensitiveCartMap.get(sku);
             if (variant.getStockQuantity() <= 0) {
                 throw new IllegalArgumentException("Item '" + variant.getProduct().getName() + "' is out of stock.");
             }
             if (cartQty > variant.getStockQuantity()) {
-                throw new IllegalArgumentException("Item '" + variant.getProduct().getName() + "' quantity exceeds available stock (" + variant.getStockQuantity() + ").");
+                throw new IllegalArgumentException("Item '" + variant.getProduct().getName()
+                        + "' quantity exceeds available stock (" + variant.getStockQuantity() + ").");
             }
         }
     }
 
     @Transactional(readOnly = false)
     public void removeItems(HttpSession session, String customerEmail, List<String> skus) {
-        if (skus == null || skus.isEmpty()) return;
+        if (skus == null || skus.isEmpty())
+            return;
         for (String sku : skus) {
             removeItem(session, customerEmail, sku);
         }
@@ -408,19 +424,18 @@ public class ShoppingCartService {
     @Transactional(readOnly = false)
     public void clearCart(HttpSession session, String customerEmail) {
         if (hasText(customerEmail)) {
-            userId(customerEmail).ifPresent(uid ->
-                jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ?", uid));
+            userId(customerEmail).ifPresent(
+                    uid -> jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ?", uid));
         }
         session.removeAttribute(CART_SESSION_KEY);
     }
 
     @Transactional(readOnly = false)
     public void mergeSessionCartToCustomerAfterRegister(HttpSession session, String customerEmail) {
-        if (!hasText(customerEmail)) return;
+        if (!hasText(customerEmail))
+            return;
         mergeSessionCartToCustomer(session, customerEmail);
     }
-
-
 
     private void addCartColumnIfMissing(String columnName, String definition) {
         jdbcTemplate.execute("""
@@ -460,8 +475,7 @@ public class ShoppingCartService {
                 currencyFormat.format(unitPrice),
                 currencyFormat.format(lineTotal),
                 outOfStock,
-                stockExceeded
-        );
+                stockExceeded);
     }
 
     @SuppressWarnings("unchecked")
@@ -485,7 +499,8 @@ public class ShoppingCartService {
             return;
         }
 
-        Map<String, ProductVariant> variantsBySku = productVariantRepository.findBySkuInAndActiveTrueAndProductActiveTrue(sessionCart.keySet())
+        Map<String, ProductVariant> variantsBySku = productVariantRepository
+                .findBySkuInAndActiveTrueAndProductActiveTrue(sessionCart.keySet())
                 .stream()
                 .collect(Collectors.toMap(ProductVariant::getSku, Function.identity()));
 
@@ -510,17 +525,22 @@ public class ShoppingCartService {
             if (currentQuantity == 0) {
                 throw new IllegalArgumentException("Only " + stock + " item(s) are available.");
             } else if (currentQuantity >= stock) {
-                throw new IllegalArgumentException("The requested quantity exceeds available stock. You already have the maximum available stock (" + stock + ") in your cart.");
+                throw new IllegalArgumentException(
+                        "The requested quantity exceeds available stock. You already have the maximum available stock ("
+                                + stock + ") in your cart.");
             } else {
                 int availableMore = stock - currentQuantity;
-                throw new IllegalArgumentException("The requested quantity exceeds available stock. Only " + availableMore + " more item(s) can be added (you already have " + currentQuantity + " in your cart).");
+                throw new IllegalArgumentException("The requested quantity exceeds available stock. Only "
+                        + availableMore + " more item(s) can be added (you already have " + currentQuantity
+                        + " in your cart).");
             }
         }
     }
 
     private void saveCustomerCartQuantity(String customerEmail, String sku, int nextQuantity) {
         var userIdOpt = userId(customerEmail);
-        if (userIdOpt.isEmpty()) return;
+        if (userIdOpt.isEmpty())
+            return;
         Long userId = userIdOpt.get();
 
         Integer count = jdbcTemplate.queryForObject("""
@@ -544,7 +564,8 @@ public class ShoppingCartService {
 
     private void addSkuToCustomerCart(String customerEmail, ProductVariant variant, int quantity) {
         var userIdOpt = userId(customerEmail);
-        if (userIdOpt.isEmpty()) return;
+        if (userIdOpt.isEmpty())
+            return;
         Long userId = userIdOpt.get();
         int requestedQuantity = Math.max(quantity, 1);
         Integer currentQuantity = jdbcTemplate.queryForObject("""
@@ -552,7 +573,8 @@ public class ShoppingCartService {
                 FROM dbo.customer_cart_items
                 WHERE user_id = ? AND sku = ?
                 """, Integer.class, userId, variant.getSku());
-        int nextQuantity = Math.min((currentQuantity == null ? 0 : currentQuantity) + requestedQuantity, variant.getStockQuantity());
+        int nextQuantity = Math.min((currentQuantity == null ? 0 : currentQuantity) + requestedQuantity,
+                variant.getStockQuantity());
         if (nextQuantity <= 0) {
             return;
         }
@@ -578,7 +600,8 @@ public class ShoppingCartService {
 
     private void updateCustomerCartItem(String customerEmail, String sku, int quantity) {
         var userIdOpt = userId(customerEmail);
-        if (userIdOpt.isEmpty()) return;
+        if (userIdOpt.isEmpty())
+            return;
         Long userId = userIdOpt.get();
         if (quantity <= 0) {
             jdbcTemplate.update("DELETE FROM dbo.customer_cart_items WHERE user_id = ? AND sku = ?", userId, sku);
@@ -590,24 +613,25 @@ public class ShoppingCartService {
                 .findFirst()
                 .ifPresent(variant -> {
                     jdbcTemplate.update("""
-                        UPDATE dbo.customer_cart_items
-                        SET quantity = ?, updated_at = SYSUTCDATETIME()
-                        WHERE user_id = ? AND sku = ?
-                        """, Math.min(quantity, variant.getStockQuantity()), userId, sku);
+                            UPDATE dbo.customer_cart_items
+                            SET quantity = ?, updated_at = SYSUTCDATETIME()
+                            WHERE user_id = ? AND sku = ?
+                            """, Math.min(quantity, variant.getStockQuantity()), userId, sku);
                 });
     }
 
     private Map<String, Integer> readCustomerCart(String customerEmail) {
         var userIdOpt = userId(customerEmail);
-        if (userIdOpt.isEmpty()) return new LinkedHashMap<>();
+        if (userIdOpt.isEmpty())
+            return new LinkedHashMap<>();
         Long userId = userIdOpt.get();
         ensureCartTable();
         return jdbcTemplate.query("""
-                        SELECT sku, quantity
-                        FROM dbo.customer_cart_items
-                        WHERE user_id = ?
-                        ORDER BY updated_at DESC, created_at DESC, id DESC
-                        """,
+                SELECT sku, quantity
+                FROM dbo.customer_cart_items
+                WHERE user_id = ?
+                ORDER BY updated_at DESC, created_at DESC, id DESC
+                """,
                 rs -> {
                     Map<String, Integer> cart = new LinkedHashMap<>();
                     while (rs.next()) {

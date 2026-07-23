@@ -26,3 +26,4 @@ public record OrderItemView(
     /** Convenience: stock is not tracked in OrderItemView — always returns 0. */
     public int stockQuantity() { return 0; }
 }
+

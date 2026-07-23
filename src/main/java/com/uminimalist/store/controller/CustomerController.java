@@ -40,13 +40,13 @@ public class CustomerController {
     private final PayPalService payPalService;
 
     public CustomerController(UserRepository userRepository,
-                              ProductVariantRepository productVariantRepository,
-                              ShoppingCartService shoppingCartService,
-                              OrderService orderService,
-                              CustomerAddressService customerAddressService,
-                              WishlistService wishlistService,
-                              ProductReviewService productReviewService,
-                              PayPalService payPalService) {
+            ProductVariantRepository productVariantRepository,
+            ShoppingCartService shoppingCartService,
+            OrderService orderService,
+            CustomerAddressService customerAddressService,
+            WishlistService wishlistService,
+            ProductReviewService productReviewService,
+            PayPalService payPalService) {
         this.userRepository = userRepository;
         this.productVariantRepository = productVariantRepository;
         this.shoppingCartService = shoppingCartService;
@@ -59,17 +59,17 @@ public class CustomerController {
 
     @GetMapping("/account")
     public String account(Authentication authentication,
-                          HttpSession session,
-                          @RequestParam(defaultValue = "ALL") String status,
-                          @RequestParam(defaultValue = "1") int page,
-                          Model model) {
+            HttpSession session,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "1") int page,
+            Model model) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
         model.addAttribute("account", user);
         model.addAttribute("cart", shoppingCartService.getCart(session, authentication.getName()));
         model.addAttribute("shippingAddress", customerAddressService.findDefaultAddress(authentication.getName()));
         model.addAttribute("wishlist", wishlistService.findForCustomer(authentication.getName()));
-        
+
         var paginatedOrders = orderService.findOrdersForCustomerPaginated(authentication.getName(), status, page, 5);
         model.addAttribute("paginatedOrders", paginatedOrders);
         model.addAttribute("recentOrders", paginatedOrders.orders());
@@ -78,9 +78,9 @@ public class CustomerController {
 
     @PostMapping("/account/profile")
     public String updateProfile(Authentication authentication,
-                                @RequestParam String fullName,
-                                @RequestParam String phone,
-                                RedirectAttributes redirectAttributes) {
+            @RequestParam String fullName,
+            @RequestParam String phone,
+            RedirectAttributes redirectAttributes) {
 
         String normalizedName = fullName == null
                 ? ""
@@ -89,8 +89,7 @@ public class CustomerController {
         if (normalizedName.length() < 2 || normalizedName.length() > 120 || !normalizedName.matches(".*\\p{L}.*")) {
             redirectAttributes.addFlashAttribute(
                     "accountError",
-                    "Full name must be between 2 and 120 characters and contain at least one letter."
-            );
+                    "Full name must be between 2 and 120 characters and contain at least one letter.");
 
             return "redirect:/account#profile";
         }
@@ -102,15 +101,13 @@ public class CustomerController {
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute(
                     "accountError",
-                    exception.getMessage()
-            );
+                    exception.getMessage());
 
             return "redirect:/account#profile";
         }
 
         User user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("User not found."));
+                .orElseThrow(() -> new IllegalArgumentException("User not found."));
 
         user.setFullName(normalizedName);
         user.setPhone(normalizedPhone);
@@ -118,22 +115,22 @@ public class CustomerController {
 
         redirectAttributes.addFlashAttribute(
                 "accountMessage",
-                "Profile updated."
-        );
+                "Profile updated.");
 
         return "redirect:/account#profile";
     }
 
     @PostMapping("/account/address")
     public String updateAddress(Authentication authentication,
-                                @RequestParam String recipientName,
-                                @RequestParam String shippingPhone,
-                                @RequestParam String addressLine,
-                                @RequestParam String district,
-                                @RequestParam String city,
-                                RedirectAttributes redirectAttributes) {
+            @RequestParam String recipientName,
+            @RequestParam String shippingPhone,
+            @RequestParam String addressLine,
+            @RequestParam String district,
+            @RequestParam String city,
+            RedirectAttributes redirectAttributes) {
         try {
-            customerAddressService.saveDefaultAddress(authentication.getName(), recipientName, shippingPhone, addressLine, district, city);
+            customerAddressService.saveDefaultAddress(authentication.getName(), recipientName, shippingPhone,
+                    addressLine, district, city);
             redirectAttributes.addFlashAttribute("accountMessage", "Shipping address saved.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("accountError", exception.getMessage());
@@ -143,9 +140,9 @@ public class CustomerController {
 
     @GetMapping("/account/orders/{orderCode}")
     public String orderDetail(@PathVariable String orderCode,
-                              Authentication authentication,
-                              Model model,
-                              RedirectAttributes redirectAttributes) {
+            Authentication authentication,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
         var orderOpt = orderService.findOrderForCustomer(authentication.getName(), orderCode);
@@ -154,7 +151,7 @@ public class CustomerController {
             return "redirect:/account#orders";
         }
         var order = orderOpt.get();
-        
+
         java.util.Map<String, ReviewView> existingReviews = new java.util.HashMap<>();
         if ("DELIVERED".equalsIgnoreCase(order.status())) {
             for (var item : order.items()) {
@@ -164,7 +161,7 @@ public class CustomerController {
                 }
             }
         }
-        
+
         model.addAttribute("account", user);
         model.addAttribute("order", order);
         model.addAttribute("existingReviews", existingReviews);
@@ -173,8 +170,8 @@ public class CustomerController {
 
     @PostMapping("/account/orders/{orderCode}/cancel")
     public String cancelOrder(@PathVariable String orderCode,
-                              Authentication authentication,
-                              RedirectAttributes redirectAttributes) {
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
         try {
             orderService.cancelOrderForCustomer(authentication.getName(), orderCode);
             redirectAttributes.addFlashAttribute("accountMessage", "Order " + orderCode + " cancelled.");
@@ -203,17 +200,17 @@ public class CustomerController {
                 addedItems += item.quantity();
             } catch (IllegalArgumentException ex) {
                 // If requested quantity exceeds stock, attempt to add available stock quantity
-                try {
-                    int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
-                            .map(ProductVariant::getStockQuantity)
-                            .orElse(0);
-                    if (availableStock > 0) {
+                int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
+                        .map(ProductVariant::getStockQuantity)
+                        .orElse(0);
+                if (availableStock > 0) {
+                    try {
                         shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
                         addedItems += availableStock;
                         warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
+                    } catch (IllegalArgumentException ignored) {
+                        // Skip completely unavailable or out-of-stock variants
                     }
-                } catch (IllegalArgumentException ignored) {
-                    // Skip completely unavailable or out-of-stock variants
                 }
             }
         }
