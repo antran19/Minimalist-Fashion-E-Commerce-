@@ -34,6 +34,7 @@ public class AuthController {
     public String login(@RequestParam(value = "error", required = false) String error,
                         @RequestParam(value = "logout", required = false) String logout,
                         @RequestParam(value = "registered", required = false) String registered,
+                        @RequestParam(value = "expired", required = false) String expired,
                         Model model) {
         if (error != null) {
             model.addAttribute("errorMessage", "Invalid email or password.");
@@ -43,6 +44,9 @@ public class AuthController {
         }
         if (registered != null) {
             model.addAttribute("successMessage", "Account created successfully! Please sign in.");
+        }
+        if (expired != null) {
+            model.addAttribute("errorMessage", "Your session has expired because this account was signed in from another browser.");
         }
         return "login";
     }
