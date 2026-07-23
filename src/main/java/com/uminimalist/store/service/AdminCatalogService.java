@@ -337,6 +337,9 @@ public class AdminCatalogService {
         productVariantRepository.findBySkuIgnoreCase(cleanSku).ifPresent(v -> {
             throw new IllegalArgumentException("SKU '" + cleanSku + "' is already in use by another variant.");
         });
+        productVariantRepository.findByProductIdAndColorIgnoreCaseAndSizeIgnoreCase(productId, color.trim(), size.trim()).ifPresent(v -> {
+            throw new IllegalArgumentException("A variant with Color '" + color.trim() + "' and Size '" + size.trim() + "' already exists for this product. Edit the existing variant instead.");
+        });
         if (stockQuantity < 0) {
             throw new IllegalArgumentException("Stock quantity cannot be negative.");
         }
@@ -351,16 +354,22 @@ public class AdminCatalogService {
         variant.setStockQuantity(stockQuantity);
         variant.setActive(true);
 
-        // Upload variant image to Cloudinary if provided
+        // Upload variant image to Cloudinary if provided, or inherit image for existing color
         if (imageFile != null && !imageFile.isEmpty()) {
             String folderPath = "uminimalist/products/" + product.getSlug();
             CloudinaryService.UploadResult result = cloudinaryService.uploadImage(imageFile, folderPath);
             variant.setImageUrl(result.secureUrl());
             variant.setImagePublicId(result.publicId());
+        } else {
+            // Inherit image from existing color variant or product_images if available
+            syncInheritedImageForColor(product, variant);
         }
 
-
         productVariantRepository.save(variant);
+
+        if (variant.getImageUrl() != null && !variant.getImageUrl().isBlank()) {
+            syncVariantImageToProductImagesAndAllVariants(product, variant);
+        }
     }
 
     @Transactional
@@ -384,6 +393,11 @@ public class AdminCatalogService {
         productVariantRepository.findBySkuIgnoreCase(cleanSku).ifPresent(existing -> {
             if (!existing.getId().equals(variantId)) {
                 throw new IllegalArgumentException("SKU '" + cleanSku + "' is already in use by another variant.");
+            }
+        });
+        productVariantRepository.findByProductIdAndColorIgnoreCaseAndSizeIgnoreCase(variant.getProduct().getId(), color.trim(), size.trim()).ifPresent(existing -> {
+            if (!existing.getId().equals(variantId)) {
+                throw new IllegalArgumentException("A variant with Color '" + color.trim() + "' and Size '" + size.trim() + "' already exists for this product.");
             }
         });
         if (stockQuantity < 0) {
@@ -608,26 +622,64 @@ public class AdminCatalogService {
 
         productVariantRepository.save(variant);
 
-        // Sync with product_images table so color gallery thumbnail updates instantly
-        Product product = variant.getProduct();
+        syncVariantImageToProductImagesAndAllVariants(variant.getProduct(), variant);
+    }
+
+    private void syncInheritedImageForColor(Product product, ProductVariant variant) {
+        if (variant.getColor() == null || variant.getColor().isBlank()) return;
+        String targetColor = variant.getColor().trim();
+
+        // Check existing variants for the same color
+        for (ProductVariant existing : product.getVariants()) {
+            if (targetColor.equalsIgnoreCase(existing.getColor()) && existing.getImageUrl() != null && !existing.getImageUrl().isBlank()) {
+                variant.setImageUrl(existing.getImageUrl());
+                variant.setImagePublicId(existing.getImagePublicId());
+                return;
+            }
+        }
+
+        // Check product_images table for matching color
+        for (ProductImage img : product.getImages()) {
+            if (targetColor.equalsIgnoreCase(img.getColor()) && img.getImageUrl() != null && !img.getImageUrl().isBlank()) {
+                variant.setImageUrl(img.getImageUrl());
+                variant.setImagePublicId(img.getPublicId());
+                return;
+            }
+        }
+    }
+
+    private void syncVariantImageToProductImagesAndAllVariants(Product product, ProductVariant sourceVariant) {
+        if (sourceVariant.getImageUrl() == null || sourceVariant.getImageUrl().isBlank()) return;
+        String color = sourceVariant.getColor();
+
+        // 1. Sync all active variants with the same color to share this image
+        for (ProductVariant v : product.getVariants()) {
+            if (color != null && color.equalsIgnoreCase(v.getColor())) {
+                v.setImageUrl(sourceVariant.getImageUrl());
+                v.setImagePublicId(sourceVariant.getImagePublicId());
+                productVariantRepository.save(v);
+            }
+        }
+
+        // 2. Sync to product_images table
         boolean hasPrimary = product.getImages().stream().anyMatch(ProductImage::isPrimary);
 
         ProductImage existingImg = product.getImages().stream()
-                .filter(img -> variant.getColor() != null && variant.getColor().equalsIgnoreCase(img.getColor()))
+                .filter(img -> color != null && color.equalsIgnoreCase(img.getColor()))
                 .findFirst()
                 .orElse(null);
 
         if (existingImg != null) {
-            existingImg.setImageUrl(result.secureUrl());
-            existingImg.setPublicId(result.publicId());
+            existingImg.setImageUrl(sourceVariant.getImageUrl());
+            existingImg.setPublicId(sourceVariant.getImagePublicId());
             productImageRepository.save(existingImg);
         } else {
             ProductImage newImg = new ProductImage();
             newImg.setProduct(product);
-            newImg.setImageUrl(result.secureUrl());
-            newImg.setPublicId(result.publicId());
-            newImg.setColor(variant.getColor());
-            newImg.setPrimary(!hasPrimary);
+            newImg.setImageUrl(sourceVariant.getImageUrl());
+            newImg.setPublicId(sourceVariant.getImagePublicId());
+            newImg.setColor(color);
+            newImg.setPrimary(!hasPrimary); // Make primary if product has no primary image yet
             newImg.setDisplayOrder(product.getImages().size() + 1);
             productImageRepository.save(newImg);
         }
@@ -652,11 +704,24 @@ public class AdminCatalogService {
         image.setProduct(product);
         image.setImageUrl(uploadResult.secureUrl());
         image.setPublicId(uploadResult.publicId());
-        image.setColor(color != null && !color.isBlank() ? color.trim() : null);
+        String cleanColor = color != null && !color.isBlank() ? color.trim() : null;
+        image.setColor(cleanColor);
         image.setPrimary(setPrimary);
         image.setDisplayOrder(product.getImages().size() + 1);
 
-        return productImageRepository.save(image);
+        ProductImage savedImage = productImageRepository.save(image);
+
+        if (cleanColor != null) {
+            for (ProductVariant v : product.getVariants()) {
+                if (cleanColor.equalsIgnoreCase(v.getColor())) {
+                    v.setImageUrl(uploadResult.secureUrl());
+                    v.setImagePublicId(uploadResult.publicId());
+                    productVariantRepository.save(v);
+                }
+            }
+        }
+
+        return savedImage;
     }
 
     @Transactional
@@ -677,6 +742,38 @@ public class AdminCatalogService {
             throw new IllegalArgumentException("Image not found for this product.");
         }
         productRepository.save(product);
+    }
+
+    @Transactional
+    public void setPrimaryProductImageByUrl(Long productId, String imageUrl, String color) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        if (imageUrl == null || imageUrl.isBlank()) {
+            throw new IllegalArgumentException("Invalid image URL.");
+        }
+
+        for (ProductImage existing : product.getImages()) {
+            existing.setPrimary(false);
+        }
+
+        ProductImage targetImage = product.getImages().stream()
+                .filter(img -> imageUrl.trim().equals(img.getImageUrl()))
+                .findFirst()
+                .orElse(null);
+
+        if (targetImage != null) {
+            targetImage.setPrimary(true);
+            productImageRepository.save(targetImage);
+        } else {
+            ProductImage newPrimary = new ProductImage();
+            newPrimary.setProduct(product);
+            newPrimary.setImageUrl(imageUrl.trim());
+            newPrimary.setColor(color != null && !color.isBlank() ? color.trim() : null);
+            newPrimary.setPrimary(true);
+            newPrimary.setDisplayOrder(1);
+            productImageRepository.save(newPrimary);
+        }
     }
 
     @Transactional

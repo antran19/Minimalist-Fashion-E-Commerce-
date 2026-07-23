@@ -105,6 +105,30 @@
         </div>
     </div>
 
+    <!-- Manage Representative Image Modal -->
+    <div class="modal fade" id="manageProductImagesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Set Representative Image for <span id="manageImagesProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted fw-semibold mb-3" style="font-size: 0.9rem;">
+                        Select which color image should be used as the primary catalog cover image for this product. 
+                        SKU images are managed directly from the inventory table.
+                    </p>
+                    <div id="manageImagesList" class="d-flex flex-column gap-3">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function toggleDiscountField(divId, isChecked) {
             const div = document.getElementById(divId);

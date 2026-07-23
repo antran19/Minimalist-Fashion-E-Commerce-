@@ -220,6 +220,7 @@ public class AdminController {
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
             redirectAttributes.addFlashAttribute("adminErrorModal", "#addVariantModal");
+            redirectAttributes.addFlashAttribute("adminErrorProductId", productId);
         }
         return "redirect:/admin/dashboard#catalog";
     }
@@ -311,6 +312,20 @@ public class AdminController {
         try {
             adminCatalogService.setPrimaryProductImage(productId, imageId);
             redirectAttributes.addFlashAttribute("adminMessage", "Primary product image updated.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
+        }
+        return "redirect:/admin/dashboard#catalog";
+    }
+
+    @PostMapping("/admin/products/{productId}/images/primary-by-url")
+    public String setPrimaryProductImageByUrl(@PathVariable Long productId,
+                                              @RequestParam String imageUrl,
+                                              @RequestParam(required = false) String color,
+                                              RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogService.setPrimaryProductImageByUrl(productId, imageUrl, color);
+            redirectAttributes.addFlashAttribute("adminMessage", "Primary product representative image updated successfully.");
         } catch (Exception exception) {
             redirectAttributes.addFlashAttribute("adminError", exception.getMessage());
         }
