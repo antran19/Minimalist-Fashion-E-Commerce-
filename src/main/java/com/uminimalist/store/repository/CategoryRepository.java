@@ -21,4 +21,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Page<Category> searchCategories(@Param("query") String query, Pageable pageable);
 
     java.util.Optional<Category> findByNameIgnoreCase(String name);
+
+    java.util.Optional<Category> findBySlug(String slug);
 }
