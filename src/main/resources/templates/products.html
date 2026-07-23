@@ -320,6 +320,7 @@
                                       th:title="${productColor}"
                                       th:data-color="${productColor}"
                                       th:data-slug="${product.slug}"
+                                      th:data-image="${product.imageForColor(productColor)}"
                                       th:style="'cursor: pointer; background-color:' + ${product.colorHex(productColor)}"></span>
                             </div>
                             <a class="catalog-view-product"
@@ -454,9 +455,14 @@
                 const color = (this.getAttribute('data-color') || '').trim().toLowerCase().replace(/\s+/g, '-');
                 const img = card.querySelector('.catalog-card-main-image');
 
+                const directImg = this.getAttribute('data-image');
                 const key = slug + '-' + color;
-                if (img && catalogColorMap[key]) {
-                    img.src = catalogColorMap[key];
+                if (img) {
+                    if (directImg) {
+                        img.src = directImg;
+                    } else if (catalogColorMap[key]) {
+                        img.src = catalogColorMap[key];
+                    }
                 }
 
                 const siblingSwatches = card.querySelectorAll('.catalog-product-swatch');

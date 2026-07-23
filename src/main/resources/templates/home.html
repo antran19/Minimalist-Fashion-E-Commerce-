@@ -119,7 +119,9 @@
                         <span th:each="color : ${product.colors}"
                               class="swatch-circle"
                               th:title="${color}"
-                              th:style="'background-color:' + (${color == 'White' ? '#ffffff' : (color == 'Black' ? '#000000' : (color == 'Navy' ? '#000080' : (color == 'Beige' ? '#f5f5dc' : (color == 'Cream' ? '#fffdd0' : '#888888'))))}) + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                              th:data-color="${color}"
+                              th:data-image="${product.imageForColor(color)}"
+                              th:style="'cursor: pointer; background-color:' + ${product.colorHex(color)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
                     </div>
                 </div>
             </article>
@@ -158,7 +160,9 @@
                         <span th:each="color : ${product.colors}"
                               class="swatch-circle"
                               th:title="${color}"
-                              th:style="'background-color:' + (${color == 'White' ? '#ffffff' : (color == 'Black' ? '#000000' : (color == 'Navy' ? '#000080' : (color == 'Beige' ? '#f5f5dc' : (color == 'Cream' ? '#fffdd0' : '#888888'))))}) + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                              th:data-color="${color}"
+                              th:data-image="${product.imageForColor(color)}"
+                              th:style="'cursor: pointer; background-color:' + ${product.colorHex(color)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
                     </div>
                 </div>
             </article>
@@ -173,6 +177,35 @@
         <a class="btn btn-primary retail-btn" th:href="@{/products}">Shop now</a>
     </section>
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.swatch-circle').forEach(swatch => {
+            swatch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const card = this.closest('.product-card');
+                if (!card) return;
+
+                const img = card.querySelector('.product-image img');
+                const newSrc = this.getAttribute('data-image');
+                if (img && newSrc) {
+                    img.src = newSrc;
+                }
+
+                const siblingSwatches = card.querySelectorAll('.swatch-circle');
+                siblingSwatches.forEach(s => {
+                    s.style.outline = 'none';
+                    s.style.transform = 'none';
+                });
+                this.style.outline = '2px solid #18181b';
+                this.style.outlineOffset = '2px';
+                this.style.transform = 'scale(1.2)';
+            });
+        });
+    });
+</script>
 
 <th:block th:replace="~{fragments/footer :: footer(true)}"></th:block>
 <th:block th:replace="~{fragments/scripts :: scripts(true)}"></th:block>
