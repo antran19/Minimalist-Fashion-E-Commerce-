@@ -3,6 +3,7 @@ package com.uminimalist.store.service;
 import com.uminimalist.store.entity.User;
 import com.uminimalist.store.model.CustomerAddressView;
 import com.uminimalist.store.repository.UserRepository;
+import com.uminimalist.store.util.PhoneValidator;
 import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -114,30 +115,33 @@ public class CustomerAddressService {
                 .findFirst();
     }
 
-    private CustomerAddressView normalize(String recipientName, String phone, String addressLine, String district, String city) {
+    private CustomerAddressView normalize(String recipientName,
+                                          String phone,
+                                          String addressLine,
+                                          String district,
+                                          String city) {
+
         return new CustomerAddressView(
                 compact(recipientName),
-                compact(phone),
+                PhoneValidator.normalizeVietnameseMobile(phone),
                 compact(addressLine),
                 compact(district),
-                compact(city));
+                compact(city)
+        );
     }
 
     private void validate(CustomerAddressView address) {
-        if (address.recipientName().length() < 2 || address.recipientName().length() > 120) {
-            throw new IllegalArgumentException("Recipient name must be between 2 and 120 characters.");
+        if (address.recipientName().length() < 2 || address.recipientName().length() > 120 || !address.recipientName().matches(".*\\p{L}.*")) {
+            throw new IllegalArgumentException("Recipient name must be between 2 and 120 characters and contain at least one letter.");
         }
-        if (address.phone().length() < 8 || address.phone().length() > 20) {
-            throw new IllegalArgumentException("Shipping phone must be between 8 and 20 characters.");
+        if (address.addressLine().length() < 5 || address.addressLine().length() > 255 || !address.addressLine().matches(".*[\\p{L}\\p{N}].*")) {
+            throw new IllegalArgumentException("Address line must be between 5 and 255 characters and contain letters or digits.");
         }
-        if (address.addressLine().length() < 5 || address.addressLine().length() > 255) {
-            throw new IllegalArgumentException("Address line must be between 5 and 255 characters.");
+        if (address.district().length() < 2 || address.district().length() > 120 || !address.district().matches(".*\\p{L}.*")) {
+            throw new IllegalArgumentException("District must be between 2 and 120 characters and contain at least one letter.");
         }
-        if (address.district().length() < 2 || address.district().length() > 120) {
-            throw new IllegalArgumentException("District must be between 2 and 120 characters.");
-        }
-        if (address.city().length() < 2 || address.city().length() > 120) {
-            throw new IllegalArgumentException("City must be between 2 and 120 characters.");
+        if (address.city().length() < 2 || address.city().length() > 120 || !address.city().matches(".*\\p{L}.*")) {
+            throw new IllegalArgumentException("City must be between 2 and 120 characters and contain at least one letter.");
         }
     }
 

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="variant-modals">
+
+    <!-- Add Variant Modal -->
+    <div class="modal fade" id="addVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form th:action="@{/admin/variants/create}" method="post" enctype="multipart/form-data" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="productId" id="addVariantProductId">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Variant for <span id="addVariantProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Color <span class="text-danger">*</span></label>
+                        <input type="text" name="color" class="form-control" placeholder="e.g. Black, Navy, White" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Size <span class="text-danger">*</span></label>
+                        <input type="text" name="size" class="form-control" placeholder="e.g. S, M, L, XL" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">SKU <span class="text-danger">*</span></label>
+                        <input type="text" name="sku" class="form-control" placeholder="e.g. TSHIRT-BLK-M" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Stock Quantity <span class="text-danger">*</span></label>
+                        <input type="number" min="0" name="stockQuantity" class="form-control" value="10" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">SKU Image</label>
+                        <input type="file" id="addVariantImageFile" name="imageFile" accept="image/*" class="form-control" onchange="previewAddVariantImage(this)">
+                        <small class="form-text text-muted">Upload an image for this color (optional). If this color already has an image, it will be shared automatically across sizes.</small>
+                        <div id="addVariantImagePreview" style="margin-top: 8px; display: none; position: relative; width: fit-content;">
+                            <img id="addVariantImagePreviewImg" src="" style="width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                            <button type="button" onclick="clearAddVariantImage()" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Cancel image selection">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save Variant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Variant Modal -->
+    <div class="modal fade" id="editVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="editVariantForm" method="post" enctype="multipart/form-data" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Edit Product Variant</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Color <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantColor" name="color" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Size <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantSize" name="size" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">SKU <span class="text-danger">*</span></label>
+                        <input type="text" id="editVariantSku" name="sku" class="form-control" maxlength="80" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Stock Quantity <span class="text-danger">*</span></label>
+                        <input type="number" min="0" id="editVariantStockQuantity" name="stockQuantity" class="form-control" required>
+                    </div>
+
+                    <!-- Image section -->
+                    <div style="border-top: 1px solid var(--line); padding-top: 14px; margin-top: 8px;">
+                        <label class="form-label fw-bold">SKU Image</label>
+                        <div id="editVariantCurrentImage" style="margin-bottom: 10px; display: none;">
+                            <small class="text-muted d-block mb-1">Current Image:</small>
+                            <img id="editVariantCurrentImageImg" src="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line);">
+                        </div>
+                        <div id="editVariantNoImage" style="margin-bottom: 10px; color: var(--muted); font-size: 0.85rem; display: none;">
+                            No image uploaded yet.
+                        </div>
+                        <input type="file" id="editVariantImageFile" name="imageFile" accept="image/*" class="form-control" onchange="previewEditVariantImage(this)">
+                        <small class="form-text text-muted">Select a new image to replace current image (optional).</small>
+                        <div id="editVariantImagePreview" style="margin-top: 10px; display: none; position: relative; width: fit-content;">
+                            <small class="text-muted d-block mb-1">New Image Preview:</small>
+                            <div style="position: relative; width: fit-content;">
+                                <img id="editVariantImagePreviewImg" src="" style="display: block; width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 2px solid var(--accent);">
+                                <button type="button" onclick="clearEditVariantImage()" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Cancel new image selection">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let editingVariantId = null;
+
+        function previewAddVariantImage(input) {
+            const preview = document.getElementById('addVariantImagePreview');
+            const img = document.getElementById('addVariantImagePreviewImg');
+            if (input.files && input.files[0]) {
+                img.src = URL.createObjectURL(input.files[0]);
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        function clearAddVariantImage() {
+            const input = document.getElementById('addVariantImageFile');
+            if (input) input.value = '';
+            const preview = document.getElementById('addVariantImagePreview');
+            if (preview) preview.style.display = 'none';
+        }
+
+        function previewEditVariantImage(input) {
+            const preview = document.getElementById('editVariantImagePreview');
+            const img = document.getElementById('editVariantImagePreviewImg');
+            if (input.files && input.files[0]) {
+                img.src = URL.createObjectURL(input.files[0]);
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        function clearEditVariantImage() {
+            const input = document.getElementById('editVariantImageFile');
+            if (input) input.value = '';
+            const preview = document.getElementById('editVariantImagePreview');
+            if (preview) preview.style.display = 'none';
+        }
+    </script>
+
+</th:block>
+</html>

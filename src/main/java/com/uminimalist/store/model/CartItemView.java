@@ -13,6 +13,11 @@ public record CartItemView(
         int stockQuantity,
         double unitPrice,
         String unitPriceLabel,
-        String lineTotalLabel
+        String lineTotalLabel,
+        boolean outOfStock,
+        boolean stockExceeded
 ) {
+    public boolean isSelectable() {
+        return !outOfStock && !stockExceeded;
+    }
 }

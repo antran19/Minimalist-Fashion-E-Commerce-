@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="user-modals">
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form th:action="@{/admin/users/create}" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add New User Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="fullName" class="form-control" placeholder="e.g. John Doe" maxlength="120" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" placeholder="e.g. john@example.com" maxlength="120" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="phone" class="form-control" placeholder="e.g. 0912345678" maxlength="20" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control" placeholder="Minimum 8 characters" minlength="8" maxlength="72" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Role <span class="text-danger">*</span></label>
+                        <select name="role" class="form-select" required>
+                            <option value="CUSTOMER" selected>CUSTOMER</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="active" value="true" id="addUserActive" checked>
+                        <label class="form-check-label fw-bold" for="addUserActive">Account Active</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="editUserForm" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" id="editUserId" name="id">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Edit User Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" id="editUserFullName" name="fullName" class="form-control" maxlength="120" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" id="editUserEmail" name="email" class="form-control" maxlength="120" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                        <input type="tel" id="editUserPhone" name="phone" class="form-control" maxlength="20" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">New Password <span class="text-muted fw-normal fst-italic">(Leave blank to keep existing)</span></label>
+                        <input type="password" id="editUserNewPassword" name="newPassword" class="form-control" placeholder="Min 8 characters if changing" minlength="8" maxlength="72">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Role <span class="text-danger">*</span></label>
+                        <select id="editUserRole" name="role" class="form-select" required>
+                            <option value="CUSTOMER">CUSTOMER</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="active" value="true" id="editUserActive">
+                        <label class="form-check-label fw-bold" for="editUserActive">Account Active</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</th:block>
+</html>

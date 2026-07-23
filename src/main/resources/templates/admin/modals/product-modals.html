@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="product-modals">
+
+    <!-- Add Product Modal -->
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form th:action="@{/admin/products/create}" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add New Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Product Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Minimalist Linen Shirt" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
+                        <select name="categoryId" class="form-select" required th:if="${not #lists.isEmpty(categories)}">
+                            <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Men</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Base Price ($) <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" name="basePrice" class="form-control" placeholder="19.90 or 1,000.50" required oninput="formatLivePrice(this)">
+                        <small class="form-text text-muted">Auto formats thousand separators as you type (e.g. 1,250.00)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Product Type <span class="text-danger">*</span></label>
+                        <input type="text" name="productType" class="form-control" list="productTypeList" placeholder="Select existing or type new (e.g. T-shirt, Shoes)" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Product description..."></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" name="onSale" id="addOnSale" onchange="toggleDiscountField('addDiscountDiv', this.checked)">
+                        <label class="form-check-label fw-bold" for="addOnSale">On Sale</label>
+                    </div>
+                    <div class="mb-3" id="addDiscountDiv" style="display: none;">
+                        <label class="form-label fw-bold">Discount Percentage (%)</label>
+                        <input type="number" name="discountPercentage" class="form-control" min="1" max="100" placeholder="e.g. 20">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Create Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="editProductForm" method="post" class="modal-content">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Edit Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Product Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="editProductName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
+                        <select name="categoryId" id="editProductCategoryId" class="form-select" required th:if="${not #lists.isEmpty(categories)}">
+                            <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Men</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Base Price ($) <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" name="basePrice" id="editProductBasePrice" class="form-control" required oninput="formatLivePrice(this)">
+                        <small class="form-text text-muted">Auto formats thousand separators as you type (e.g. 1,250.00)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Product Type <span class="text-danger">*</span></label>
+                        <input type="text" name="productType" id="editProductType" class="form-control" list="productTypeList" placeholder="Select existing or type new (e.g. T-shirt, Shoes)" required>
+                    </div>
+                    <datalist id="productTypeList" th:if="${not #lists.isEmpty(productTypes)}">
+                        <option th:each="type : ${productTypes}" th:value="${type}"></option>
+                    </datalist>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" id="editProductDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" name="onSale" id="editOnSale" onchange="toggleDiscountField('editDiscountDiv', this.checked)">
+                        <label class="form-check-label fw-bold" for="editOnSale">On Sale</label>
+                    </div>
+                    <div class="mb-3" id="editDiscountDiv" style="display: none;">
+                        <label class="form-label fw-bold">Discount Percentage (%)</label>
+                        <input type="number" name="discountPercentage" id="editDiscountPercentage" class="form-control" min="1" max="100" placeholder="e.g. 20">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Update Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Representative Image Modal -->
+    <div class="modal fade" id="manageProductImagesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Set Representative Image for <span id="manageImagesProductName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted fw-semibold mb-3" style="font-size: 0.9rem;">
+                        Select which color image should be used as the primary catalog cover image for this product. 
+                        SKU images are managed directly from the inventory table.
+                    </p>
+                    <div id="manageImagesList" class="d-flex flex-column gap-3">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDiscountField(divId, isChecked) {
+            const div = document.getElementById(divId);
+            if (div) {
+                div.style.display = isChecked ? 'block' : 'none';
+            }
+        }
+    </script>
+</th:block>
+</html>

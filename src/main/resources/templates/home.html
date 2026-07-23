@@ -1,58 +1,12 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>U-Minimalist | Life-ready essentials</title>
-    <meta name="description" content="U-Minimalist is a minimalist fashion e-commerce experience for everyday essentials.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23d71920'/%3E%3Cpath d='M16 17h8v30h-8zM28 17h20v7H36v5h10v7H36v11h-8z' fill='white'/%3E%3C/svg%3E">
+    <th:block th:insert="~{fragments/head :: head('U-Minimalist | Life-ready essentials', 'U-Minimalist is a minimalist fashion e-commerce experience for everyday essentials.')}"></th:block>
     <link rel="preload" th:href="@{/images/hero-campaign-family@2x.png}" as="image">
     <link rel="preload" th:href="@{/images/campaign-storefront.png}" as="image">
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
-    <link rel="stylesheet" th:href="@{/css/landing.css}">
 </head>
 <body>
-<header class="site-header" data-animate="nav">
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid page-shell">
-            <a class="navbar-brand" th:href="@{/}" aria-label="U-Minimalist home">U-Minimalist</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='men')}">Men</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='women')}">Women</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(collection='kids')}">Kids</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='new')}">New arrivals</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products(sort='best')}">Best sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" th:href="@{/products}" aria-label="Search products">Search</a></li>
-                    <li class="nav-item" sec:authorize="isAnonymous()">
-                        <a class="nav-link" th:href="@{/login}" aria-label="Sign in">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated() and !hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/account}">Account</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/admin/dashboard}">Admin</a>
-                    </li>
-                    <li class="nav-item" sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post" class="d-inline">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="nav-link btn btn-link p-0 border-0" style="text-decoration: none; background: none;">Sign out</button>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cart-link" th:href="@{/cart}" aria-label="View cart">
-                            Cart <span th:text="${cartCount}">0</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</header>
+<th:block th:replace="~{fragments/navbar :: navbar('home', 'site-header', 'nav', true, false, true)}"></th:block>
 
 <main>
     <section class="hero-section" aria-labelledby="hero-title">
@@ -72,13 +26,23 @@
         </div>
     </section>
 
-    <section class="category-section page-shell" aria-labelledby="category-title">
+    <section class="category-section page-shell" aria-labelledby="category-title" style="overflow: hidden;">
         <div class="section-heading reveal-block">
             <h2 id="category-title">Shop by category</h2>
             <a th:href="@{/products}">View all</a>
         </div>
         <div class="category-grid">
             <a class="category-card reveal-card" th:each="category : ${categories}" th:href="${category.href}">
+                <span class="category-image" th:classappend="${category.cropClass}">
+                    <img th:src="@{/images/product-collage.png}" th:alt="${category.name + ' minimalist apparel'}">
+                </span>
+                <span class="category-copy">
+                    <strong th:text="${category.name}">Men</strong>
+                    <small th:text="${category.description}">Everyday layers.</small>
+                </span>
+            </a>
+            <!-- Duplicate for infinite marquee -->
+            <a class="category-card reveal-card" th:each="category : ${categories}" th:href="${category.href}" aria-hidden="true">
                 <span class="category-image" th:classappend="${category.cropClass}">
                     <img th:src="@{/images/product-collage.png}" th:alt="${category.name + ' minimalist apparel'}">
                 </span>
@@ -116,24 +80,90 @@
         </div>
     </section>
 
-    <section class="arrival-section page-shell" aria-labelledby="arrival-title">
-        <div class="section-heading reveal-block">
+    <section class="arrival-section page-shell reveal-block" aria-labelledby="arrival-title" style="overflow: hidden;">
+        <div class="section-heading">
             <h2 id="arrival-title">New arrivals</h2>
             <a th:href="@{/products(sort='new')}">Shop all</a>
         </div>
-        <div class="product-grid">
+        <div class="scrolling-grid">
             <article class="product-card reveal-card" th:each="product : ${newArrivals}">
-                <a th:href="@{/products/{slug}(slug=${product.slug})}" class="product-image product-image-real" th:classappend="${product.cropClass}">
-                    <img th:src="@{${product.imagePath}}" th:alt="${product.name}">
-                </a>
-                <div class="product-meta">
-                    <p th:text="${product.category}">T-shirt</p>
-                    <h3 th:text="${product.name}">Air Cotton Tee</h3>
-                    <div class="product-line">
-                        <span th:text="${product.priceLabel}">$19.90</span>
-                        <span th:text="${product.colorLabel()}">Cream</span>
+                <div class="product-image product-image-real" th:classappend="${product.cropClass}">
+                    <a th:href="@{/products/{slug}(slug=${product.slug})}">
+                        <img th:src="${product.imagePath}" th:alt="${product.name}">
+                    </a>
+                    <div class="product-badges">
+                        <div class="product-badges-row" th:if="${product.isNew or product.bestSeller}">
+                            <span class="product-badge is-new" th:if="${product.isNew}">New arrival</span>
+                            <span class="product-badge is-best" th:if="${product.bestSeller}">Best Seller</span>
+                        </div>
+                        <span class="product-badge is-sale" th:if="${product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
                     </div>
-                    <small th:text="${product.sizeLabel()}">S M L XL</small>
+                    <div class="product-actions">
+                        <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        </a>
+                        <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Quick view" title="Quick view">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="product-meta">
+                    <p th:text="${product.category}">U-MINIMALIST</p>
+                    <h3><a th:href="@{/products/{slug}(slug=${product.slug})}" th:text="${product.name}">Air Cotton Tee</a></h3>
+                    <div class="product-price-row">
+                        <span th:if="${product.onSale}" class="price-current" style="color: #dc2626;" th:text="${product.salePriceLabel}">$15.90</span>
+                        <span th:if="${product.onSale}" class="price-original text-muted text-decoration-line-through" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:unless="${product.onSale}" class="price-current" th:text="${product.priceLabel}">$19.90</span>
+                    </div>
+                    <div class="product-swatches" th:if="${!#lists.isEmpty(product.colors)}">
+                        <span th:each="color : ${product.colors}"
+                              class="swatch-circle"
+                              th:title="${color}"
+                              th:data-color="${color}"
+                              th:data-image="${product.imageForColor(color)}"
+                              th:style="'cursor: pointer; background-color:' + ${product.colorHex(color)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Duplicate for infinite marquee -->
+            <article class="product-card reveal-card" th:each="product : ${newArrivals}" aria-hidden="true">
+                <div class="product-image product-image-real" th:classappend="${product.cropClass}">
+                    <a th:href="@{/products/{slug}(slug=${product.slug})}">
+                        <img th:src="${product.imagePath}" th:alt="${product.name}">
+                    </a>
+                    <div class="product-badges">
+                        <div class="product-badges-row" th:if="${product.isNew or product.bestSeller}">
+                            <span class="product-badge is-new" th:if="${product.isNew}">New arrival</span>
+                            <span class="product-badge is-best" th:if="${product.bestSeller}">Best Seller</span>
+                        </div>
+                        <span class="product-badge is-sale" th:if="${product.onSale}" th:text="${'-' + product.discountPercentage + '% OFF'}">-30% OFF</span>
+                    </div>
+                    <div class="product-actions">
+                        <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Select options & add to cart" title="Select options & buy">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        </a>
+                        <a th:href="@{/products/{slug}(slug=${product.slug})}" class="action-btn" aria-label="Quick view" title="Quick view">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="product-meta">
+                    <p th:text="${product.category}">U-MINIMALIST</p>
+                    <h3><a th:href="@{/products/{slug}(slug=${product.slug})}" th:text="${product.name}">Air Cotton Tee</a></h3>
+                    <div class="product-price-row">
+                        <span th:if="${product.onSale}" class="price-current" style="color: #dc2626;" th:text="${product.salePriceLabel}">$15.90</span>
+                        <span th:if="${product.onSale}" class="price-original text-muted text-decoration-line-through" th:text="${product.priceLabel}">$19.90</span>
+                        <span th:unless="${product.onSale}" class="price-current" th:text="${product.priceLabel}">$19.90</span>
+                    </div>
+                    <div class="product-swatches" th:if="${!#lists.isEmpty(product.colors)}">
+                        <span th:each="color : ${product.colors}"
+                              class="swatch-circle"
+                              th:title="${color}"
+                              th:data-color="${color}"
+                              th:data-image="${product.imageForColor(color)}"
+                              th:style="'cursor: pointer; background-color:' + ${product.colorHex(color)} + '; border: 1px solid rgba(0,0,0,0.15);'"></span>
+                    </div>
                 </div>
             </article>
         </div>
@@ -148,53 +178,36 @@
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="page-shell">
-        <div class="footer-brand">
-            <strong>U-Minimalist</strong>
-            <p>Minimal fashion e-commerce system for Java Frameworks.</p>
-        </div>
-        <div class="footer-columns">
-            <div>
-                <h2>Shop</h2>
-                <a th:href="@{/products(collection='men')}">Men</a>
-                <a th:href="@{/products(collection='women')}">Women</a>
-                <a th:href="@{/products(collection='kids')}">Kids</a>
-                <a th:href="@{/products(sort='new')}">New arrivals</a>
-            </div>
-            <div>
-                <h2>Support</h2>
-                <a th:href="@{/help}">Contact</a>
-                <a th:href="@{/orders}">Order status</a>
-                <a th:href="@{/shipping}">Shipping</a>
-                <a th:href="@{/returns}">Returns</a>
-            </div>
-            <div>
-                <h2>Account</h2>
-                <a th:href="@{/login}">Sign in</a>
-                <a th:href="@{/register}">Create account</a>
-                <a th:href="@{/cart}">Cart</a>
-                <a th:href="@{/wishlist}">Wishlist</a>
-            </div>
-            <div>
-                <h2>Updates</h2>
-                <p>Seasonal essentials, product drops, and stock updates.</p>
-                <form class="footer-form" th:action="@{/newsletter}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <label for="footer-email">Email</label>
-                    <div>
-                        <input id="footer-email" name="email" type="email" placeholder="Email address">
-                        <button type="submit">Join</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.swatch-circle').forEach(swatch => {
+            swatch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-<script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
-<script th:src="@{/vendor/gsap/gsap.min.js}"></script>
-<script th:src="@{/vendor/gsap/ScrollTrigger.min.js}"></script>
-<script th:src="@{/js/landing.js}"></script>
+                const card = this.closest('.product-card');
+                if (!card) return;
+
+                const img = card.querySelector('.product-image img');
+                const newSrc = this.getAttribute('data-image');
+                if (img && newSrc) {
+                    img.src = newSrc;
+                }
+
+                const siblingSwatches = card.querySelectorAll('.swatch-circle');
+                siblingSwatches.forEach(s => {
+                    s.style.outline = 'none';
+                    s.style.transform = 'none';
+                });
+                this.style.outline = '2px solid #18181b';
+                this.style.outlineOffset = '2px';
+                this.style.transform = 'scale(1.2)';
+            });
+        });
+    });
+</script>
+
+<th:block th:replace="~{fragments/footer :: footer(true)}"></th:block>
+<th:block th:replace="~{fragments/scripts :: scripts(true)}"></th:block>
 </body>
 </html>
