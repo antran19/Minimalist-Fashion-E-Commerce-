@@ -203,16 +203,13 @@ public class CustomerController {
                 addedItems += item.quantity();
             } catch (IllegalArgumentException ex) {
                 // If requested quantity exceeds stock, attempt to add available stock quantity
-                    int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
-                            .map(ProductVariant::getStockQuantity)
-                            .orElse(0);
-                    if (availableStock > 0) {
-                        shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
-                        addedItems += availableStock;
-                        warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
-                    }
-                } catch (IllegalArgumentException ignored) {
-                    // Skip completely unavailable or out-of-stock variants
+                int availableStock = productVariantRepository.findBySkuIgnoreCase(item.sku())
+                        .map(ProductVariant::getStockQuantity)
+                        .orElse(0);
+                if (availableStock > 0) {
+                    shoppingCartService.addSku(session, authentication.getName(), item.sku(), availableStock);
+                    addedItems += availableStock;
+                    warnings.add("Added " + availableStock + " item(s) of " + item.productName() + " (only " + availableStock + " in stock).");
                 }
             }
         }
